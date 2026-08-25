@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#168052">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Iguazú Assist — Tu asistente turístico inteligente en Puerto Iguazú. Encontrá actividades, gastronomía y armá tu plan en tiempo real.">
+    
+    <title>Iguazú Assist — Tu asistente turístico inteligente</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <!-- BARRA SUPERIOR / TOPBAR -->
+    <header class="topbar">
+        <div class="brand" onclick="volverInicio()" title="Ir al inicio de Iguazú Assist">
+            <img src="icon.svg" alt="Iguazú Assist" class="brand-icon">
+            <div class="brand-name">
+                <span class="brand-title">Iguazú Assist</span>
+                <span class="brand-tagline">Tu asistente inteligente</span>
+            </div>
+        </div>
+
+        <div class="topbar-actions">
+            <!-- Widget Clima en Vivo -->
+            <div id="weather-badge" class="weather-badge" title="Clima en tiempo real en Puerto Iguazú">
+                <span id="weather-icon">🌤️</span>
+                <span id="weather-temp" class="weather-text">Consultando…</span>
+            </div>
+
+            <!-- Botón Audio Ambiental Opcional -->
+            <button id="audio-toggle" class="audio-toggle" title="Activar/desactivar sonido ambiental de selva" aria-label="Sonido ambiental">
+                🔇
+            </button>
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main>
+
+        <!-- SECCIÓN HERO CON LAS 3 ACCIONES PRINCIPALES -->
+        <section id="hero-section" class="hero">
+            <div class="hero-location-pill">
+                📍 Puerto Iguazú & Cataratas
+            </div>
+
+            <h1>
+                ¿Qué querés hacer <br>
+                <span class="gold">hoy en Iguazú?</span>
+            </h1>
+
+            <p class="hero-subtitle">
+                Tu asistente turístico en tiempo real: decidí qué hacer según la hora, el clima y tu ubicación.
+            </p>
+
+            <!-- TRÍADA DE ACCIONES PRINCIPALES -->
+            <div class="hero-actions-grid">
+                <button id="btn-open-planner" class="action-card primary">
+                    <div class="action-header">
+                        <span class="action-icon">🤖</span>
+                        <span class="action-arrow">→</span>
+                    </div>
+                    <div>
+                        <div class="action-title">ARMAME UN PLAN</div>
+                        <div class="action-desc">Decime qué te gusta y te digo qué hacer.</div>
+                    </div>
+                </button>
+
+                <button id="btn-open-nearby" class="action-card secondary">
+                    <div class="action-header">
+                        <span class="action-icon">📍</span>
+                        <span class="action-arrow">→</span>
+                    </div>
+                    <div>
+                        <div class="action-title">CERCA MÍO</div>
+                        <div class="action-desc">Descubrí opciones cerca de donde estás.</div>
+                    </div>
+                </button>
+
+                <button id="btn-open-surprise" class="action-card secondary">
+                    <div class="action-header">
+                        <span class="action-icon">✨</span>
+                        <span class="action-arrow">→</span>
+                    </div>
+                    <div>
+                        <div class="action-title">SORPRENDEME</div>
+                        <div class="action-desc">No sé qué hacer. Elegí por mí.</div>
+                    </div>
+                </button>
+            </div>
+        </section>
+
+        <!-- TARJETA DEL ASISTENTE TUCÁN (TUKI) -->
+        <section id="assistant-banner" class="assistant-card">
+            <div class="assistant-avatar">
+                🦜
+            </div>
+            <div class="assistant-content">
+                <div class="assistant-badge">Consejo de Tuki</div>
+                <div id="assistant-text" class="assistant-text">
+                    ¡Hola! Estoy monitoreando el clima y los horarios en Iguazú para recomendarte la mejor experiencia hoy.
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN CATEGORÍAS -->
+        <section id="categories-section" class="categories">
+            <div class="categories-header">
+                <h2>Explorar por categorías</h2>
+            </div>
+
+            <div class="category-grid">
+                <button class="category-card" data-category="naturaleza">
+                    <span class="category-icon">🌿</span>
+                    <span class="category-name">Naturaleza</span>
+                    <span class="category-desc">Cataratas, selva y fauna</span>
+                </button>
+
+                <button class="category-card" data-category="comida">
+                    <span class="category-icon">🍽️</span>
+                    <span class="category-name">Comer</span>
+                    <span class="category-desc">Parrillas y cocina regional</span>
+                </button>
+
+                <button class="category-card" data-category="movilidad">
+                    <span class="category-icon">🚗</span>
+                    <span class="category-name">Movilidad</span>
+                    <span class="category-desc">Colectivos, taxis y traslados</span>
+                </button>
+
+                <button class="category-card" data-category="actividades">
+                    <span class="category-icon">🎭</span>
+                    <span class="category-name">Qué hacer</span>
+                    <span class="category-desc">Hito, paseos y compras</span>
+                </button>
+
+                <button class="category-card" data-category="alojamiento">
+                    <span class="category-icon">🏨</span>
+                    <span class="category-name">Alojamiento</span>
+                    <span class="category-desc">Hoteles y lodges de selva</span>
+                </button>
+
+                <button class="category-card" data-category="noche">
+                    <span class="category-icon">🌙</span>
+                    <span class="category-name">De noche</span>
+                    <span class="category-desc">Bares, shows y luna llena</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- SECCIÓN CERCA MÍO (GEOLOCALIZACIÓN) -->
+        <section id="nearby" class="nearby-view hidden">
+            <button class="back-button" onclick="volverAtras()">
+                ← Volver al inicio
+            </button>
+
+            <div class="nearby-header-card">
+                <div class="nearby-title-row">
+                    <div>
+                        <h2>📍 Opciones Cerca Tuyo</h2>
+                        <p style="font-size:13px; color:var(--color-text-muted); margin-top:2px;">Ordenados por distancia GPS real y estado de apertura en tiempo real.</p>
+                    </div>
+                    <div class="nearby-gps-control">
+                        <span id="nearby-gps-status" class="gps-pill">📍 Buscando GPS…</span>
+                        <button id="btn-refresh-gps" class="gps-refresh-btn" title="Actualizar mi ubicación GPS" aria-label="Actualizar GPS">
+                            🔄 Actualizar GPS
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros dinámicos de proximidad y categoría -->
+                <div class="nearby-filters-bar">
+                    <button class="filter-pill active" data-nearby-filter="todos">✨ Todos</button>
+                    <button class="filter-pill" data-nearby-filter="abiertos">🟢 Abiertos ahora</button>
+                    <button class="filter-pill" data-nearby-filter="caminando">🚶 A pie (&lt; 1.5 km)</button>
+                    <button class="filter-pill" data-nearby-filter="ferias_compras">🛍️ Ferias y Compras</button>
+                    <button class="filter-pill" data-nearby-filter="gratuitos">🆓 Gratis</button>
+                    <button class="filter-pill" data-nearby-filter="naturaleza">🌿 Naturaleza</button>
+                    <button class="filter-pill" data-nearby-filter="comida">🍽️ Comer</button>
+                    <button class="filter-pill" data-nearby-filter="actividades">🎭 Cultura y Paseos</button>
+                    <button class="filter-pill" data-nearby-filter="noche">🌙 Noche</button>
+                    <button class="filter-pill" data-nearby-filter="movilidad">🚗 Movilidad</button>
+                    <button class="filter-pill" data-nearby-filter="alojamiento">🏨 Alojamiento</button>
+                </div>
+            </div>
+
+            <div id="nearby-list" class="results-cards-list"></div>
+        </section>
+
+        <!-- SECCIÓN SORPRÉNDEME (1-CLIC) -->
+        <section id="surprise" class="surprise-view hidden">
+            <button class="back-button" onclick="volverAtras()">
+                ← Volver al inicio
+            </button>
+
+            <div class="surprise-card">
+                <div class="surprise-badge">
+                    <span>🦜</span>
+                    <span>Recomendación Express de Tuki</span>
+                </div>
+
+                <div id="surprise-container"></div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN PLANIFICADOR INTELIGENTE POTENCIADO -->
+        <section id="planner" class="planner hidden">
+            <button class="back-button" onclick="volverAtras()">
+                ← Volver
+            </button>
+
+            <div class="planner-header">
+                <div class="planner-header-icon">🦜</div>
+                <h2>Armemos tu experiencia</h2>
+                <p>Contanos tus preferencias y nuestro motor construirá el mejor itinerario personalizado para hoy.</p>
+            </div>
+
+            <!-- Pregunta 1: Intereses ampliados -->
+            <div class="planner-question">
+                <h3>🌿 ¿Qué te interesa hacer?</h3>
+                <div class="planner-options-grid-4">
+                    <button type="button" class="option-btn planner-option selected" data-interest="naturaleza">
+                        <span class="option-icon">🌊</span>
+                        <span>Naturaleza</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="comida">
+                        <span class="option-icon">🍽️</span>
+                        <span>Comer</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="actividades">
+                        <span class="option-icon">🎭</span>
+                        <span>Actividades</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="noche">
+                        <span class="option-icon">🌙</span>
+                        <span>Noche</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="compras">
+                        <span class="option-icon">🛍️</span>
+                        <span>Compras</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="fauna">
+                        <span class="option-icon">🦜</span>
+                        <span>Fauna</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="tres_paises">
+                        <span class="option-icon">🌎</span>
+                        <span>3 Países</span>
+                    </button>
+                    <button type="button" class="option-btn planner-option" data-interest="paseos">
+                        <span class="option-icon">🚶</span>
+                        <span>Paseos</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pregunta 2: Tiempo disponible -->
+            <div class="planner-question">
+                <h3>⏱️ ¿Cuánto tiempo tenés?</h3>
+                <div class="planner-options-grid-5">
+                    <button type="button" class="option-btn time-option" data-time="1-2 horas">
+                        <span class="option-icon">⚡</span>
+                        <span>1–2 hs</span>
+                    </button>
+                    <button type="button" class="option-btn time-option" data-time="unas horas">
+                        <span class="option-icon">⏱️</span>
+                        <span>Unas hs (3h)</span>
+                    </button>
+                    <button type="button" class="option-btn time-option selected" data-time="medio día">
+                        <span class="option-icon">🌤️</span>
+                        <span>Medio día (5h)</span>
+                    </button>
+                    <button type="button" class="option-btn time-option" data-time="todo el día">
+                        <span class="option-icon">☀️</span>
+                        <span>Todo el día (8h)</span>
+                    </button>
+                    <button type="button" class="option-btn time-option" data-time="varios días">
+                        <span class="option-icon">📅</span>
+                        <span>Varios días</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pregunta 3: Compañía -->
+            <div class="planner-question">
+                <h3>👥 ¿Con quién viajás?</h3>
+                <div class="planner-options-grid-5">
+                    <button type="button" class="option-btn traveler-option selected" data-traveler="solo">
+                        <span class="option-icon">👤</span>
+                        <span>Solo</span>
+                    </button>
+                    <button type="button" class="option-btn traveler-option" data-traveler="pareja">
+                        <span class="option-icon">❤️</span>
+                        <span>En pareja</span>
+                    </button>
+                    <button type="button" class="option-btn traveler-option" data-traveler="familia">
+                        <span class="option-icon">👨‍👩‍👧‍👦</span>
+                        <span>En familia</span>
+                    </button>
+                    <button type="button" class="option-btn traveler-option" data-traveler="amigos">
+                        <span class="option-icon">🧑‍🤝‍🧑</span>
+                        <span>Con amigos</span>
+                    </button>
+                    <button type="button" class="option-btn traveler-option" data-traveler="niños">
+                        <span class="option-icon">🧒</span>
+                        <span>Con niños</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pregunta 4: Presupuesto con descripciones -->
+            <div class="planner-question">
+                <h3>💰 ¿Qué presupuesto tenés?</h3>
+                <div class="planner-options-grid-3">
+                    <button type="button" class="option-btn budget-option" data-budget="economico">
+                        <span class="option-icon">💰</span>
+                        <span>Económico</span>
+                        <span class="subtext">Gastar lo menos posible</span>
+                    </button>
+                    <button type="button" class="option-btn budget-option selected" data-budget="medio">
+                        <span class="option-icon">💵</span>
+                        <span>Medio</span>
+                        <span class="subtext">Equilibrado</span>
+                    </button>
+                    <button type="button" class="option-btn budget-option" data-budget="alto">
+                        <span class="option-icon">💎</span>
+                        <span>Alto</span>
+                        <span class="subtext">Sin límite de precio</span>
+                    </button>
+                </div>
+            </div>
+
+            <button class="generate-plan-btn" onclick="generarPlan()">
+                <span>✨ ARMAR MI PLAN INTELIGENTE</span>
+                <span>→</span>
+            </button>
+
+            <!-- CONTENEDOR DE RESULTADOS DEL PLAN -->
+            <div id="plan-result" class="plan-result-container hidden"></div>
+        </section>
+
+        <!-- SECCIÓN RESULTADOS DE CATEGORÍAS -->
+        <section id="results" class="results-view hidden">
+            <button class="back-button" onclick="volverAtras()">
+                ← Volver al inicio
+            </button>
+
+            <div class="results-view-header">
+                <div id="results-icon" class="results-header-icon">🌿</div>
+                <div class="results-header-text">
+                    <h2 id="results-title">Naturaleza</h2>
+                    <p id="results-description">Descubrí los mejores lugares de Iguazú.</p>
+                </div>
+            </div>
+
+            <div id="results-list" class="results-cards-list"></div>
+        </section>
+
+        <!-- SECCIÓN FICHA DE DETALLE -->
+        <section id="detail" class="detail-view hidden">
+            <button class="back-button" onclick="volverAtras()">
+                ← Volver
+            </button>
+
+            <div class="detail-card-main">
+                <div class="detail-main-icon" id="detail-icon">🌊</div>
+                <h2 id="detail-title">Nombre del Lugar</h2>
+                
+                <div id="detail-badges" class="tags-row" style="justify-content: center; margin-bottom: 14px;"></div>
+
+                <p id="detail-description" class="detail-description">Descripción detallada del atractivo.</p>
+
+                <div class="detail-grid-info">
+                    <div class="detail-info-box">
+                        <span class="detail-info-icon">📍</span>
+                        <div>
+                            <strong>Ubicación</strong>
+                            <p id="detail-location">Puerto Iguazú</p>
+                        </div>
+                    </div>
+
+                    <div class="detail-info-box">
+                        <span class="detail-info-icon">🕐</span>
+                        <div>
+                            <strong>Horario</strong>
+                            <p id="detail-hours">Consultar horarios</p>
+                        </div>
+                    </div>
+
+                    <div class="detail-info-box">
+                        <span class="detail-info-icon">💰</span>
+                        <div>
+                            <strong>Precio estimado</strong>
+                            <p id="detail-price">Consultar tarifa</p>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="detail-map-btn" class="map-route-btn">
+                    🗺️ VER UBICACIÓN EN GOOGLE MAPS
+                </button>
+
+                <div id="contact-buttons" class="contact-actions-grid"></div>
+            </div>
+        </section>
+
+    </main>
+
+</div>
+
+<!-- SCRIPTS DE LA APLICACIÓN -->
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="planificador-inteligente.js"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js")
+        .then(reg => console.log("Iguazú Assist Service Worker registrado:", reg.scope))
+        .catch(err => console.error("Error al registrar Service Worker:", err));
+    });
+  }
+</script>
+
+</body>
+</html>
