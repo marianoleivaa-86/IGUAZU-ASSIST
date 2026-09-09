@@ -1,0 +1,11 @@
+{
+  "actualizado": "2026-09-02T12:00:00-03:00",
+  "fuente": "Referencia local de Iguazú Assist (no es un aviso oficial del Parque Nacional)",
+  "circuitos": {
+    "superior": "abierto",
+    "inferior": "abierto",
+    "garganta": "consulta",
+    "macuco": "consulta",
+    "tren": "abierto"
+  }
+}

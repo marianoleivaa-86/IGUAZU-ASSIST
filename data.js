@@ -15,8 +15,88 @@ const CONFIG_APP = {
     provincia: "Misiones, Argentina",
     // Coordenadas centrales de referencia (Plaza San Martín, Centro)
     coordenadasCentro: { lat: -25.5979, lng: -54.5742 },
-    version: "2.2.0"
+    // Radio del feed "Cerca Tuyo" (cubre ciudad + Parque Nacional / Cataratas)
+    radioCercaniaKm: 25,
+    // El Parque Nacional (Cataratas) siempre entra al feed, aunque exceda el radio
+    idsImperdiblesSiempreVisibles: [1],
+    version: "3.3.0"
 };
+
+// ========================================================
+// CIRCUITOS DEL PARQUE NACIONAL (capa local, no es aviso oficial)
+// ========================================================
+const CIRCUITOS_PARQUE = [
+    {
+        id: "superior",
+        nombre: "Circuito Superior",
+        horario: "08:00 a 16:30 (ingreso)",
+        duracionMin: 90,
+        alAireLibre: true,
+        estadoDefault: "abierto",
+        nota: "Pasarelas elevadas con vistas panorámicas."
+    },
+    {
+        id: "inferior",
+        nombre: "Circuito Inferior",
+        horario: "08:00 a 16:30 (ingreso)",
+        duracionMin: 120,
+        alAireLibre: true,
+        estadoDefault: "abierto",
+        nota: "Más cerca del agua; posible cierre por crecida o lluvia intensa."
+    },
+    {
+        id: "garganta",
+        nombre: "Garganta del Diablo",
+        horario: "Tren ecológico según cupo",
+        duracionMin: 150,
+        alAireLibre: true,
+        estadoDefault: "consulta",
+        nota: "Requiere tren. Consultar crecida, viento y cupos del día."
+    },
+    {
+        id: "macuco",
+        nombre: "Sendero Macuco",
+        horario: "Mañana recomendada",
+        duracionMin: 90,
+        alAireLibre: true,
+        estadoDefault: "consulta",
+        nota: "Selva; evitar con tormenta o piso muy resbaladizo."
+    },
+    {
+        id: "tren",
+        nombre: "Tren ecológico",
+        horario: "Según operación del parque",
+        duracionMin: 30,
+        alAireLibre: false,
+        estadoDefault: "abierto",
+        nota: "Conecta estaciones y Garganta. Techado en el convoy."
+    }
+];
+
+function evaluarCircuitosParque(clima = {}, horaNumero = 12, estadoRemoto = null) {
+    const lluvia = Boolean(clima.lluvia || clima.lluviaProxima || clima.tormenta);
+    const tormenta = Boolean(clima.tormenta);
+    const fueraDeIngreso = Number(horaNumero) >= 16.5 || Number(horaNumero) < 8;
+
+    return CIRCUITOS_PARQUE.map(circuito => {
+        const remoto = estadoRemoto?.circuitos?.[circuito.id];
+        let estado = remoto || circuito.estadoDefault;
+        let motivo = circuito.nota;
+
+        if (fueraDeIngreso && circuito.id !== "tren") {
+            estado = "cerrado_ingreso";
+            motivo = "Fuera del horario habitual de ingreso al parque (catálogo local).";
+        } else if (tormenta && circuito.alAireLibre) {
+            estado = "posible_cierre";
+            motivo = "Tormenta: posible cierre de pasarelas. Priorizá indoor o consultá en boletería.";
+        } else if (lluvia && (circuito.id === "garganta" || circuito.id === "macuco" || circuito.id === "inferior")) {
+            estado = "posible_cierre";
+            motivo = "Lluvia: posible cierre o piso resbaladizo. El Circuito Superior suele ser la opción más estable.";
+        }
+
+        return { ...circuito, estado, motivo };
+    });
+}
 
 // ========================================================
 // CATÁLOGO COMPLETO DE LUGARES Y EXPERIENCIAS REALES
@@ -26,13 +106,13 @@ const lugaresReales = [
     // ========================================================
     // 🌿 NATURALEZA & PARQUES
     // ========================================================
-
     {
         id: 1,
         nombre: "Parque Nacional Iguazú",
         categoria: "naturaleza",
         intereses: ["naturaleza", "fauna", "paseos"],
         icono: "🌊",
+        imagen: "img_cataratas.jpg",
         descripcion: "Maravilla natural del mundo. Circuitos Superior, Inferior y pasarela hacia la majestuosa Garganta del Diablo.",
         ubicacion: "Parque Nacional Iguazú",
         direccion: "Ruta 101 Km 142, Puerto Iguazú, Misiones",
@@ -41,13 +121,14 @@ const lugaresReales = [
         horario: "08:00 a 18:00 (ingreso hasta las 16:30)",
         rangoHorario: { apertura: 8, cierre: 18 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Entrada oficial según residencia",
+        precioTexto: "Entrada oficial según residencia",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 5,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "mediodía"],
+        tipoHorario: "diurno",
         prioridad: 10,
         destacado: true,
         patrocinado: false,
@@ -56,7 +137,10 @@ const lugaresReales = [
         telefono: "+543757491469",
         whatsapp: "",
         web: "https://iguazuargentina.com/",
-        etiquetas: ["Imperdible", "Cataratas", "Patrimonio UNESCO", "Selva", "Fauna"]
+        etiquetas: ["Imperdible", "Cataratas", "Patrimonio UNESCO", "Selva", "Fauna"],
+        planificable: true,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Entrada oficial según residencia", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -65,6 +149,7 @@ const lugaresReales = [
         categoria: "naturaleza",
         intereses: ["naturaleza", "fauna", "actividades"],
         icono: "🦜",
+        imagen: "tuki-branch.jpg",
         descripcion: "Centro de rescate, rehabilitación y reinserción de animales silvestres autóctonos de la selva misionera.",
         ubicacion: "Ruta 12 Km 1638",
         direccion: "Ruta Nacional 12 Km 1638, Puerto Iguazú, Misiones",
@@ -73,13 +158,14 @@ const lugaresReales = [
         horario: "09:00 a 16:30",
         rangoHorario: { apertura: 9, cierre: 17 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Entrada arancelada con guía",
+        precioTexto: "Entrada arancelada con guía",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 2,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -88,7 +174,10 @@ const lugaresReales = [
         telefono: "+543757423908",
         whatsapp: "5493757548900",
         web: "https://guiraoga.com.ar/",
-        etiquetas: ["Fauna", "Aves", "Educación", "Niños", "Rescate"]
+        etiquetas: ["Fauna", "Aves", "Educación", "Niños", "Rescate"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Entrada arancelada con guía", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -105,13 +194,14 @@ const lugaresReales = [
         horario: "09:00 a 18:00",
         rangoHorario: { apertura: 9, cierre: 18 },
         diasApertura: [1, 2, 3, 4, 5, 6], // Martes a domingo
-        precio: "Ingreso accesible",
+        precioTexto: "Ingreso accesible",
         gratuito: false,
         nivelGasto: "economico",
         duracionHoras: 1,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -120,7 +210,10 @@ const lugaresReales = [
         telefono: "+543757422690",
         whatsapp: "",
         web: "",
-        etiquetas: ["Aves", "Fotografía", "Tranquilo", "Colibríes"]
+        etiquetas: ["Aves", "Fotografía", "Tranquilo", "Colibríes"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Ingreso accesible", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -137,13 +230,14 @@ const lugaresReales = [
         horario: "08:00 a 15:00 (último ingreso al sendero)",
         rangoHorario: { apertura: 8, cierre: 15 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Incluido en la entrada al Parque Nacional",
+        precioTexto: "Incluido en la entrada al Parque Nacional",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 3,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "amigos"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 8,
         destacado: false,
         patrocinado: false,
@@ -152,39 +246,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "https://iguazuargentina.com/",
-        etiquetas: ["Aventura", "Trekking", "Cascada", "Selva Profunda"]
-    },
-
-    {
-        id: 5,
-        nombre: "Salto del Turista",
-        categoria: "naturaleza",
-        intereses: ["naturaleza", "paseos"],
-        icono: "🌿",
-        descripcion: "Rincón natural oculto en Puerto Iguazú con un salto de agua ideal para desconectar y apreciar la flora nativa.",
-        ubicacion: "Zona Costera",
-        direccion: "Camino costero, Puerto Iguazú, Misiones",
-        coordenadas: { lat: -25.5890, lng: -54.5680 },
-        tipo: "Atractivo Natural Libre",
-        horario: "Diurno (08:00 a 18:30)",
-        rangoHorario: { apertura: 8, cierre: 18.5 },
-        diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
-        gratuito: true,
-        nivelGasto: "economico",
-        duracionHoras: 1.5,
-        alAireLibre: true,
-        aptoPara: ["solo", "pareja", "amigos"],
-        momentos: ["mañana", "tarde"],
-        prioridad: 6,
-        destacado: false,
-        patrocinado: false,
-        promocion: null,
-        prioridadComercial: 0,
-        telefono: "",
-        whatsapp: "",
-        web: "",
-        etiquetas: ["Agua", "Aire libre", "Gratuito", "Económico"]
+        etiquetas: ["Aventura", "Trekking", "Cascada", "Selva Profunda"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Incluido en la entrada al Parque Nacional", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -201,13 +266,14 @@ const lugaresReales = [
         horario: "Acceso libre las 24 hs (Recomendado atardecer)",
         rangoHorario: { apertura: 0, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 1.5,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde", "atardecer", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -216,7 +282,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Río Iguazú", "Atardecer", "Caminata", "Gratuito", "Fotografía"]
+        etiquetas: ["Río Iguazú", "Atardecer", "Caminata", "Gratuito", "Fotografía"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -233,13 +302,14 @@ const lugaresReales = [
         horario: "09:00 a 18:00",
         rangoHorario: { apertura: 9, cierre: 18 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Entrada arancelada",
+        precioTexto: "Entrada arancelada",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -248,39 +318,10 @@ const lugaresReales = [
         telefono: "+543757422967",
         whatsapp: "",
         web: "https://biocentroiguazu.com/",
-        etiquetas: ["Mariposario", "Reptiles", "Orquídeas", "Familia", "Fauna"]
-    },
-
-    {
-        id: 33,
-        nombre: "Paseo Ecológico en Balsas (Parque Nacional)",
-        categoria: "naturaleza",
-        intereses: ["naturaleza", "fauna", "actividades"],
-        icono: "🚣",
-        descripcion: "Navegación serena a remo en balsas por el Delta superior del Río Iguazú, avistando aves, tortugas y vegetación ribereña.",
-        ubicacion: "Parque Nacional Iguazú",
-        direccion: "Estación Garganta del Diablo, Parque Nacional Iguazú",
-        coordenadas: { lat: -25.6940, lng: -54.4380 },
-        tipo: "Navegación Ecológica Silenciosa",
-        horario: "09:00 a 16:30",
-        rangoHorario: { apertura: 9, cierre: 16.5 },
-        diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Excursión arancelada (adicional)",
-        gratuito: false,
-        nivelGasto: "medio",
-        duracionHoras: 1,
-        alAireLibre: true,
-        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
-        momentos: ["mañana", "mediodía", "tarde"],
-        prioridad: 7,
-        destacado: false,
-        patrocinado: false,
-        promocion: null,
-        prioridadComercial: 0,
-        telefono: "+543757421662",
-        whatsapp: "",
-        web: "https://iguazujungle.com/",
-        etiquetas: ["Delta", "Aves", "Navegación", "Tranquilo", "Cataratas"]
+        etiquetas: ["Mariposario", "Reptiles", "Orquídeas", "Familia", "Fauna"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Entrada arancelada", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -297,13 +338,14 @@ const lugaresReales = [
         horario: "Libre acceso diurno (08:00 a 18:30)",
         rangoHorario: { apertura: 8, cierre: 18.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 2,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "amigos", "familia"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -312,7 +354,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Selva Nativa", "Senderos", "Ecoturismo", "Gratuito"]
+        etiquetas: ["Selva Nativa", "Senderos", "Ecoturismo", "Gratuito"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     // ========================================================
@@ -333,13 +378,14 @@ const lugaresReales = [
         horario: "18:00 a 22:00 todos los días",
         rangoHorario: { apertura: 18, cierre: 22 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 1,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["atardecer", "noche"],
+        tipoHorario: "nocturno",
         prioridad: 9,
         destacado: true,
         patrocinado: false,
@@ -348,7 +394,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Feria", "Artesanías", "Gratuito", "Centro", "Plaza San Martín", "Emprendimientos"]
+        etiquetas: ["Feria", "Artesanías", "Gratuito", "Centro", "Plaza San Martín", "Emprendimientos"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -357,6 +406,7 @@ const lugaresReales = [
         categoria: "actividades",
         intereses: ["actividades", "tres_paises", "paseos", "noche"],
         icono: "🌎",
+        imagen: "img_hito.jpg",
         descripcion: "Mirador icónico con vista panorámica de la confluencia entre los ríos Iguazú y Paraná, uniendo Argentina, Brasil y Paraguay.",
         ubicacion: "Costanera y Tres Fronteras",
         direccion: "Av. Tres Fronteras y Costanera, Puerto Iguazú, Misiones",
@@ -365,13 +415,14 @@ const lugaresReales = [
         horario: "Abierto 24 hs (Feria y show de aguas desde las 19:30)",
         rangoHorario: { apertura: 0, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 1.5,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["tarde", "atardecer", "noche"],
+        tipoHorario: "flexible",
         prioridad: 9,
         destacado: true,
         patrocinado: false,
@@ -380,30 +431,38 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Imperdible", "3 Países", "Atardecer", "Feria Artesanal", "Show de Aguas", "Gratuito"]
+        etiquetas: ["Imperdible", "3 Países", "Atardecer", "Feria Artesanal", "Show de Aguas", "Gratuito"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
         id: 26,
         nombre: "Comunidad Mbyá Guaraní Yasy Porá",
         categoria: "actividades",
+        planificable: false,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Bono contribución comunitario con guía local", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "pendiente" } },
         intereses: ["actividades", "naturaleza", "paseos"],
         icono: "🛖",
         descripcion: "Experiencia cultural auténtica guiada por miembros de la comunidad: senderos por la selva, conocimiento de plantas medicinales, trampas ancestrales y artesanías.",
         ubicacion: "Reserva Selva Iryapú",
         direccion: "Reserva Selva Iryapú s/n, Puerto Iguazú",
-        coordenadas: { lat: -25.6175, lng: -54.5520 },
+        coordenadas: null,
+        planificable: false,
         tipo: "Turismo Cultural Comunitario",
-        horario: "09:00 a 17:00",
-        rangoHorario: { apertura: 9, cierre: 17 },
-        diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Bono contribución comunitario con guía local",
+        horario: "Visita coordinada con la comunidad",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Bono contribución comunitario con guía local",
         gratuito: false,
         nivelGasto: "economico",
         duracionHoras: 2,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -429,13 +488,14 @@ const lugaresReales = [
         horario: "09:00 a 18:00",
         rangoHorario: { apertura: 9, cierre: 18 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Entrada arancelada",
+        precioTexto: "Entrada arancelada",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: true,
         aptoPara: ["pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -444,7 +504,10 @@ const lugaresReales = [
         telefono: "+543757422340",
         whatsapp: "",
         web: "https://aripuca.com.ar/",
-        etiquetas: ["Cultura Guaraní", "Artesanías", "Helado de Yerba Mate", "Familia"]
+        etiquetas: ["Cultura Guaraní", "Artesanías", "Helado de Yerba Mate", "Familia"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Entrada arancelada", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -461,13 +524,14 @@ const lugaresReales = [
         horario: "08:00 a 18:00",
         rangoHorario: { apertura: 8, cierre: 18 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Entrada accesible",
+        precioTexto: "Entrada accesible",
         gratuito: false,
         nivelGasto: "economico",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -476,7 +540,10 @@ const lugaresReales = [
         telefono: "+543757420600",
         whatsapp: "",
         web: "",
-        etiquetas: ["Museo", "Cultura", "Esculturas", "Madera", "Ideal Lluvia"]
+        etiquetas: ["Museo", "Cultura", "Esculturas", "Madera", "Ideal Lluvia"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Entrada accesible", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -493,13 +560,14 @@ const lugaresReales = [
         horario: "16:00 a 22:00",
         rangoHorario: { apertura: 16, cierre: 22 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 1,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["tarde", "atardecer", "noche"],
+        tipoHorario: "flexible",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -508,7 +576,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Feria", "Artesanías", "Compras", "Gratuito", "Costanera"]
+        etiquetas: ["Feria", "Artesanías", "Compras", "Gratuito", "Costanera"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -525,13 +596,14 @@ const lugaresReales = [
         horario: "09:00 a 16:00",
         rangoHorario: { apertura: 9, cierre: 16 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Consultar tarifa oficial de excursión",
+        precioTexto: "Consultar tarifa oficial de excursión",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 2.5,
         alAireLibre: true,
         aptoPara: ["pareja", "familia", "amigos"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 9,
         destacado: true,
         patrocinado: false,
@@ -540,7 +612,10 @@ const lugaresReales = [
         telefono: "+543757421662",
         whatsapp: "5493757520033",
         web: "https://iguazujungle.com/",
-        etiquetas: ["Adrenalina", "Cataratas", "Paseo en Lancha", "Aventura", "Agua"]
+        etiquetas: ["Adrenalina", "Cataratas", "Paseo en Lancha", "Aventura", "Agua"],
+        planificable: true,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Consultar tarifa oficial de excursión", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -557,13 +632,14 @@ const lugaresReales = [
         horario: "08:30 a 17:00 (Turnos programados)",
         rangoHorario: { apertura: 8.5, cierre: 17 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Excursión arancelada con guías e instructores",
+        precioTexto: "Excursión arancelada con guías e instructores",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 3.5,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "amigos"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 8,
         destacado: false,
         patrocinado: false,
@@ -572,7 +648,10 @@ const lugaresReales = [
         telefono: "+543757422320",
         whatsapp: "",
         web: "https://iguazuforest.com/",
-        etiquetas: ["Tirolesa", "Rappel", "Aventura", "Adrenalina", "Selva"]
+        etiquetas: ["Tirolesa", "Rappel", "Aventura", "Adrenalina", "Selva"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Excursión arancelada con guías e instructores", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -589,13 +668,14 @@ const lugaresReales = [
         horario: "12:00 a 20:00",
         rangoHorario: { apertura: 12, cierre: 20 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Entrada libre",
+        precioTexto: "Entrada libre",
         gratuito: true,
         nivelGasto: "medio",
         duracionHoras: 2.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -604,7 +684,10 @@ const lugaresReales = [
         telefono: "+543757421000",
         whatsapp: "",
         web: "https://www.dutyfreeshoppuertoiguazu.com/",
-        etiquetas: ["Ideal Lluvia", "Compras", "Techado", "Climatizado", "Frontera"]
+        etiquetas: ["Ideal Lluvia", "Compras", "Techado", "Climatizado", "Frontera"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Entrada libre", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -621,13 +704,14 @@ const lugaresReales = [
         horario: "10:00 a 22:00",
         rangoHorario: { apertura: 10, cierre: 22 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre",
+        precioTexto: "Acceso libre",
         gratuito: true,
         nivelGasto: "medio",
         duracionHoras: 2,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -636,7 +720,10 @@ const lugaresReales = [
         telefono: "+543757420100",
         whatsapp: "",
         web: "",
-        etiquetas: ["Shopping", "Compras", "Cafeterías", "Gastronomía", "Moda"]
+        etiquetas: ["Shopping", "Compras", "Cafeterías", "Gastronomía", "Moda"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Acceso libre", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -653,13 +740,14 @@ const lugaresReales = [
         horario: "10:00 a 23:30",
         rangoHorario: { apertura: 10, cierre: 23.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre",
+        precioTexto: "Acceso libre",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 2,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -668,7 +756,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Picadas", "Vinos", "Caminata", "Centro", "Compras", "Feirinha"]
+        etiquetas: ["Picadas", "Vinos", "Caminata", "Centro", "Compras", "Feirinha"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -685,13 +776,14 @@ const lugaresReales = [
         horario: "09:00 a 18:00",
         rangoHorario: { apertura: 9, cierre: 18 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Bono contribución accesible",
+        precioTexto: "Bono contribución accesible",
         gratuito: false,
         nivelGasto: "economico",
         duracionHoras: 1,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 6,
         destacado: false,
         patrocinado: false,
@@ -700,7 +792,10 @@ const lugaresReales = [
         telefono: "+543757422100",
         whatsapp: "",
         web: "",
-        etiquetas: ["Reciclaje", "Educación", "Ecológico", "Familia", "Curiosidad"]
+        etiquetas: ["Reciclaje", "Educación", "Ecológico", "Familia", "Curiosidad"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Bono contribución accesible", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -718,13 +813,14 @@ const lugaresReales = [
         rangosHorarios: [{ apertura: 8, cierre: 12 }, { apertura: 16, cierre: 20 }],
         rangoHorario: { apertura: 8, cierre: 20 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 0.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 6,
         destacado: false,
         patrocinado: false,
@@ -733,7 +829,10 @@ const lugaresReales = [
         telefono: "+543757420141",
         whatsapp: "",
         web: "",
-        etiquetas: ["Historia", "Patrimonio", "Centro", "Gratuito", "Tranquilo"]
+        etiquetas: ["Historia", "Patrimonio", "Centro", "Gratuito", "Tranquilo"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     // ========================================================
@@ -754,13 +853,14 @@ const lugaresReales = [
         horario: "Solo noches de plenilunio (turnos 19:45, 20:30, 21:15)",
         rangoHorario: { apertura: 19.5, cierre: 23 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Reserva previa requerida",
+        precioTexto: "Reserva previa requerida",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 3,
         alAireLibre: true,
         aptoPara: ["pareja", "familia", "amigos"],
         momentos: ["noche"],
+        tipoHorario: "nocturno",
         prioridad: 10,
         destacado: true,
         patrocinado: false,
@@ -769,7 +869,10 @@ const lugaresReales = [
         telefono: "+543757491469",
         whatsapp: "5493757520033",
         web: "https://iguazuargentina.com/paseo-luna-llena/",
-        etiquetas: ["Exclusivo", "Luna Llena", "Romántico", "Imperdible", "Noche"]
+        etiquetas: ["Exclusivo", "Luna Llena", "Romántico", "Imperdible", "Noche"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Reserva previa requerida", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "pendiente", coordinacion: "desconocida" } },
     },
 
     {
@@ -786,13 +889,14 @@ const lugaresReales = [
         horario: "14:00 a 00:00",
         rangoHorario: { apertura: 14, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Incluye campera, guantes y barra libre",
+        precioTexto: "Incluye campera, guantes y barra libre",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["pareja", "amigos", "familia", "niños"],
         momentos: ["tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -801,7 +905,10 @@ const lugaresReales = [
         telefono: "+543757421100",
         whatsapp: "5493757670800",
         web: "https://icebariguazu.com/",
-        etiquetas: ["Ideal Lluvia", "Tragos", "Diversión", "Noche", "Techado"]
+        etiquetas: ["Ideal Lluvia", "Tragos", "Diversión", "Noche", "Techado"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Incluye campera, guantes y barra libre", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -818,13 +925,14 @@ const lugaresReales = [
         horario: "Desde las 20:00 (turnos regulares)",
         rangoHorario: { apertura: 19.5, cierre: 22.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Acceso libre y gratuito",
+        precioTexto: "Acceso libre y gratuito",
         gratuito: true,
         nivelGasto: "economico",
         duracionHoras: 1,
         alAireLibre: true,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["noche"],
+        tipoHorario: "nocturno",
         prioridad: 8,
         destacado: false,
         patrocinado: false,
@@ -833,7 +941,10 @@ const lugaresReales = [
         telefono: "",
         whatsapp: "",
         web: "",
-        etiquetas: ["Luces", "Música", "Familiar", "Gratuito", "Noche", "Hito"]
+        etiquetas: ["Luces", "Música", "Familiar", "Gratuito", "Noche", "Hito"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -850,13 +961,14 @@ const lugaresReales = [
         horario: "18:00 a 02:00",
         rangoHorario: { apertura: 18, cierre: 26 }, // Cruza medianoche
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Consumo a la carta",
+        precioTexto: "Consumo a la carta",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 2,
         alAireLibre: true,
         aptoPara: ["pareja", "amigos"],
         momentos: ["noche"],
+        tipoHorario: "nocturno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -865,7 +977,10 @@ const lugaresReales = [
         telefono: "+543757422110",
         whatsapp: "",
         web: "",
-        etiquetas: ["Cerveza Artesanal", "Terraza", "Noche", "Picadas", "Música", "Centro"]
+        etiquetas: ["Cerveza Artesanal", "Terraza", "Noche", "Picadas", "Música", "Centro"],
+        planificable: true,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Consumo a la carta", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     // ========================================================
@@ -878,6 +993,7 @@ const lugaresReales = [
         categoria: "comida",
         intereses: ["comida", "paseos"],
         icono: "🍽️",
+        imagen: "img_aqva.jpg",
         descripcion: "Referente gastronómico de Iguazú: pescados de río (Surubí, Dorado, Pacú), pastas caseras y carnes de primera calidad.",
         ubicacion: "Centro",
         direccion: "Av. Córdoba esq. Carlos Thays, Puerto Iguazú",
@@ -887,13 +1003,14 @@ const lugaresReales = [
         rangosHorarios: [{ apertura: 12, cierre: 16 }, { apertura: 19.5, cierre: 23.5 }],
         rangoHorario: { apertura: 12, cierre: 23.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Carta gourmet variada",
+        precioTexto: "Carta gourmet variada",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mediodía", "noche"],
+        tipoHorario: "flexible",
         prioridad: 9,
         destacado: true,
         patrocinado: false,
@@ -902,7 +1019,10 @@ const lugaresReales = [
         telefono: "+543757429700",
         whatsapp: "5493757505025",
         web: "https://aqvarestaurant.com/",
-        etiquetas: ["Pescados de Río", "Alta Cocina", "Vinos Argentinos", "Techado"]
+        etiquetas: ["Pescados de Río", "Alta Cocina", "Vinos Argentinos", "Techado"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Carta gourmet variada", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -920,13 +1040,14 @@ const lugaresReales = [
         rangosHorarios: [{ apertura: 12, cierre: 15.5 }, { apertura: 19.5, cierre: 23.5 }],
         rangoHorario: { apertura: 12, cierre: 23.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Carta gourmet y parrilla",
+        precioTexto: "Carta gourmet y parrilla",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 2,
         alAireLibre: false,
         aptoPara: ["pareja", "familia", "amigos", "niños"],
         momentos: ["mediodía", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -935,7 +1056,10 @@ const lugaresReales = [
         telefono: "+543757420151",
         whatsapp: "5493757420151",
         web: "https://eltioquerido.com.ar/",
-        etiquetas: ["Asado", "Show en Vivo", "Tango", "Tradición", "Techado"]
+        etiquetas: ["Asado", "Show en Vivo", "Tango", "Tradición", "Techado"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Carta gourmet y parrilla", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -953,13 +1077,14 @@ const lugaresReales = [
         rangosHorarios: [{ apertura: 12, cierre: 15.5 }, { apertura: 19.5, cierre: 23.5 }],
         rangoHorario: { apertura: 12, cierre: 23.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Carta tradicional",
+        precioTexto: "Carta tradicional",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["pareja", "familia", "amigos", "niños"],
         momentos: ["mediodía", "noche"],
+        tipoHorario: "flexible",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -968,7 +1093,10 @@ const lugaresReales = [
         telefono: "+543757693447",
         whatsapp: "",
         web: "",
-        etiquetas: ["Clásico", "Pastas", "Carnes", "Techado", "Centro"]
+        etiquetas: ["Clásico", "Pastas", "Carnes", "Techado", "Centro"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Carta tradicional", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -985,13 +1113,14 @@ const lugaresReales = [
         horario: "19:30 a 23:00 (Turno cena con reserva)",
         rangoHorario: { apertura: 19.5, cierre: 23 },
         diasApertura: [1, 2, 3, 4, 5, 6], // Martes a domingo
-        precio: "Experiencia gastronómica guiada premium",
+        precioTexto: "Experiencia gastronómica guiada premium",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 2.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "amigos"],
         momentos: ["noche"],
+        tipoHorario: "nocturno",
         prioridad: 8,
         destacado: false,
         patrocinado: false,
@@ -1000,7 +1129,10 @@ const lugaresReales = [
         telefono: "+543757421800",
         whatsapp: "",
         web: "https://theargentineexperience.com/",
-        etiquetas: ["Vinos Argentinos", "Empanadas", "Gourmet", "Interactivo", "Noche"]
+        etiquetas: ["Vinos Argentinos", "Empanadas", "Gourmet", "Interactivo", "Noche"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Experiencia gastronómica guiada premium", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "pendiente", coordinacion: "desconocida" } },
     },
 
     {
@@ -1018,13 +1150,14 @@ const lugaresReales = [
         rangosHorarios: [{ apertura: 12, cierre: 15.5 }, { apertura: 19.5, cierre: 23.5 }],
         rangoHorario: { apertura: 12, cierre: 23.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Carta variada",
+        precioTexto: "Carta variada",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mediodía", "noche"],
+        tipoHorario: "flexible",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -1033,7 +1166,10 @@ const lugaresReales = [
         telefono: "+543757420633",
         whatsapp: "",
         web: "",
-        etiquetas: ["Pastas Caseras", "Pescados de Río", "Centro", "Techado", "Confort"]
+        etiquetas: ["Pastas Caseras", "Pescados de Río", "Centro", "Techado", "Confort"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Carta variada", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -1050,13 +1186,14 @@ const lugaresReales = [
         horario: "19:30 a 23:30",
         rangoHorario: { apertura: 19.5, cierre: 23.5 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Carta tradicional",
+        precioTexto: "Carta tradicional",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["pareja", "familia", "amigos", "niños"],
         momentos: ["noche"],
+        tipoHorario: "nocturno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -1065,7 +1202,10 @@ const lugaresReales = [
         telefono: "+543757423300",
         whatsapp: "",
         web: "",
-        etiquetas: ["Pizzas", "Pastas", "Centro", "Familiar", "Horno de Leña"]
+        etiquetas: ["Pizzas", "Pastas", "Centro", "Familiar", "Horno de Leña"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Carta tradicional", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -1082,13 +1222,14 @@ const lugaresReales = [
         horario: "19:00 a 00:00",
         rangoHorario: { apertura: 19, cierre: 24 },
         diasApertura: [1, 2, 3, 4, 5, 6], // Martes a domingo
-        precio: "Cocina de autor",
+        precioTexto: "Cocina de autor",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1.5,
         alAireLibre: false,
         aptoPara: ["pareja", "familia", "amigos"],
         momentos: ["noche"],
+        tipoHorario: "nocturno",
         prioridad: 7,
         destacado: false,
         patrocinado: false,
@@ -1097,7 +1238,10 @@ const lugaresReales = [
         telefono: "+543757420600",
         whatsapp: "",
         web: "",
-        etiquetas: ["Selva", "Tragos", "Ambiente", "Techado"]
+        etiquetas: ["Selva", "Tragos", "Ambiente", "Techado"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Cocina de autor", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     // ========================================================
@@ -1108,7 +1252,7 @@ const lugaresReales = [
         id: 18,
         nombre: "Colectivo Río Uruguay a Cataratas (Línea Parque)",
         categoria: "movilidad",
-        intereses: ["movilidad", "naturaleza"],
+        intereses: ["movilidad"],
         icono: "🚌",
         descripcion: "Servicio regular de autobús que conecta la Terminal de Puerto Iguazú con el ingreso al Parque Nacional cada 20 minutos.",
         ubicacion: "Terminal de Ómnibus",
@@ -1118,13 +1262,14 @@ const lugaresReales = [
         horario: "Salidas cada 20 min (07:00 a 19:30)",
         rangoHorario: { apertura: 7, cierre: 20 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Boleto ida y vuelta económico",
+        precioTexto: "Boleto ida y vuelta económico",
         gratuito: false,
         nivelGasto: "economico",
         duracionHoras: 0.75,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "mediodía", "tarde"],
+        tipoHorario: "diurno",
         prioridad: 9,
         destacado: true,
         patrocinado: false,
@@ -1133,7 +1278,10 @@ const lugaresReales = [
         telefono: "+543757420369",
         whatsapp: "",
         web: "https://riouruguaybus.com.ar/",
-        etiquetas: ["Económico", "Directo a Cataratas", "Frecuente", "Colectivo"]
+        etiquetas: ["Económico", "Directo a Cataratas", "Frecuente", "Colectivo"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Boleto ida y vuelta económico", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -1147,16 +1295,17 @@ const lugaresReales = [
         direccion: "Ruta Nac. 101, Aeropuerto IGR, Puerto Iguazú",
         coordenadas: { lat: -25.7372, lng: -54.4733 },
         tipo: "Shuttle & Traslado Aeroportuario",
-        horario: "Coordinado con todos los vuelos diarios",
-        rangoHorario: { apertura: 6, cierre: 23.5 },
-        diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Tarifa fija por tramo",
+        horario: "Coordinado con cada vuelo; consultar disponibilidad",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Consultar tarifa vigente",
         gratuito: false,
         nivelGasto: "economico",
         duracionHoras: 0.75,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "mediodía", "tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: false,
         patrocinado: false,
@@ -1165,14 +1314,17 @@ const lugaresReales = [
         telefono: "+543757422111",
         whatsapp: "5493757540001",
         web: "",
-        etiquetas: ["Aeropuerto", "Shuttle", "Equipaje", "Traslados"]
+        etiquetas: ["Aeropuerto", "Shuttle", "Equipaje", "Traslados"],
+        planificable: false,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Consultar tarifa vigente", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "pendiente" } },
     },
 
     {
         id: 20,
         nombre: "Parada Central de Taxis y Remises (Plaza San Martín)",
         categoria: "movilidad",
-        intereses: ["movilidad", "tres_paises"],
+        intereses: ["movilidad"],
         icono: "🚕",
         descripcion: "Base principal de radiotaxis con tarifas reguladas para recorridos urbanos, cruce de fronteras y traslados a atracciones.",
         ubicacion: "Plaza San Martín (Centro)",
@@ -1182,34 +1334,35 @@ const lugaresReales = [
         horario: "Servicio 24 horas",
         rangoHorario: { apertura: 0, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Tarifa regulada por taxímetro / viajes fijos",
+        precioTexto: "Tarifa regulada por taxímetro / viajes fijos",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 0.5,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "mediodía", "tarde", "atardecer", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
-        destacado: false,
+        destacado: true,
         patrocinado: false,
-        promocion: null,
+        promocion: "Servicio 24 horas en el centro",
         prioridadComercial: 0,
-        telefono: "+543757420042",
-        whatsapp: "5493757420042",
+        telefono: "",
+        whatsapp: "",
         web: "",
-        etiquetas: ["24 Horas", "Privado", "Confort", "Fronteras", "Taxi"]
+        etiquetas: ["Taxi", "Remis", "24 horas", "Centro", "Plaza San Martín"],
+        planificable: true,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Tarifa regulada por taxímetro / viajes fijos", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
-
-    // ========================================================
-    // 🏨 ALOJAMIENTO & HOTELES
-    // ========================================================
 
     {
         id: 21,
         nombre: "Hotel Saint George",
         categoria: "alojamiento",
-        intereses: ["alojamiento", "paseos"],
+        intereses: ["alojamiento"],
         icono: "🏨",
+        imagen: "img_saintgeorge.jpg",
         descripcion: "Hotel con jardines tropicales, piscina y spa ubicado estratégicamente en pleno centro gastronómico de Puerto Iguazú.",
         ubicacion: "Centro",
         direccion: "Av. Córdoba 148, Puerto Iguazú, Misiones",
@@ -1218,13 +1371,14 @@ const lugaresReales = [
         horario: "Recepción 24 horas",
         rangoHorario: { apertura: 0, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Consultar tarifa por noche",
+        precioTexto: "Consultar tarifa por noche",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 1,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: true,
         patrocinado: false,
@@ -1233,15 +1387,19 @@ const lugaresReales = [
         telefono: "+543757420633",
         whatsapp: "5493757420633",
         web: "https://hotelsaintgeorge.com/",
-        etiquetas: ["Piscina", "Centro", "Spa", "Confort", "Hotel"]
+        etiquetas: ["Piscina", "Centro", "Spa", "Confort", "Hotel"],
+        planificable: true,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Consultar tarifa por noche", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
         id: 22,
         nombre: "Loi Suites Iguazú Hotel",
         categoria: "alojamiento",
-        intereses: ["alojamiento", "naturaleza"],
+        intereses: ["alojamiento"],
         icono: "🌿",
+        imagen: "hero-bg.jpg",
         descripcion: "Exclusivo resort 5 estrellas inmerso en la Reserva Selva Iryapú con puentes colgantes, piscinas y alta gastronomía.",
         ubicacion: "Reserva Selva Iryapú",
         direccion: "Selva Iryapú s/n, Puerto Iguazú, Misiones",
@@ -1250,13 +1408,14 @@ const lugaresReales = [
         horario: "Recepción 24 horas",
         rangoHorario: { apertura: 0, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Categoría Premium",
+        precioTexto: "Categoría Premium",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 1,
         alAireLibre: true,
         aptoPara: ["pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 9,
         destacado: true,
         patrocinado: false,
@@ -1265,7 +1424,10 @@ const lugaresReales = [
         telefono: "+543757498300",
         whatsapp: "",
         web: "https://loisuites.com.ar/es/iguazu",
-        etiquetas: ["Lujo", "Selva", "Piscinas", "Spa", "Resort"]
+        etiquetas: ["Lujo", "Selva", "Piscinas", "Spa", "Resort"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Categoría Premium", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
     {
@@ -1274,6 +1436,7 @@ const lugaresReales = [
         categoria: "alojamiento",
         intereses: ["alojamiento"],
         icono: "🏨",
+        imagen: "hero-bg.jpg",
         descripcion: "Hotel de lujo con suites amplias, spa, canchas de tenis y club infantil a minutos del centro de la ciudad.",
         ubicacion: "Ruta 12",
         direccion: "Ruta Nacional 12 Km 1640, Puerto Iguazú, Misiones",
@@ -1282,13 +1445,14 @@ const lugaresReales = [
         horario: "Recepción 24 horas",
         rangoHorario: { apertura: 0, cierre: 24 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precio: "Categoría Superior",
+        precioTexto: "Categoría Superior",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 1,
         alAireLibre: false,
         aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
         momentos: ["mañana", "tarde", "noche"],
+        tipoHorario: "flexible",
         prioridad: 8,
         destacado: false,
         patrocinado: false,
@@ -1297,7 +1461,597 @@ const lugaresReales = [
         telefono: "+543757498050",
         whatsapp: "",
         web: "https://iguazugrand.com/",
-        etiquetas: ["Lujo", "Kids Club", "Gastronomía", "Spa", "Hotel"]
+        etiquetas: ["Lujo", "Kids Club", "Gastronomía", "Spa", "Hotel"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Categoría Superior", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    // ========================================================
+    // 🌅 NUEVAS EXPERIENCIAS, MIRADORES, CULTURA & VIDA NOCTURNA
+    // ========================================================
+
+    {
+        id: 40,
+        nombre: "Mirador y Paseo Panorámico del Río Iguazú",
+        categoria: "actividades",
+        intereses: ["naturaleza", "paseos", "tres_paises"],
+        icono: "🌅",
+        imagen: "img_mirador.jpg",
+        descripcion: "Balcón panorámico sobre las barrancas del Río Iguazú con senderos peatonales, bancos y vista abierta hacia las costas de Brasil y la confluencia.",
+        ubicacion: "Barrancas del Río Iguazú",
+        direccion: "Av. Costanera Panorámica s/n, Puerto Iguazú",
+        coordenadas: { lat: -25.5920, lng: -54.5880 },
+        tipo: "Mirador Panorámico & Paseo Costero",
+        horario: "Acceso libre 24 hs (Mejor atardecer)",
+        rangoHorario: { apertura: 0, cierre: 24 },
+        diasApertura: [0, 1, 2, 3, 4, 5, 6],
+        precioTexto: "Acceso libre y gratuito",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 1,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
+        momentos: ["mañana", "tarde", "atardecer"],
+        tipoHorario: "flexible",
+        prioridad: 8,
+        destacado: true,
+        patrocinado: false,
+        promocion: null,
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Mirador", "Vistas Panorámicas", "Atardecer", "Fotografía", "Gratuito", "Río Iguazú"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 41,
+        nombre: "Salto Mariposa",
+        categoria: "naturaleza",
+        intereses: ["naturaleza", "paseos", "actividades"],
+        icono: "🦋",
+        descripcion: "Cascada natural oculta entre la selva ribereña próxima al Hito Tres Fronteras, con piletón natural de agua de vertiente para refrescarse.",
+        ubicacion: "Costanera Ribereña",
+        direccion: "Acceso por sendero costero cercano a Hito Tres Fronteras, Puerto Iguazú",
+        coordenadas: { lat: -25.5922, lng: -54.6045 },
+        tipo: "Salto Natural & Trekking",
+        horario: "Diurno recomendado (08:30 a 18:00)",
+        rangoHorario: { apertura: 8.5, cierre: 18 },
+        diasApertura: [0, 1, 2, 3, 4, 5, 6],
+        precioTexto: "Acceso libre",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 1.5,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "amigos"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: null,
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Cascada", "Aventura", "Naturaleza", "Gratuito", "Agua", "Trekking"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 42,
+        nombre: "Salto del Mbocay (Arroyo Embocay)",
+        categoria: "naturaleza",
+        intereses: ["naturaleza", "paseos", "fauna"],
+        icono: "🌿",
+        descripcion: "Hermoso salto de agua y reserva natural urbana sobre el arroyo Mbocay, con sombra de selva subtropical, pozones y avistaje de flora autóctona.",
+        ubicacion: "Barrio Mbocay",
+        direccion: "Acceso por Barrio Mbocay, Puerto Iguazú",
+        coordenadas: { lat: -25.6040, lng: -54.5510 },
+        tipo: "Salto Natural & Ecoturismo Urbano",
+        horario: "Diurno (08:00 a 18:00)",
+        rangoHorario: { apertura: 8, cierre: 18 },
+        diasApertura: [0, 1, 2, 3, 4, 5, 6],
+        precioTexto: "Acceso libre y gratuito",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 1.5,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "amigos", "familia"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: null,
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Cascada", "Selva Urbana", "Naturaleza", "Aves", "Gratuito"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 43,
+        nombre: "Casa Museo Dra. Marta Teodora Schwarz",
+        categoria: "actividades",
+        intereses: ["actividades", "paseos"],
+        icono: "🏛️",
+        descripcion: "Espacio patrimonial e histórico dedicado a la ilustre médica comunitaria de Iguazú ('El Ángel de la Selva'), preservando su instrumental y memoria.",
+        ubicacion: "Centro",
+        direccion: "Av. Victoria Aguirre 116, Puerto Iguazú",
+        coordenadas: { lat: -25.5977, lng: -54.5735 },
+        tipo: "Museo Histórico & Patrimonio Cultural",
+        horario: "08:00 a 12:00 y 16:00 a 20:00 (Lunes a Sábados)",
+        rangosHorarios: [{ apertura: 8, cierre: 12 }, { apertura: 16, cierre: 20 }],
+        rangoHorario: { apertura: 8, cierre: 20 },
+        diasApertura: [1, 2, 3, 4, 5, 6],
+        precioTexto: "Entrada libre y gratuita",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 1,
+        alAireLibre: false,
+        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: null,
+        prioridadComercial: 0,
+        telefono: "+543757420288",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Museo", "Historia", "Patrimonio", "Cultura", "Centro", "Gratuito", "Ideal Lluvia"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Entrada libre y gratuita", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 44,
+        nombre: "Casanova Night Club & Disco",
+        categoria: "noche",
+        intereses: ["noche", "actividades"],
+        icono: "🪩",
+        imagen: "img_casanova.jpg",
+        descripcion: "Emblemática discoteca y club nocturno de Puerto Iguazú con pista bailable, DJ en vivo, coctelería y shows temáticos de fin de semana.",
+        ubicacion: "Centro / Zona Nocturna",
+        direccion: "Av. Córdoba 150, Puerto Iguazú",
+        coordenadas: { lat: -25.5985, lng: -54.5730 },
+        tipo: "Discoteca, Boliche & Club Nocturno",
+        horario: "23:30 a 05:30 (Jueves a Domingos)",
+        rangoHorario: { apertura: 23.5, cierre: 29.5 },
+        diasApertura: [0, 4, 5, 6],
+        precioTexto: "Entrada arancelada con consumición",
+        gratuito: false,
+        nivelGasto: "medio",
+        duracionHoras: 3,
+        alAireLibre: false,
+        aptoPara: ["amigos", "pareja", "solo"],
+        momentos: ["noche"],
+        tipoHorario: "nocturno",
+        prioridad: 8,
+        destacado: true,
+        patrocinado: false,
+        promocion: "Pista principal, DJ y coctelería",
+        prioridadComercial: 1,
+        telefono: "+543757422500",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Boliche", "Discoteca", "Noche", "Música", "Fiesta", "Tragos", "Centro"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Entrada arancelada con consumición", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 45,
+        nombre: "Lablón Disco & Lounge",
+        categoria: "noche",
+        intereses: ["noche", "actividades"],
+        icono: "🍸",
+        descripcion: "Espacio nocturno con ambientación lounge, música electrónica y ritmos latinos, barra de coctelería y ambiente festivo.",
+        ubicacion: "Av. Brasil (Centro)",
+        direccion: "Av. Brasil 85, Puerto Iguazú",
+        coordenadas: { lat: -25.5982, lng: -54.5741 },
+        tipo: "Lounge Bar, Boliche & Discoteca",
+        horario: "22:30 a 05:00 (Miércoles a Domingos)",
+        rangoHorario: { apertura: 22.5, cierre: 29 },
+        diasApertura: [0, 3, 4, 5, 6],
+        precioTexto: "Consumo a la carta / Cover según evento",
+        gratuito: false,
+        nivelGasto: "medio",
+        duracionHoras: 2.5,
+        alAireLibre: false,
+        aptoPara: ["amigos", "pareja", "solo"],
+        momentos: ["noche"],
+        tipoHorario: "nocturno",
+        prioridad: 8,
+        destacado: false,
+        patrocinado: false,
+        promocion: null,
+        prioridadComercial: 0,
+        telefono: "+543757423100",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Boliche", "Bar", "Noche", "Música", "Tragos", "Lounge", "Centro"],
+        planificable: true,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Consumo a la carta / Cover según evento", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 52,
+        nombre: "Casino Iguazú",
+        categoria: "noche",
+        intereses: ["noche", "actividades"],
+        icono: "🎰",
+        descripcion: "Casino y centro de entretenimiento con slots, póker, ruleta y propuestas gastronómicas.",
+        ubicacion: "Ruta Nacional 12, km 1640, Puerto Iguazú",
+        direccion: "Ruta Nacional 12, km 1640, Puerto Iguazú, Misiones",
+        coordenadas: null,
+        tipo: "Casino & Centro de Entretenimiento",
+        horario: "10:00 a 04:00 (confirmar variaciones de fin de semana)",
+        rangoHorario: { apertura: 10, cierre: 28 },
+        diasApertura: [0, 1, 2, 3, 4, 5, 6],
+        precioTexto: "Consultar tarifas y condiciones de ingreso",
+        gratuito: false,
+        nivelGasto: "medio",
+        duracionHoras: 2.5,
+        alAireLibre: false,
+        aptoPara: ["solo", "pareja", "amigos"],
+        momentos: ["noche"],
+        tipoHorario: "nocturno",
+        prioridad: 8,
+        destacado: true,
+        patrocinado: false,
+        promocion: null,
+        prioridadComercial: 0,
+        telefono: "+543757498050",
+        whatsapp: "",
+        web: "https://city-center-iguazu.com/",
+        etiquetas: ["Casino", "Slots", "Póker", "Ruleta", "Noche", "Gastronomía"],
+        planificable: true,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Consultar tarifas y condiciones de ingreso", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    // ========================================================
+    // 🧭 NUEVOS PUNTOS LOCALES, COMUNIDADES & MUSEOS REGIONALES
+    // ========================================================
+
+    {
+        id: 46,
+        nombre: "Iglesia Santa María del Iguazú",
+        categoria: "actividades",
+        planificable: false,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+        intereses: ["actividades", "paseos"],
+        icono: "⛪",
+        descripcion: "Templo parroquial de Puerto Iguazú, un espacio de encuentro espiritual y de interés para conocer la vida comunitaria local.",
+        ubicacion: "Barrio Villa Alta",
+        direccion: "Santa María 721, Puerto Iguazú, Misiones",
+        coordenadas: null,
+        tipo: "Iglesia & Patrimonio Local",
+        horario: "Consultar horarios de misa y celebraciones",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Acceso libre",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 0.5,
+        alAireLibre: false,
+        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
+        momentos: ["mañana", "tarde", "noche"],
+        tipoHorario: "flexible",
+        prioridad: 6,
+        destacado: false,
+        patrocinado: false,
+        promocion: "Consultar agenda de celebraciones",
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "https://sanfransolanobv.com.ar/misas/iglesia-80/",
+        etiquetas: ["Iglesia", "Patrimonio", "Cultura", "Barrio", "Gratuito", "Consultar horarios"]
+    },
+
+    {
+        id: 47,
+        nombre: "Comunidad Mbya Guaraní Yryapu",
+        categoria: "actividades",
+        planificable: false,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Acordar con la comunidad / guía local", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "pendiente" } },
+        intereses: ["actividades", "naturaleza", "paseos"],
+        icono: "🛖",
+        descripcion: "Comunidad mbya de la selva Yryapú. Las experiencias, recorridos y artesanías deben coordinarse previamente con referentes comunitarios.",
+        ubicacion: "Selva Yryapú",
+        direccion: "Reserva Selva Yryapú, Puerto Iguazú, Misiones (punto de encuentro coordinado)",
+        coordenadas: null,
+        tipo: "Turismo Comunitario Mbya",
+        horario: "Visita coordinada con la comunidad",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Acordar con la comunidad / guía local",
+        gratuito: false,
+        nivelGasto: "economico",
+        duracionHoras: 2,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 8,
+        destacado: true,
+        patrocinado: false,
+        promocion: "Visita responsable y con autorización comunitaria",
+        prioridadComercial: 0,
+        telefono: "+543757459954",
+        whatsapp: "+543757459954",
+        web: "https://mbyaenturismo.org/",
+        etiquetas: ["Cultura Guaraní", "Comunidad Originaria", "Turismo Comunitario", "Selva", "Artesanías", "Visita Coordinada"]
+    },
+
+    {
+        id: 48,
+        nombre: "Aldea Guaraní Fortín Mbororé",
+        categoria: "actividades",
+        intereses: ["actividades", "naturaleza", "paseos"],
+        icono: "🛖",
+        descripcion: "Experiencia de turismo comunitario mbya con saberes, artesanías y senderos guiados. La visita se realiza con coordinación previa y respeto por la comunidad.",
+        ubicacion: "Puerto Iguazú",
+        direccion: "Puerto Iguazú, Misiones (punto de encuentro coordinado)",
+        coordenadas: null,
+        planificable: false,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Consultar tarifa y disponibilidad", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "pendiente" } },
+        tipo: "Aldea & Turismo Comunitario Mbya",
+        horario: "Visita coordinada con la comunidad",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Consultar tarifa y disponibilidad",
+        gratuito: false,
+        nivelGasto: "medio",
+        duracionHoras: 2.5,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 8,
+        destacado: true,
+        patrocinado: false,
+        promocion: "Reservá antes de acercarte",
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "+543757432461",
+        web: "https://misiones.tur.ar/evento-temporada/aldea-guarani-fortin-mborore/",
+        etiquetas: ["Cultura Guaraní", "Aldea", "Comunidad Originaria", "Senderos", "Artesanías", "Visita Coordinada"]
+    },
+
+    {
+        id: 49,
+        nombre: "Comunidad Mbya Miri Marangatu",
+        categoria: "actividades",
+        intereses: ["actividades", "naturaleza", "paseos"],
+        icono: "🌱",
+        descripcion: "Comunidad mbya incluida en la red Huella Guaraní de Puerto Iguazú. Consultá previamente si hay experiencias comunitarias disponibles para visitantes.",
+        ubicacion: "Área de Puerto Iguazú",
+        direccion: "Puerto Iguazú, Misiones (ubicación comunitaria no pública)",
+        coordenadas: null,
+        planificable: false,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Acordar con la comunidad", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "pendiente" } },
+        tipo: "Comunidad Mbya & Cultura Viva",
+        horario: "Consultar disponibilidad comunitaria",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Acordar con la comunidad",
+        gratuito: false,
+        nivelGasto: "economico",
+        duracionHoras: 2,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: "No ingresar sin autorización",
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "https://misiones.tur.ar/huella-guarani/",
+        etiquetas: ["Cultura Guaraní", "Comunidad Originaria", "Huella Guaraní", "Selva", "Visita Coordinada"]
+    },
+
+    {
+        id: 50,
+        nombre: "Comunidad Mbya Ita Poty Miri",
+        categoria: "actividades",
+        intereses: ["actividades", "naturaleza", "paseos"],
+        icono: "🌿",
+        descripcion: "Comunidad mbya reconocida dentro de la red Huella Guaraní. La app funciona como referencia general: la visita debe ser autorizada y coordinada.",
+        ubicacion: "Área de Puerto Iguazú",
+        direccion: "Puerto Iguazú, Misiones (ubicación comunitaria no pública)",
+        coordenadas: null,
+        planificable: false,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Acordar con la comunidad", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "pendiente" } },
+        tipo: "Comunidad Mbya & Turismo Responsable",
+        horario: "Consultar disponibilidad comunitaria",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Acordar con la comunidad",
+        gratuito: false,
+        nivelGasto: "economico",
+        duracionHoras: 2,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: "Visita responsable y con autorización",
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "https://misiones.tur.ar/huella-guarani/",
+        etiquetas: ["Cultura Guaraní", "Comunidad Originaria", "Huella Guaraní", "Artesanías", "Visita Coordinada"]
+    },
+
+    {
+        id: 51,
+        nombre: "Paseo de la Identidad",
+        categoria: "actividades",
+        intereses: ["actividades", "paseos", "tres_paises"],
+        icono: "🧭",
+        descripcion: "Espacio verde y paseo urbano para caminar con calma, conocer símbolos de la identidad local y conectar el centro con la zona costera.",
+        ubicacion: "Barrio Villa Florida",
+        direccion: "Paseo de la Identidad, Puerto Iguazú, Misiones",
+        coordenadas: { lat: -25.5976625, lng: -54.5774140 },
+        tipo: "Paseo Urbano & Patrimonio",
+        horario: "Acceso libre (mejor durante el día)",
+        rangoHorario: { apertura: 0, cierre: 24 },
+        diasApertura: [0, 1, 2, 3, 4, 5, 6],
+        precioTexto: "Acceso libre y gratuito",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 0.75,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
+        momentos: ["mañana", "tarde", "atardecer"],
+        tipoHorario: "flexible",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: "Ideal para una caminata corta",
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "",
+        etiquetas: ["Paseo", "Identidad Local", "Patrimonio", "Centro", "Gratuito", "Fotografía"],
+        planificable: true,
+        precio: { tipo: "gratis", monto: 0, moneda: null, unidad: "entrada", estado: "confirmado", fuente: null, actualizado: null, texto: "Acceso libre y gratuito", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+    },
+
+    {
+        id: 54,
+        nombre: "Dirección Municipal de Patrimonio Histórico",
+        categoria: "actividades",
+        planificable: false,
+        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Consultar", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+        intereses: ["actividades", "paseos"],
+        icono: "🏛️",
+        descripcion: "Sala de exposición permanente que visibiliza la historia, las costumbres y el modo de vida de los pioneros de Puerto Iguazú.",
+        ubicacion: "Barrio Villa Florida",
+        direccion: "Julio Ortiz entre Aurora Penón y San Martín, Puerto Iguazú, Misiones",
+        coordenadas: null,
+        tipo: "Patrimonio Histórico & Sala de Exposición",
+        horario: "Consultar horarios de visita",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Consultar",
+        gratuito: true,
+        nivelGasto: "economico",
+        duracionHoras: 1,
+        alAireLibre: false,
+        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "diurno",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: "Historia y memoria local",
+        prioridadComercial: 0,
+        telefono: "+543757525570",
+        whatsapp: "",
+        web: "https://visitiguazu.travel/atractivos/dir-municipal-de-patrimonio-historico-2/",
+        etiquetas: ["Museo", "Patrimonio", "Historia", "Pioneros", "Cultura", "Ideal Lluvia", "Consultar horarios"]
+    },
+
+    {
+        id: 53,
+        nombre: "Experiencia Cultura Guaraní de Tupã Lodge",
+        categoria: "actividades",
+        planificable: false,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Consultar tarifa vigente", toString() { return this.texto || ""; } },
+        operacion: { disponibilidad: "desconocida", reserva: "requerida", coordinacion: "requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "pendiente", coordinacion: "pendiente" } },
+        intereses: ["actividades", "naturaleza", "paseos", "comida"],
+        icono: "🪶",
+        descripcion: "Experiencia publicada por el Ente Municipal que combina sendero interpretativo, relatos, música, sabores tradicionales y artesanías guaraníes. Requiere reserva y coordinación previa.",
+        ubicacion: "Puerto Iguazú (punto de encuentro a confirmar)",
+        direccion: "Puerto Iguazú, Misiones (reservas y ubicación exacta a confirmar)",
+        coordenadas: null,
+        tipo: "Experiencia Cultural Guaraní",
+        horario: "Con reserva previa; consultar turnos",
+        rangoHorario: null,
+        diasApertura: null,
+        precioTexto: "Consultar tarifa vigente",
+        gratuito: null,
+        nivelGasto: "medio",
+        duracionHoras: null,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "flexible",
+        prioridad: 7,
+        destacado: false,
+        patrocinado: false,
+        promocion: "Reserva previa y experiencia respetuosa",
+        prioridadComercial: 0,
+        telefono: "+543757672064",
+        whatsapp: "",
+        web: "https://visitiguazu.travel/atractivos/cultural/experiencia-cultura-guarani-un-encuentro-con-las-raices-de-misiones/",
+        etiquetas: ["Cultura Guaraní", "Sendero Interpretativo", "Gastronomía", "Artesanías", "Reserva Previa", "Ideal con coordinación"]
+    },
+
+    {
+        id: 55,
+        nombre: "Pesca y Punto Iguazú",
+        categoria: "actividades",
+        planificable: false,
+        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null },
+        operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
+        intereses: ["actividades", "naturaleza", "comida", "paseos"],
+        icono: "🎣",
+        descripcion: "Espacio recreativo publicado por el Ente Municipal para pescar y relajarse en un entorno natural, con opciones de comida y bebida. Confirmá el horario y la tarifa antes de ir.",
+        ubicacion: "Puerto Iguazú (ubicación publicada en la ficha municipal)",
+        direccion: "Pesca y Punto Iguazú, Puerto Iguazú, Misiones",
+        coordenadas: { lat: -25.653018, lng: -54.5692553 },
+        tipo: "Pesca Recreativa & Gastronomía",
+        horario: "Consultar horario vigente (la ficha municipal publica una referencia de 10:00 a 20:00)",
+        rangoHorario: null,
+        diasApertura: [0, 1, 2, 3, 4, 5, 6],
+        precioTexto: "Consultar tarifa vigente (la ficha municipal publica una entrada general y opcionales)",
+        gratuito: false,
+        nivelGasto: "medio",
+        duracionHoras: null,
+        alAireLibre: true,
+        aptoPara: ["solo", "pareja", "familia", "amigos", "niños"],
+        momentos: ["mañana", "tarde"],
+        tipoHorario: "flexible",
+        prioridad: 6,
+        destacado: false,
+        patrocinado: false,
+        promocion: "Menores de 10 años: consultar condiciones vigentes",
+        prioridadComercial: 0,
+        telefono: "",
+        whatsapp: "",
+        web: "https://visitiguazu.travel/atractivos/natural/pesca-y-punto-iguazu/",
+        etiquetas: ["Pesca", "Familia", "Naturaleza", "Gastronomía", "Consultar horario", "Consultar tarifa"]
     }
 
 ];
@@ -1308,7 +2062,11 @@ const lugaresReales = [
 
 function obtenerLugaresPorCategoria(categoria) {
     if (!categoria || categoria === "todos") return lugaresReales;
-    return lugaresReales.filter(lugar => lugar.categoria.toLowerCase() === categoria.toLowerCase());
+    const clave = String(categoria).toLowerCase();
+    if (clave === "compras") {
+        return lugaresReales.filter(lugar => lugar.categoria.toLowerCase() === clave || (Array.isArray(lugar.intereses) && lugar.intereses.includes(clave)));
+    }
+    return lugaresReales.filter(lugar => lugar.categoria.toLowerCase() === clave);
 }
 
 function obtenerLugaresPorInteres(interes) {
@@ -1325,47 +2083,104 @@ function obtenerLugarPorIdentificador(identificador) {
 }
 
 /**
- * Evalúa si un rango horario específico está abierto en una hora dada.
+ * Obtiene la fecha, hora decimal y día de la semana ajustados específicamente
+ * a la zona horaria de Puerto Iguazú, Argentina (UTC-3).
  */
-function comprobarRango(rango, horaNumero) {
-    if (!rango) return true;
-    const { apertura, cierre } = rango;
-    if (apertura === 0 && cierre === 24) return true;
-    if (apertura <= cierre) {
-        return horaNumero >= apertura && horaNumero < cierre;
-    } else {
-        // Horario que cruza la medianoche (ej: 18:00 a 02:00 -> cierre: 26 o 2)
-        const cierreAjustado = cierre < apertura ? cierre + 24 : cierre;
-        const horaAjustada = (horaNumero < apertura && horaNumero < cierre) ? horaNumero + 24 : horaNumero;
-        return horaAjustada >= apertura && horaAjustada < cierreAjustado;
+function obtenerFechaHoraArgentina() {
+    const d = new Date();
+    try {
+        const formatter = new Intl.DateTimeFormat("en-US", {
+            timeZone: "America/Argentina/Buenos_Aires",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+            hour12: false
+        });
+        
+        const parts = formatter.formatToParts(d);
+        const map = {};
+        parts.forEach(p => map[p.type] = p.value);
+        
+        const year = parseInt(map.year);
+        const month = parseInt(map.month) - 1; // 0-indexed en JS
+        const day = parseInt(map.day);
+        const hour = parseInt(map.hour);
+        const minute = parseInt(map.minute);
+        
+        const argDate = new Date(year, month, day, hour, minute);
+        
+        return {
+            argDate,
+            horaNumero: hour + (minute / 60),
+            diaSemana: argDate.getDay(), // 0=Domingo, 1=Lunes...
+            horaTexto: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`
+        };
+    } catch (e) {
+        console.error("Error al formatear zona horaria Argentina, usando hora local:", e);
+        const localHour = d.getHours() + (d.getMinutes() / 60);
+        return {
+            argDate: d,
+            horaNumero: localHour,
+            diaSemana: d.getDay(),
+            horaTexto: d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+        };
     }
 }
 
 /**
- * Verifica si un lugar está abierto según una hora decimal y día específicos.
+ * Evalúa un rango usando una línea temporal continua. Los cierres superiores a
+ * 24 representan la continuación del turno durante el día siguiente.
  */
-function estaAbiertoEnHorario(lugar, horaNumero = (new Date().getHours() + (new Date().getMinutes() / 60)), diaSemana = new Date().getDay()) {
-    // Si no tiene rango definido o no está confirmado, asumimos true para no bloquear
-    if (!lugar.rangoHorario && !lugar.rangosHorarios) return true;
+function comprobarRango(rango, horaNumero) {
+    if (!rango) return true;
+    const apertura = Number(rango.apertura);
+    const cierre = Number(rango.cierre);
+    if (!Number.isFinite(apertura) || !Number.isFinite(cierre)) return false;
+    const cierreAbsoluto = cierre <= apertura ? cierre + 24 : cierre;
+    const hora = ((Number(horaNumero) % 24) + 24) % 24;
+    return (hora >= apertura && hora < cierreAbsoluto) || (hora + 24 >= apertura && hora + 24 < cierreAbsoluto);
+}
 
-    // Verificar si abre el día de la semana actual
-    if (lugar.diasApertura && !lugar.diasApertura.includes(diaSemana)) {
-        return false;
+/**
+ * Verifica si un lugar está abierto según una hora decimal y día específicos.
+ * Usa la misma línea temporal para turnos normales y turnos que cruzan medianoche.
+ */
+function estaAbiertoEnHorario(lugar, horaNumero, diaSemana) {
+    if (!lugar.rangoHorario && !lugar.rangosHorarios) return null;
+
+    if (horaNumero === undefined || diaSemana === undefined) {
+        const argTime = obtenerFechaHoraArgentina();
+        horaNumero = argTime.horaNumero;
+        diaSemana = argTime.diaSemana;
     }
 
-    // Verificar turnos partidos si existen (ej: Doña María / Aqva)
-    if (Array.isArray(lugar.rangosHorarios) && lugar.rangosHorarios.length > 0) {
-        return lugar.rangosHorarios.some(r => comprobarRango(r, horaNumero));
-    }
+    const hora = ((Number(horaNumero) % 24) + 24) % 24;
+    const dia = ((Number(diaSemana) % 7) + 7) % 7;
+    const rangos = Array.isArray(lugar.rangosHorarios) && lugar.rangosHorarios.length
+        ? lugar.rangosHorarios
+        : [lugar.rangoHorario];
 
-    // Verificar rango simple
-    return comprobarRango(lugar.rangoHorario, horaNumero);
+    return rangos.some(rango => {
+        if (!rango) return false;
+        const apertura = Number(rango.apertura);
+        const cierre = Number(rango.cierre);
+        if (!Number.isFinite(apertura) || !Number.isFinite(cierre)) return false;
+        const cierreAbsoluto = cierre <= apertura ? cierre + 24 : cierre;
+        const abreHoy = !lugar.diasApertura || lugar.diasApertura.includes(dia);
+        const abreAyer = !lugar.diasApertura || lugar.diasApertura.includes((dia - 1 + 7) % 7);
+        const dentroDelTurnoDeHoy = abreHoy && hora >= apertura && hora < cierreAbsoluto;
+        const dentroDeLaContinuacionDeAyer = abreAyer && hora + 24 >= apertura && hora + 24 < cierreAbsoluto;
+        return dentroDelTurnoDeHoy || dentroDeLaContinuacionDeAyer;
+    });
 }
 
 /**
  * Obtiene el estado detallado de disponibilidad de un lugar con texto amigable para la UI.
  */
-function obtenerEstadoDisponibilidad(lugar, horaNumero = (new Date().getHours() + (new Date().getMinutes() / 60)), diaSemana = new Date().getDay()) {
+function obtenerEstadoDisponibilidad(lugar, horaNumero, diaSemana) {
     if (!lugar.rangoHorario && !lugar.rangosHorarios) {
         return {
             abierto: null,
@@ -1375,8 +2190,25 @@ function obtenerEstadoDisponibilidad(lugar, horaNumero = (new Date().getHours() 
         };
     }
 
-    const diaAbre = !lugar.diasApertura || lugar.diasApertura.includes(diaSemana);
-    const abierto = diaAbre && estaAbiertoEnHorario(lugar, horaNumero, diaSemana);
+    // Obtener hora local de Argentina si no están definidos
+    if (horaNumero === undefined || diaSemana === undefined) {
+        const argTime = obtenerFechaHoraArgentina();
+        horaNumero = argTime.horaNumero;
+        diaSemana = argTime.diaSemana;
+    }
+
+    const abierto = estaAbiertoEnHorario(lugar, horaNumero, diaSemana);
+    
+    // Determinar si hoy abre o ayer abrió y continúa hoy
+    const diaAnterior = (diaSemana - 1 + 7) % 7;
+    const abreHoy = !lugar.diasApertura || lugar.diasApertura.includes(diaSemana);
+    const abreAyer = !lugar.diasApertura || lugar.diasApertura.includes(diaAnterior);
+    
+    let diaAbre = abreHoy;
+    // Si la hora es de madrugada y continúa el turno de ayer, el comercio se considera "abierto"
+    if (abierto && !abreHoy && abreAyer) {
+        diaAbre = true;
+    }
 
     if (abierto) {
         return {

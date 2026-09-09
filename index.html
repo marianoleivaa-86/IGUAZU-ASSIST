@@ -3,228 +3,320 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <meta name="theme-color" content="#168052">
+    <meta name="theme-color" content="#040d07">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="Iguazú Assist — Tu asistente turístico inteligente en Puerto Iguazú. Encontrá actividades, gastronomía y armá tu plan en tiempo real.">
-    
-    <title>Iguazú Assist — Tu asistente turístico inteligente</title>
+    <meta name="description" content="Iguazú Assist — Tu guía inteligente en Iguazú. Encontrá actividades, gastronomía y armá tu plan en tiempo real con Tuki.">
+    <meta name="keywords" content="Iguazú, cataratas, turismo, Puerto Iguazú, guía turística, Tuki, planificador">
+    <meta name="author" content="Iguazú Assist">
 
+    <title>Iguazú Assist — Tu Guía Inteligente en Iguazú</title>
+
+    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/svg+xml" href="icon.svg">
-    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="icon" type="image/jpeg" href="icon.jpg">
+    <link rel="apple-touch-icon" href="icon.jpg">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet">
+
+    <!-- Estilos -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="app">
 
-    <!-- BARRA SUPERIOR / TOPBAR -->
-    <header class="topbar">
-        <div class="brand" onclick="volverInicio()" title="Ir al inicio de Iguazú Assist">
-            <img src="icon.svg" alt="Iguazú Assist" class="brand-icon">
-            <div class="brand-name">
-                <span class="brand-title">Iguazú Assist</span>
-                <span class="brand-tagline">Tu asistente inteligente</span>
+    <!-- ============================================================
+         CABECERA HERO — SELVA & CATARATAS
+         ============================================================ -->
+    <header class="hero-header" id="main-header">
+        <div class="hero-bg-overlay"></div>
+        <div class="hero-leaves-left" aria-hidden="true"></div>
+        <div class="hero-leaves-right" aria-hidden="true"></div>
+
+        <!-- Barra Superior con clima y control de sonido -->
+        <div class="hero-top-nav">
+            <div class="hero-top-right">
+                <!-- Widget Clima en Vivo -->
+                <div id="weather-badge" class="hero-weather-pill" title="Clima en tiempo real en Puerto Iguazú" role="button" tabindex="0" aria-label="Abrir información meteorológica ampliada" aria-live="polite">
+                    <span id="weather-icon" class="weather-icon">☁️</span>
+                    <div class="weather-info-box">
+                        <span id="weather-temp" class="weather-temp">21°C</span>
+                        <span id="weather-cond" class="weather-cond">Nuboso</span>
+                    </div>
+                </div>
+
+                <!-- Botón Sonido Ambiental -->
+                <button id="audio-toggle" class="audio-circle-btn" title="Activar/desactivar efectos de sonido" aria-label="Sonido ambiental">
+                    🔇
+                </button>
             </div>
         </div>
 
-        <div class="topbar-actions">
-            <!-- Widget Clima en Vivo -->
-            <div id="weather-badge" class="weather-badge" title="Clima en tiempo real en Puerto Iguazú">
-                <span id="weather-icon">🌤️</span>
-                <span id="weather-temp" class="weather-text">Consultando…</span>
+        <!-- Branding Central Hero con Tuki y Tipografía de Impacto -->
+        <div class="hero-brand-container">
+            <div class="tuki-hero-perched">
+                <img src="tuki-branch-transparent.png" alt="Tuki el Tucán Asistente" class="tuki-branch-img">
             </div>
 
-            <!-- Botón Audio Ambiental Opcional -->
-            <button id="audio-toggle" class="audio-toggle" title="Activar/desactivar sonido ambiental de selva" aria-label="Sonido ambiental">
-                🔇
-            </button>
+            <div class="hero-brand-text">
+                <h1 class="brand-heading">
+                    <span class="brand-word-iguazu">IGUAZÚ</span>
+                    <span class="brand-word-assist">
+                        <span class="assist-accent">‹‹</span>
+                        <span class="assist-text">ASSIST</span>
+                        <span class="assist-accent">››</span>
+                    </span>
+                </h1>
+
+                <div class="brand-pill-tag">
+                    <span>TU GUÍA INTELIGENTE EN IGUAZÚ</span>
+                </div>
+
+                <p class="hero-question">¿Qué querés hacer hoy?</p>
+                <button type="button" class="hero-now-btn" onclick="abrirQueHagoAhora()">
+                    🧭 ¿Qué hago ahora?
+                </button>
+                <button type="button" class="hero-surprise-btn" onclick="abrirSorprendeme()">
+                    🦜 Sorpréndeme
+                </button>
+            </div>
         </div>
     </header>
 
-    <!-- CONTENIDO PRINCIPAL -->
-    <main>
+    <div id="weather-sheet" class="weather-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="weather-sheet-title" aria-hidden="true">
+        <div class="weather-sheet-panel" role="document">
+            <div class="weather-sheet-header">
+                <h2 id="weather-sheet-title">Clima en Iguazú</h2>
+                <button type="button" class="weather-sheet-close" onclick="cerrarFichaClima()" aria-label="Cerrar información meteorológica">×</button>
+            </div>
+            <div id="weather-sheet-body"></div>
+        </div>
+    </div>
 
-        <!-- SECCIÓN HERO CON LAS 3 ACCIONES PRINCIPALES -->
-        <section id="hero-section" class="hero">
-            <div class="hero-location-pill">
-                📍 Puerto Iguazú & Cataratas
+    <!-- ============================================================
+         CONTENIDO PRINCIPAL
+         ============================================================ -->
+    <main class="main-content">
+
+        <!-- ============================================================
+             SECCIÓN PRINCIPAL: OPCIONES CERCA TUYO (FEED ACTIVO HOME)
+             ============================================================ -->
+        <section id="hero-section" class="home-feed-section" aria-label="Opciones cerca tuyo">
+
+            <!-- Título de Sección -->
+            <div class="section-title-wrap">
+                <h2 class="section-nearby-title">
+                    <span class="nearby-pin-icon">📍</span>
+                    <span>Opciones </span>
+                    <span class="lime-highlight">Cerca Tuyo</span>
+                </h2>
+                <p class="section-nearby-desc">
+                    Ordenados por distancia GPS real y estado de apertura en tiempo real.
+                </p>
             </div>
 
-            <h1>
-                ¿Qué querés hacer <br>
-                <span class="gold">hoy en Iguazú?</span>
-            </h1>
-
-            <p class="hero-subtitle">
-                Tu asistente turístico en tiempo real: decidí qué hacer según la hora, el clima y tu ubicación.
-            </p>
-
-            <!-- TRÍADA DE ACCIONES PRINCIPALES -->
-            <div class="hero-actions-grid">
-                <button id="btn-open-planner" class="action-card primary">
-                    <div class="action-header">
-                        <span class="action-icon">🤖</span>
-                        <span class="action-arrow">→</span>
-                    </div>
-                    <div>
-                        <div class="action-title">ARMAME UN PLAN</div>
-                        <div class="action-desc">Decime qué te gusta y te digo qué hacer.</div>
-                    </div>
-                </button>
-
-                <button id="btn-open-nearby" class="action-card secondary">
-                    <div class="action-header">
-                        <span class="action-icon">📍</span>
-                        <span class="action-arrow">→</span>
-                    </div>
-                    <div>
-                        <div class="action-title">CERCA MÍO</div>
-                        <div class="action-desc">Descubrí opciones cerca de donde estás.</div>
-                    </div>
-                </button>
-
-                <button id="btn-open-surprise" class="action-card secondary">
-                    <div class="action-header">
-                        <span class="action-icon">✨</span>
-                        <span class="action-arrow">→</span>
-                    </div>
-                    <div>
-                        <div class="action-title">SORPRENDEME</div>
-                        <div class="action-desc">No sé qué hacer. Elegí por mí.</div>
-                    </div>
-                </button>
-            </div>
-        </section>
-
-        <!-- TARJETA DEL ASISTENTE TUCÁN (TUKI) -->
-        <section id="assistant-banner" class="assistant-card">
-            <div class="assistant-avatar">
-                🦜
-            </div>
-            <div class="assistant-content">
-                <div class="assistant-badge">Consejo de Tuki</div>
-                <div id="assistant-text" class="assistant-text">
-                    ¡Hola! Estoy monitoreando el clima y los horarios en Iguazú para recomendarte la mejor experiencia hoy.
+            <!-- Barra de Estado GPS y Referencia -->
+            <div class="gps-status-row">
+                <div id="nearby-gps-status" class="gps-ref-pill" role="status">
+                    <span class="gps-icon">📍</span>
+                    <span class="gps-text">Ref: Plaza San Martín (Centro)</span>
                 </div>
+
+                <button id="btn-refresh-gps" class="gps-refresh-action-btn" title="Actualizar mi ubicación GPS" aria-label="Actualizar GPS">
+                    <span class="refresh-icon">🔄</span>
+                    <span>Actualizar GPS</span>
+                </button>
             </div>
+
+            <!-- Barra de Filtros en Pastillas Desplazables -->
+            <div class="filter-chips-container" role="group" aria-label="Filtros de búsqueda">
+                <button class="filter-chip active" data-nearby-filter="todos">
+                    <span class="chip-icon">⭐</span>
+                    <span>Todos</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="favoritos">
+                    <span class="chip-icon">★</span>
+                    <span>Mis favoritos</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="abiertos">
+                    <span class="chip-icon">🟢</span>
+                    <span>Abiertos ahora</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="caminando">
+                    <span class="chip-icon">🚶</span>
+                    <span>A pie (&lt; 1.5 km)</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="ferias_compras">
+                    <span class="chip-icon">🛍️</span>
+                    <span>Ferias y Compras</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="gratuitos">
+                    <span class="chip-icon">🎁</span>
+                    <span>Gratis</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="naturaleza">
+                    <span class="chip-icon">🌿</span>
+                    <span>Naturaleza</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="comida">
+                    <span class="chip-icon">🍴</span>
+                    <span>Comer</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="actividades">
+                    <span class="chip-icon">🎭</span>
+                    <span>Cultura y Paseos</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="noche">
+                    <span class="chip-icon">🌙</span>
+                    <span>Noche</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="movilidad">
+                    <span class="chip-icon">🚗</span>
+                    <span>Movilidad</span>
+                </button>
+                <button class="filter-chip" data-nearby-filter="alojamiento">
+                    <span class="chip-icon">🏨</span>
+                    <span>Alojamiento</span>
+                </button>
+            </div>
+
+            <!-- Búsqueda rápida dentro del catálogo -->
+            <div class="nearby-search-toolbar" role="search">
+                <label class="nearby-search-box" for="nearby-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input id="nearby-search" type="search" placeholder="Buscar lugares, comida, paseos…" autocomplete="off" enterkeyhint="search">
+                    <button id="nearby-search-clear" class="search-clear-btn" type="button" aria-label="Borrar búsqueda" title="Borrar búsqueda">×</button>
+                </label>
+                <span id="nearby-count" class="nearby-results-count" role="status" aria-live="polite">Cargando opciones…</span>
+            </div>
+
+            <!-- Listado de Tarjetas de Resultados -->
+            <div id="nearby-list" class="cards-feed-list"></div>
+
         </section>
 
-        <!-- SECCIÓN CATEGORÍAS -->
-        <section id="categories-section" class="categories">
-            <div class="categories-header">
-                <h2>Explorar por categorías</h2>
+        <!-- ============================================================
+             EXPLORAR POR CATEGORÍA
+             ============================================================ -->
+        <section id="categories-section" class="view-section hidden" aria-label="Explorar lugares por categoría">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver al inicio">
+                ← Volver al inicio
+            </button>
+
+            <div class="view-header-title">
+                <span class="view-icon">🧭</span>
+                <div>
+                    <h2>Explorar Iguazú</h2>
+                    <p>Descubrí atractivos, gastronomía y experiencias por categoría.</p>
+                </div>
             </div>
 
             <div class="category-grid">
-                <button class="category-card" data-category="naturaleza">
-                    <span class="category-icon">🌿</span>
-                    <span class="category-name">Naturaleza</span>
-                    <span class="category-desc">Cataratas, selva y fauna</span>
-                </button>
-
-                <button class="category-card" data-category="comida">
-                    <span class="category-icon">🍽️</span>
-                    <span class="category-name">Comer</span>
-                    <span class="category-desc">Parrillas y cocina regional</span>
-                </button>
-
-                <button class="category-card" data-category="movilidad">
-                    <span class="category-icon">🚗</span>
-                    <span class="category-name">Movilidad</span>
-                    <span class="category-desc">Colectivos, taxis y traslados</span>
-                </button>
-
-                <button class="category-card" data-category="actividades">
-                    <span class="category-icon">🎭</span>
-                    <span class="category-name">Qué hacer</span>
-                    <span class="category-desc">Hito, paseos y compras</span>
-                </button>
-
-                <button class="category-card" data-category="alojamiento">
-                    <span class="category-icon">🏨</span>
-                    <span class="category-name">Alojamiento</span>
-                    <span class="category-desc">Hoteles y lodges de selva</span>
-                </button>
-
-                <button class="category-card" data-category="noche">
-                    <span class="category-icon">🌙</span>
-                    <span class="category-name">De noche</span>
-                    <span class="category-desc">Bares, shows y luna llena</span>
-                </button>
-            </div>
-        </section>
-
-        <!-- SECCIÓN CERCA MÍO (GEOLOCALIZACIÓN) -->
-        <section id="nearby" class="nearby-view hidden">
-            <button class="back-button" onclick="volverAtras()">
-                ← Volver al inicio
-            </button>
-
-            <div class="nearby-header-card">
-                <div class="nearby-title-row">
-                    <div>
-                        <h2>📍 Opciones Cerca Tuyo</h2>
-                        <p style="font-size:13px; color:var(--color-text-muted); margin-top:2px;">Ordenados por distancia GPS real y estado de apertura en tiempo real.</p>
+                <button class="category-card" data-category="naturaleza" aria-label="Naturaleza">
+                    <div class="category-icon-wrap">🌿</div>
+                    <div class="category-info">
+                        <span class="category-name">Naturaleza</span>
+                        <span class="category-desc">Cataratas, selva y fauna</span>
                     </div>
-                    <div class="nearby-gps-control">
-                        <span id="nearby-gps-status" class="gps-pill">📍 Buscando GPS…</span>
-                        <button id="btn-refresh-gps" class="gps-refresh-btn" title="Actualizar mi ubicación GPS" aria-label="Actualizar GPS">
-                            🔄 Actualizar GPS
-                        </button>
+                </button>
+
+                <button class="category-card" data-category="comida" aria-label="Comer">
+                    <div class="category-icon-wrap">🍽️</div>
+                    <div class="category-info">
+                        <span class="category-name">Comer</span>
+                        <span class="category-desc">Parrillas y cocina regional</span>
                     </div>
-                </div>
+                </button>
 
-                <!-- Filtros dinámicos de proximidad y categoría -->
-                <div class="nearby-filters-bar">
-                    <button class="filter-pill active" data-nearby-filter="todos">✨ Todos</button>
-                    <button class="filter-pill" data-nearby-filter="abiertos">🟢 Abiertos ahora</button>
-                    <button class="filter-pill" data-nearby-filter="caminando">🚶 A pie (&lt; 1.5 km)</button>
-                    <button class="filter-pill" data-nearby-filter="ferias_compras">🛍️ Ferias y Compras</button>
-                    <button class="filter-pill" data-nearby-filter="gratuitos">🆓 Gratis</button>
-                    <button class="filter-pill" data-nearby-filter="naturaleza">🌿 Naturaleza</button>
-                    <button class="filter-pill" data-nearby-filter="comida">🍽️ Comer</button>
-                    <button class="filter-pill" data-nearby-filter="actividades">🎭 Cultura y Paseos</button>
-                    <button class="filter-pill" data-nearby-filter="noche">🌙 Noche</button>
-                    <button class="filter-pill" data-nearby-filter="movilidad">🚗 Movilidad</button>
-                    <button class="filter-pill" data-nearby-filter="alojamiento">🏨 Alojamiento</button>
-                </div>
+                <button class="category-card" data-category="compras" aria-label="Compras">
+                    <div class="category-icon-wrap">🛍️</div>
+                    <div class="category-info">
+                        <span class="category-name">Compras</span>
+                        <span class="category-desc">Artesanías, ferias y centros comerciales</span>
+                    </div>
+                </button>
+
+                <button class="category-card" data-category="noche" aria-label="De noche">
+                    <div class="category-icon-wrap">🌙</div>
+                    <div class="category-info">
+                        <span class="category-name">De noche</span>
+                        <span class="category-desc">Boliches, shows y bares</span>
+                    </div>
+                </button>
+
+                <button class="category-card" data-category="actividades" aria-label="Qué hacer">
+                    <div class="category-icon-wrap">🎭</div>
+                    <div class="category-info">
+                        <span class="category-name">Qué hacer</span>
+                        <span class="category-desc">Paseos, compras y cultura</span>
+                    </div>
+                </button>
+
+                <button class="category-card" data-category="alojamiento" aria-label="Alojamiento">
+                    <div class="category-icon-wrap">🏨</div>
+                    <div class="category-info">
+                        <span class="category-name">Alojamiento</span>
+                        <span class="category-desc">Hoteles y lodges de selva</span>
+                    </div>
+                </button>
+
+                <button class="category-card" data-category="movilidad" aria-label="Movilidad">
+                    <div class="category-icon-wrap">🚗</div>
+                    <div class="category-info">
+                        <span class="category-name">Movilidad</span>
+                        <span class="category-desc">Colectivos, taxis y traslados</span>
+                    </div>
+                </button>
             </div>
-
-            <div id="nearby-list" class="results-cards-list"></div>
         </section>
 
-        <!-- SECCIÓN SORPRÉNDEME (1-CLIC) -->
-        <section id="surprise" class="surprise-view hidden">
-            <button class="back-button" onclick="volverAtras()">
-                ← Volver al inicio
-            </button>
-
-            <div class="surprise-card">
-                <div class="surprise-badge">
-                    <span>🦜</span>
-                    <span>Recomendación Express de Tuki</span>
-                </div>
-
-                <div id="surprise-container"></div>
-            </div>
-        </section>
-
-        <!-- SECCIÓN PLANIFICADOR INTELIGENTE POTENCIADO -->
-        <section id="planner" class="planner hidden">
-            <button class="back-button" onclick="volverAtras()">
+        <!-- ============================================================
+             PLANIFICADOR INTELIGENTE (MIS PLANES)
+             ============================================================ -->
+        <section id="planner" class="view-section hidden" aria-label="Planificador de itinerario personalizado">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver">
                 ← Volver
             </button>
 
-            <div class="planner-header">
-                <div class="planner-header-icon">🦜</div>
-                <h2>Armemos tu experiencia</h2>
-                <p>Contanos tus preferencias y nuestro motor construirá el mejor itinerario personalizado para hoy.</p>
+            <!-- Header del planificador con Tuki -->
+            <div class="planner-header-card">
+                <div class="planner-avatar-wrap">
+                    <img src="tuki-avatar.jpg" alt="Tuki Asistente" class="tuki-planner-avatar">
+                </div>
+                <div>
+                    <h2>Armemos tu experiencia en Iguazú</h2>
+                    <p>Contanos tus preferencias y Tuki construirá el mejor itinerario personalizado para hoy.</p>
+                </div>
             </div>
 
-            <!-- Pregunta 1: Intereses ampliados -->
-            <div class="planner-question">
+            <div id="saved-plans-panel" class="saved-plans-panel" aria-labelledby="saved-plans-title">
+                <div class="saved-plans-heading">
+                    <div>
+                        <h3 id="saved-plans-title">📅 Mis planes</h3>
+                        <p>Guardá tus itinerarios para volver a abrirlos sin generarlos de nuevo.</p>
+                    </div>
+                    <span id="saved-plans-count" class="metric-pill">0 planes</span>
+                </div>
+                <div id="saved-plans-list" class="saved-plans-list"></div>
+            </div>
+
+            <section id="now-recommendations" class="now-recommendations hidden" aria-labelledby="now-recommendations-title">
+                <div class="now-recommendations-heading">
+                    <div>
+                        <h3 id="now-recommendations-title">🧭 ¿Qué hago ahora?</h3>
+                        <p id="now-recommendations-context">Recomendaciones según tu momento actual.</p>
+                    </div>
+                    <button type="button" class="btn-card-action" onclick="generarRecomendacionesAhora()">↻ Actualizar</button>
+                </div>
+                <div id="now-recommendations-list" class="now-recommendations-list"></div>
+            </section>
+
+            <!-- Pregunta 1: Intereses -->
+            <div class="planner-card-question">
                 <h3>🌿 ¿Qué te interesa hacer?</h3>
                 <div class="planner-options-grid-4">
                     <button type="button" class="option-btn planner-option selected" data-interest="naturaleza">
@@ -262,8 +354,8 @@
                 </div>
             </div>
 
-            <!-- Pregunta 2: Tiempo disponible -->
-            <div class="planner-question">
+            <!-- Pregunta 2: Tiempo -->
+            <div class="planner-card-question">
                 <h3>⏱️ ¿Cuánto tiempo tenés?</h3>
                 <div class="planner-options-grid-5">
                     <button type="button" class="option-btn time-option" data-time="1-2 horas">
@@ -272,15 +364,15 @@
                     </button>
                     <button type="button" class="option-btn time-option" data-time="unas horas">
                         <span class="option-icon">⏱️</span>
-                        <span>Unas hs (3h)</span>
+                        <span>Unas hs</span>
                     </button>
                     <button type="button" class="option-btn time-option selected" data-time="medio día">
                         <span class="option-icon">🌤️</span>
-                        <span>Medio día (5h)</span>
+                        <span>Medio día</span>
                     </button>
                     <button type="button" class="option-btn time-option" data-time="todo el día">
                         <span class="option-icon">☀️</span>
-                        <span>Todo el día (8h)</span>
+                        <span>Todo el día</span>
                     </button>
                     <button type="button" class="option-btn time-option" data-time="varios días">
                         <span class="option-icon">📅</span>
@@ -290,7 +382,7 @@
             </div>
 
             <!-- Pregunta 3: Compañía -->
-            <div class="planner-question">
+            <div class="planner-card-question">
                 <h3>👥 ¿Con quién viajás?</h3>
                 <div class="planner-options-grid-5">
                     <button type="button" class="option-btn traveler-option selected" data-traveler="solo">
@@ -316,87 +408,172 @@
                 </div>
             </div>
 
-            <!-- Pregunta 4: Presupuesto con descripciones -->
-            <div class="planner-question">
+            <!-- Pregunta 4: Presupuesto -->
+            <div class="planner-card-question">
                 <h3>💰 ¿Qué presupuesto tenés?</h3>
                 <div class="planner-options-grid-3">
                     <button type="button" class="option-btn budget-option" data-budget="economico">
                         <span class="option-icon">💰</span>
-                        <span>Económico</span>
-                        <span class="subtext">Gastar lo menos posible</span>
+                        <span class="option-title">Económico</span>
+                        <span class="option-sub">Accesible</span>
                     </button>
                     <button type="button" class="option-btn budget-option selected" data-budget="medio">
                         <span class="option-icon">💵</span>
-                        <span>Medio</span>
-                        <span class="subtext">Equilibrado</span>
+                        <span class="option-title">Equilibrado</span>
+                        <span class="option-sub">Precio / Calidad</span>
                     </button>
                     <button type="button" class="option-btn budget-option" data-budget="alto">
                         <span class="option-icon">💎</span>
-                        <span>Alto</span>
-                        <span class="subtext">Sin límite de precio</span>
+                        <span class="option-title">Sin límite</span>
+                        <span class="option-sub">Experiencia Top</span>
                     </button>
                 </div>
             </div>
 
-            <button class="generate-plan-btn" onclick="generarPlan()">
-                <span>✨ ARMAR MI PLAN INTELIGENTE</span>
+            <!-- Botón Generar Plan -->
+            <button class="generate-plan-neon-btn" onclick="generarPlan()" aria-label="Generar plan personalizado">
+                <span>🦜 ARMAR MI PLAN INTELIGENTE</span>
                 <span>→</span>
             </button>
 
-            <!-- CONTENEDOR DE RESULTADOS DEL PLAN -->
+            <!-- Contenedor de Resultados del Plan -->
             <div id="plan-result" class="plan-result-container hidden"></div>
         </section>
 
-        <!-- SECCIÓN RESULTADOS DE CATEGORÍAS -->
-        <section id="results" class="results-view hidden">
-            <button class="back-button" onclick="volverAtras()">
+        <!-- ============================================================
+             SORPRÉNDEME (1-CLIC DISCOVERY)
+             ============================================================ -->
+        <section id="surprise" class="view-section hidden" aria-label="Recomendación sorpresa de Tuki">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver al inicio">
+                ← Volver al inicio
+            </button>
+
+            <div class="surprise-view-card">
+                <div class="surprise-badge-wrap">
+                    <span class="tuki-emoji">🦜</span>
+                    <span>Recomendación Express de Tuki</span>
+                </div>
+                <div id="surprise-container"></div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+             PERFIL & AJUSTES
+             ============================================================ -->
+        <section id="profile" class="view-section hidden" aria-label="Perfil y ajustes">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver al inicio">
+                ← Volver al inicio
+            </button>
+
+            <div class="profile-card-main">
+                <div class="profile-avatar-wrap">
+                    <img src="tuki-avatar.jpg" alt="Usuario Iguazú Assist" class="profile-avatar-img">
+                </div>
+                <h2>Mi Perfil &amp; Preferencias</h2>
+                <p class="profile-subtitle">Personalizá tu asistente y disfrutá de Puerto Iguazú al máximo.</p>
+
+                <div class="profile-settings-list">
+                    <div class="setting-row">
+                        <div>
+                            <strong>📍 Ubicación de Referencia</strong>
+                            <p>Plaza San Martín (Centro de Puerto Iguazú)</p>
+                        </div>
+                        <button class="setting-action-btn" onclick="obtenerUbicacionUsuario()">Actualizar GPS</button>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>🔊 Efectos de Sonido</strong>
+                            <p>Sonidos ambientales y de navegación</p>
+                        </div>
+                        <button id="profile-audio-toggle" class="setting-action-btn" onclick="document.querySelector('#audio-toggle').click(); this.innerText = AppState.audioActivo ? 'Activado 🔊' : 'Silenciado 🔇';">
+                            Silenciado 🔇
+                        </button>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>★ Lugares favoritos</strong>
+                            <p id="profile-favorite-count">Todavía no guardaste lugares.</p>
+                        </div>
+                        <button class="setting-action-btn" type="button" onclick="mostrarSeccion('home'); aplicarFiltroCercaMio('favoritos'); setActiveNav('bnav-home');">Ver favoritos</button>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>📶 Modo Offline (PWA)</strong>
+                            <p>Catálogo y mapas accesibles sin conexión a internet</p>
+                        </div>
+                        <span class="status-badge-active">Listo y guardado</span>
+                    </div>
+
+                    <div class="setting-row">
+                        <div>
+                            <strong>ℹ️ Versión del Asistente</strong>
+                            <p>Iguazú Assist v3.3 · Powered by Tuki</p>
+                        </div>
+                        <span class="status-badge-active">Actualizado</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+             RESULTADOS POR CATEGORÍA
+             ============================================================ -->
+        <section id="results" class="view-section hidden" aria-label="Resultados por categoría">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver al inicio">
                 ← Volver al inicio
             </button>
 
             <div class="results-view-header">
-                <div id="results-icon" class="results-header-icon">🌿</div>
+                <div id="results-icon" class="results-header-icon" aria-hidden="true">🌿</div>
                 <div class="results-header-text">
                     <h2 id="results-title">Naturaleza</h2>
                     <p id="results-description">Descubrí los mejores lugares de Iguazú.</p>
                 </div>
             </div>
 
-            <div id="results-list" class="results-cards-list"></div>
+            <div id="results-list" class="cards-feed-list"></div>
         </section>
 
-        <!-- SECCIÓN FICHA DE DETALLE -->
-        <section id="detail" class="detail-view hidden">
-            <button class="back-button" onclick="volverAtras()">
+        <!-- ============================================================
+             FICHA DE DETALLE DEL LUGAR
+             ============================================================ -->
+        <section id="detail" class="view-section hidden" aria-label="Detalle del lugar">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver">
                 ← Volver
             </button>
 
             <div class="detail-card-main">
-                <div class="detail-main-icon" id="detail-icon">🌊</div>
+                <div class="detail-hero-media">
+                    <img id="detail-image" src="hero-bg.jpg" alt="" class="detail-photo-img">
+                    <div class="detail-badge-pill" id="detail-icon">🌊</div>
+                </div>
+
                 <h2 id="detail-title">Nombre del Lugar</h2>
-                
-                <div id="detail-badges" class="tags-row" style="justify-content: center; margin-bottom: 14px;"></div>
+
+                <div id="detail-badges" class="tags-row detail-tags-center"></div>
 
                 <p id="detail-description" class="detail-description">Descripción detallada del atractivo.</p>
 
                 <div class="detail-grid-info">
                     <div class="detail-info-box">
-                        <span class="detail-info-icon">📍</span>
+                        <span class="detail-info-icon" aria-hidden="true">📍</span>
                         <div>
                             <strong>Ubicación</strong>
                             <p id="detail-location">Puerto Iguazú</p>
                         </div>
                     </div>
-
                     <div class="detail-info-box">
-                        <span class="detail-info-icon">🕐</span>
+                        <span class="detail-info-icon" aria-hidden="true">🕐</span>
                         <div>
                             <strong>Horario</strong>
                             <p id="detail-hours">Consultar horarios</p>
                         </div>
                     </div>
-
                     <div class="detail-info-box">
-                        <span class="detail-info-icon">💰</span>
+                        <span class="detail-info-icon" aria-hidden="true">💰</span>
                         <div>
                             <strong>Precio estimado</strong>
                             <p id="detail-price">Consultar tarifa</p>
@@ -404,11 +581,15 @@
                     </div>
                 </div>
 
-                <button id="detail-map-btn" class="map-route-btn">
+                <button id="detail-map-btn" class="map-route-neon-btn" aria-label="Ver ubicación en Google Maps">
                     🗺️ VER UBICACIÓN EN GOOGLE MAPS
                 </button>
 
                 <div id="contact-buttons" class="contact-actions-grid"></div>
+                <div class="detail-secondary-actions">
+                    <button id="detail-share-btn" class="secondary-action-btn" type="button">↗ Compartir lugar</button>
+                    <button id="detail-favorite-btn" class="secondary-action-btn" type="button">☆ Guardar favorito</button>
+                </div>
             </div>
         </section>
 
@@ -416,18 +597,68 @@
 
 </div>
 
-<!-- SCRIPTS DE LA APLICACIÓN -->
+<!-- ============================================================
+     BOTTOM NAVIGATION BAR (FIJA INFERIOR)
+     ============================================================ -->
+<nav class="bottom-nav" aria-label="Navegación principal">
+    <div class="bottom-nav-inner">
+        <!-- 1. Inicio -->
+        <button class="bottom-nav-btn active" id="bnav-home" onclick="volverInicio(); setActiveNav('bnav-home')" aria-label="Ir al inicio">
+            <span class="bottom-nav-icon">🏠</span>
+            <span class="bottom-nav-label">Inicio</span>
+        </button>
+
+        <!-- 2. Explorar -->
+        <button class="bottom-nav-btn" id="bnav-explore" onclick="mostrarSeccion('categories-section'); setActiveNav('bnav-explore')" aria-label="Explorar categorías">
+            <span class="bottom-nav-icon">🧭</span>
+            <span class="bottom-nav-label">Explorar</span>
+        </button>
+
+        <!-- 3. Tuki Botón Central Flotante -->
+        <button class="bottom-nav-center-btn" id="bnav-tuki" onclick="mostrarSeccion('planner'); setActiveNav('bnav-plans')" aria-label="Abrir asistente Tuki">
+            <div class="tuki-circle-glow">
+                <img src="tuki-avatar.jpg" alt="Tuki" class="tuki-nav-avatar">
+            </div>
+            <span class="tuki-nav-label">Tuki</span>
+        </button>
+
+        <!-- 4. Mis Planes -->
+        <button class="bottom-nav-btn" id="bnav-plans" onclick="mostrarSeccion('planner'); renderizarPlanesGuardados(); setActiveNav('bnav-plans')" aria-label="Mis Planes y armar itinerario">
+            <span class="bottom-nav-icon">📅</span>
+            <span class="bottom-nav-label">Mis Planes</span>
+        </button>
+
+        <!-- 5. Perfil -->
+        <button class="bottom-nav-btn" id="bnav-profile" onclick="mostrarSeccion('profile'); setActiveNav('bnav-profile')" aria-label="Mi Perfil y ajustes">
+            <span class="bottom-nav-icon">👤</span>
+            <span class="bottom-nav-label">Perfil</span>
+        </button>
+    </div>
+</nav>
+
+<!-- ============================================================
+     SCRIPTS DE LA APLICACIÓN
+     ============================================================ -->
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="planificador-inteligente.js"></script>
 
 <script>
+  // Service Worker (PWA)
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./service-worker.js")
-        .then(reg => console.log("Iguazú Assist Service Worker registrado:", reg.scope))
-        .catch(err => console.error("Error al registrar Service Worker:", err));
+        .then(reg => console.log("Iguazú Assist SW registrado:", reg.scope))
+        .catch(err => console.error("Error SW:", err));
     });
+  }
+
+  function setActiveNav(id) {
+    document.querySelectorAll(".bottom-nav-btn, .bottom-nav-center-btn").forEach(btn => {
+      btn.classList.remove("active");
+    });
+    const el = document.getElementById(id);
+    if (el) el.classList.add("active");
   }
 </script>
 
