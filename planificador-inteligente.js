@@ -19,6 +19,7 @@ let climaActual = {
 let itinerarioActual = [];
 let itinerarioContexto = {};
 let ultimaSorpresaId = null;
+let itinerarioAdaptacion = { activa: false, nivel: "exacto", mensaje: "", criteriosRelajados: [] };
 
 const URL_CLIMA_IGUAZU = "https://api.open-meteo.com/v1/forecast?latitude=-25.5972&longitude=-54.5786&current=temperature_2m,weather_code,precipitation&timezone=America%2FArgentina%2FBuenos_Aires";
 
@@ -199,6 +200,296 @@ function generarMotivoRecomendacion(lugar, contexto, compania) {
     return "📍 Seleccionado especialmente según tus preferencias y tiempo";
 }
 
+const RELACIONES_DE_INTERES = {
+    naturaleza: ["fauna", "paseos", "actividades"],
+    fauna: ["naturaleza", "actividades", "paseos"],
+    compras: ["actividades", "paseos", "comida"],
+    tres_paises: ["actividades", "paseos", "noche"],
+    paseos: ["actividades", "naturaleza", "compras"],
+    actividades: ["paseos", "compras", "naturaleza"],
+    comida: ["noche", "actividades", "compras"],
+    noche: ["comida", "actividades"]
+};
+
+const CATEGORIAS_NO_TURISTICAS_PARA_RESPALDO = ["movilidad", "alojamiento"];
+
+function esLugarValidoParaItinerario(lugar) {
+    return Boolean(
+        lugar &&
+        lugar.nombre &&
+        lugar.categoria &&
+        lugar.icono &&
+        lugar.descripcion &&
+        (lugar.direccion || lugar.ubicacion)
+    );
+}
+
+function coincideConInteres(lugar, interes) {
+    return lugar.categoria === interes || (Array.isArray(lugar.intereses) && lugar.intereses.includes(interes));
+}
+
+function esCompatibleConClima(lugar) {
+    return !climaActual.lluvia || lugar.alAireLibre !== true;
+}
+
+function obtenerDuracionPlan(lugar) {
+    const duracion = Number(lugar && lugar.duracionHoras);
+    return Number.isFinite(duracion) && duracion > 0 ? duracion : 2;
+}
+
+function estaDisponibleDurantePlan(lugar, contexto, duracion = obtenerDuracionPlan(lugar)) {
+    if (!lugar || !contexto || typeof estaAbiertoEnHorario !== "function") return false;
+    if (!estaAbiertoEnHorario(lugar, contexto.horaNumero, contexto.diaSemana)) return false;
+
+    const rangos = Array.isArray(lugar.rangosHorarios) && lugar.rangosHorarios.length > 0
+        ? lugar.rangosHorarios
+        : lugar.rangoHorario ? [lugar.rangoHorario] : [];
+
+    if (rangos.length === 0) return true;
+
+    return rangos.some(rango => {
+        if (!rango || !Number.isFinite(rango.apertura) || !Number.isFinite(rango.cierre)) return false;
+        if (rango.apertura === 0 && rango.cierre === 24) return true;
+
+        let cierre = rango.cierre;
+        if (cierre <= rango.apertura) cierre += 24;
+
+        let inicio = contexto.horaNumero;
+        if (cierre > 24 && inicio < rango.apertura) inicio += 24;
+
+        return inicio >= rango.apertura && inicio + duracion <= cierre;
+    });
+}
+
+function momentoParaHoraPlan(hora) {
+    if (hora >= 6 && hora < 12) return "mañana";
+    if (hora >= 12 && hora < 15) return "mediodía";
+    if (hora >= 15 && hora < 18) return "tarde";
+    if (hora >= 18 && hora < 20) return "atardecer";
+    return "noche";
+}
+
+function crearContextosDeBusqueda(ahora, interes) {
+    const contextos = [];
+    const horaActual = Number.isFinite(ahora.horaNumero) ? ahora.horaNumero : 12;
+    const horaInicial = Math.ceil((horaActual + 0.25) * 2) / 2;
+
+    // Buscar desde el próximo bloque de media hora hasta 36 horas después.
+    for (let paso = 0; paso <= 72; paso += 1) {
+        const horaAbsoluta = horaInicial + (paso * 0.5);
+        const desplazamientoDia = Math.floor(horaAbsoluta / 24);
+        const horaNumero = horaAbsoluta % 24;
+
+        // No proponer salidas de madrugada salvo que el interés elegido sea vida nocturna.
+        if (interes !== "noche" && horaNumero < 7) continue;
+
+        const minutos = Math.round((horaNumero % 1) * 60);
+        const horas = Math.floor(horaNumero);
+        contextos.push({
+            ...ahora,
+            momento: momentoParaHoraPlan(horaNumero),
+            horaNumero,
+            horaTexto: `${String(horas).padStart(2, "0")}:${String(minutos).padStart(2, "0")}`,
+            diaSemana: (ahora.diaSemana + desplazamientoDia) % 7,
+            desplazamientoDia
+        });
+    }
+
+    return contextos;
+}
+
+function obtenerCandidatosPlan(interes, presupuesto, compania, contexto, opciones = {}) {
+    const {
+        relajarCompania = false,
+        relajarPresupuesto = false,
+        modoInteres = "exacto",
+        excluirNombres = []
+    } = opciones;
+    const excluidos = new Set(excluirNombres);
+    const interesesRelacionados = RELACIONES_DE_INTERES[interes] || ["actividades", "comida"];
+    const categoriasPrincipales = ["naturaleza", "comida", "actividades", "noche"];
+
+    return lugaresReales
+        .filter(esLugarValidoParaItinerario)
+        .filter(lugar => !CATEGORIAS_NO_TURISTICAS_PARA_RESPALDO.includes(lugar.categoria))
+        .filter(lugar => !excluidos.has(lugar.nombre))
+        .filter(lugar => {
+            if (modoInteres === "exacto") {
+                return categoriasPrincipales.includes(interes)
+                    ? lugar.categoria === interes
+                    : coincideConInteres(lugar, interes);
+            }
+            if (modoInteres === "relacionado") {
+                return interesesRelacionados.some(relacionado => coincideConInteres(lugar, relacionado));
+            }
+            return !CATEGORIAS_NO_TURISTICAS_PARA_RESPALDO.includes(lugar.categoria);
+        })
+        .filter(esCompatibleConClima)
+        .filter(lugar => estaDisponibleDurantePlan(lugar, contexto))
+        .filter(lugar => relajarPresupuesto || esCompatibleConPresupuesto(lugar, presupuesto))
+        .filter(lugar => relajarCompania || (Array.isArray(lugar.aptoPara) && lugar.aptoPara.includes(compania)))
+        .map(lugar => ({
+            lugar,
+            puntaje: calcularPuntaje(lugar, contexto, compania, interes)
+        }))
+        .sort((a, b) => b.puntaje - a.puntaje)
+        .map(item => item.lugar);
+}
+
+function construirPlanConFallback({ interes, tiempo, compania, presupuesto, limiteHoras, ahora }) {
+    const contextos = crearContextosDeBusqueda(ahora, interes);
+    const puedeRelajarCompania = compania !== "familia" && compania !== "niños";
+    const etapas = [
+        {
+            nivel: "exacto",
+            opciones: {},
+            criteriosRelajados: [],
+            mensaje: ""
+        },
+        ...(puedeRelajarCompania ? [{
+            nivel: "compania",
+            opciones: { relajarCompania: true },
+            criteriosRelajados: ["compañía"],
+            mensaje: "Para esas condiciones no encontré una coincidencia perfecta. Tuki mantuvo el tipo de actividad, el horario y el presupuesto, y adaptó la preferencia de compañía."
+        }] : []),
+        {
+            nivel: "presupuesto",
+            opciones: { relajarCompania: puedeRelajarCompania, relajarPresupuesto: true },
+            criteriosRelajados: puedeRelajarCompania ? ["compañía", "presupuesto"] : ["presupuesto"],
+            mensaje: "Para esas condiciones no encontré una opción perfecta. Tuki mantuvo el tipo de actividad y un horario válido, y amplió el rango de presupuesto para ofrecerte una alternativa."
+        },
+        {
+            nivel: "interes-relacionado",
+            opciones: { relajarCompania: puedeRelajarCompania, relajarPresupuesto: true, modoInteres: "relacionado" },
+            criteriosRelajados: puedeRelajarCompania ? ["compañía", "presupuesto", "preferencia secundaria"] : ["presupuesto", "preferencia secundaria"],
+            mensaje: "Para esas condiciones no encontré una opción perfecta, pero Tuki te propone una alternativa turística cercana, segura y compatible con el horario."
+        },
+        {
+            nivel: "respaldo-seguro",
+            opciones: { relajarCompania: puedeRelajarCompania, relajarPresupuesto: true, modoInteres: "cualquiera" },
+            criteriosRelajados: puedeRelajarCompania ? ["compañía", "presupuesto", "preferencia"] : ["presupuesto", "preferencia"],
+            mensaje: "Tuki activó la recomendación de respaldo: una experiencia turística válida, disponible y adecuada para no dejarte sin propuesta."
+        }
+    ];
+
+    for (const etapa of etapas) {
+        for (let indiceContexto = 0; indiceContexto < contextos.length; indiceContexto += 1) {
+            const contexto = contextos[indiceContexto];
+            const candidatos = obtenerCandidatosPlan(interes, presupuesto, compania, contexto, etapa.opciones);
+            if (candidatos.length === 0) continue;
+
+            const seleccionados = [];
+            let horasAcumuladas = 0;
+            let duracionAdaptada = false;
+
+            candidatos.forEach(lugar => {
+                const duracion = obtenerDuracionPlan(lugar);
+                const contextoParada = {
+                    ...contexto,
+                    horaNumero: (contexto.horaNumero + horasAcumuladas) % 24,
+                    momento: momentoParaHoraPlan((contexto.horaNumero + horasAcumuladas) % 24)
+                };
+                const entraEnTiempo = horasAcumuladas + duracion <= limiteHoras;
+
+                if (entraEnTiempo && estaDisponibleDurantePlan(lugar, contextoParada, duracion)) {
+                    seleccionados.push(lugar);
+                    horasAcumuladas += duracion;
+                }
+            });
+
+            // Si ninguna opción entra exactamente en la duración elegida, conservar una
+            // alternativa válida y explicar la adaptación en vez de devolver un array vacío.
+            if (seleccionados.length === 0) {
+                const alternativaMasBreve = [...candidatos]
+                    .sort((a, b) => obtenerDuracionPlan(a) - obtenerDuracionPlan(b))[0];
+                if (alternativaMasBreve) {
+                    seleccionados.push(alternativaMasBreve);
+                    horasAcumuladas = obtenerDuracionPlan(alternativaMasBreve);
+                    duracionAdaptada = horasAcumuladas > limiteHoras;
+                }
+            }
+
+            if (seleccionados.length > 0) {
+                const horarioAdaptado = indiceContexto > 0;
+                const esOtroDia = contexto.desplazamientoDia > 0;
+                const mensajeHorario = horarioAdaptado
+                    ? ` No había una opción compatible para comenzar de inmediato; el plan se programó ${esOtroDia ? "para mañana" : "para hoy"} a las ${contexto.horaTexto} hs.`
+                    : "";
+                const mensajeDuracion = duracionAdaptada
+                    ? " La alternativa más breve disponible supera levemente el tiempo elegido."
+                    : "";
+                const mensajeBase = etapa.mensaje || (horarioAdaptado
+                    ? "Tuki mantuvo tus preferencias y adaptó únicamente el horario para ofrecerte una opción válida."
+                    : duracionAdaptada ? "Tuki mantuvo tus preferencias y eligió la alternativa válida más breve." : "");
+
+                return {
+                    lugares: seleccionados,
+                    cantidadPrincipales: seleccionados.length,
+                    contextoPlan: contexto,
+                    horasAcumuladas,
+                    planificarParaManana: esOtroDia,
+                    adaptacion: {
+                        activa: etapa.nivel !== "exacto" || horarioAdaptado || duracionAdaptada,
+                        nivel: horarioAdaptado && etapa.nivel === "exacto"
+                            ? "horario"
+                            : duracionAdaptada && etapa.nivel === "exacto" ? "duracion" : etapa.nivel,
+                        mensaje: `${mensajeBase}${mensajeHorario}${mensajeDuracion}`.trim(),
+                        criteriosRelajados: [
+                            ...etapa.criteriosRelajados,
+                            ...(horarioAdaptado ? ["horario de inicio"] : []),
+                            ...(duracionAdaptada ? ["duración"] : [])
+                        ]
+                    }
+                };
+            }
+        }
+    }
+
+    return {
+        lugares: [],
+        cantidadPrincipales: 0,
+        contextoPlan: contextos[0] || ahora,
+        horasAcumuladas: 0,
+        planificarParaManana: false,
+        adaptacion: {
+            activa: true,
+            nivel: "catalogo-no-disponible",
+            mensaje: "Tuki no pudo obtener una actividad válida del catálogo en este momento. Revisá la conexión y volvé a intentarlo.",
+            criteriosRelajados: []
+        }
+    };
+}
+
+function agregarComplementoCompatible(resultado, interes, presupuesto, compania, limiteHoras, tiempo) {
+    if (!resultado.lugares.length || tiempo === "1-2 horas") return resultado;
+
+    const categorias = RELACIONES_DE_INTERES[interes] || ["comida"];
+    const nombresUsados = resultado.lugares.map(lugar => lugar.nombre);
+    const horaComplemento = (resultado.contextoPlan.horaNumero + resultado.horasAcumuladas) % 24;
+    const contextoComplemento = {
+        ...resultado.contextoPlan,
+        horaNumero: horaComplemento,
+        momento: momentoParaHoraPlan(horaComplemento)
+    };
+
+    for (const categoria of categorias) {
+        const candidatos = obtenerCandidatosPlan(categoria, presupuesto, compania, contextoComplemento, {
+            excluirNombres: nombresUsados
+        });
+        const complemento = candidatos.find(lugar =>
+            resultado.horasAcumuladas + obtenerDuracionPlan(lugar) <= limiteHoras
+        );
+
+        if (complemento) {
+            resultado.lugares.push(complemento);
+            resultado.horasAcumuladas += obtenerDuracionPlan(complemento);
+            return resultado;
+        }
+    }
+
+    return resultado;
+}
+
 // ========================================================
 // GENERACIÓN DEL PLAN INTELIGENTE
 // ========================================================
@@ -216,83 +507,23 @@ function generarPlan() {
     const limiteHoras = horasDisponibles(tiempo);
     const ahora = contextoDeAhora();
 
-    itinerarioContexto = { interes, tiempo, compania, presupuesto, limiteHoras, ahora };
+    let resultado = construirPlanConFallback({ interes, tiempo, compania, presupuesto, limiteHoras, ahora });
+    resultado = agregarComplementoCompatible(resultado, interes, presupuesto, compania, limiteHoras, tiempo);
 
-    const planificarParaManana = ahora.esNocturnoTardio && (
-        interes === "naturaleza" || interes === "fauna" || interes === "paseos"
-    );
+    itinerarioAdaptacion = resultado.adaptacion;
+    itinerarioContexto = {
+        interes,
+        tiempo,
+        compania,
+        presupuesto,
+        limiteHoras,
+        ahora,
+        contextoPlan: resultado.contextoPlan,
+        adaptacion: resultado.adaptacion
+    };
+    itinerarioActual = resultado.lugares;
 
-    const categoriasComplementarias = {
-        naturaleza: ["comida"],
-        fauna: ["comida", "actividades"],
-        compras: ["comida", "actividades"],
-        tres_paises: ["comida", "noche"],
-        paseos: ["comida", "compras"],
-        actividades: ["comida"],
-        comida: ["actividades", "noche", "compras"],
-        noche: ["comida"]
-    }[interes] || ["comida"];
-
-    const limiteParaPrincipales = (tiempo !== "1-2 horas" && tiempo !== "unas horas")
-        ? limiteHoras - 1.5
-        : limiteHoras;
-    let horasAcumuladas = 0;
-
-    // 1. Filtrar candidatos afines y compatibles con presupuesto
-    let candidatos = lugaresReales
-        .filter(l => l.categoria === interes || (l.intereses && l.intereses.includes(interes)))
-        .filter(l => esCompatibleConPresupuesto(l, presupuesto))
-        .filter(l => l.aptoPara && l.aptoPara.includes(compania))
-        .map(lugar => ({
-            lugar,
-            puntaje: calcularPuntaje(lugar, planificarParaManana ? { momento: "mañana" } : ahora, compania, interes)
-        }))
-        .sort((a, b) => b.puntaje - a.puntaje);
-
-    if (candidatos.length === 0) {
-        candidatos = lugaresReales
-            .filter(l => esCompatibleConPresupuesto(l, presupuesto))
-            .map(lugar => ({
-                lugar,
-                puntaje: calcularPuntaje(lugar, ahora, compania, interes)
-            }))
-            .sort((a, b) => b.puntaje - a.puntaje);
-    }
-
-    // 2. Seleccionar paradas principales acumulando tiempo
-    const seleccionados = [];
-    candidatos.forEach(({ lugar }) => {
-        const duracion = lugar.duracionHoras || 2;
-        if (horasAcumuladas + duracion <= limiteParaPrincipales || seleccionados.length === 0) {
-            seleccionados.push(lugar);
-            horasAcumuladas += duracion;
-        }
-    });
-
-    const cantidadPrincipales = seleccionados.length;
-
-    // 3. Agregar parada complementaria si hay tiempo disponible (ej. Gastronomía)
-    if (tiempo !== "1-2 horas" && categoriasComplementarias.length > 0) {
-        const nombresUsados = seleccionados.map(s => s.nombre);
-        const complementos = lugaresReales
-            .filter(l => categoriasComplementarias.includes(l.categoria) && !nombresUsados.includes(l.nombre))
-            .filter(l => esCompatibleConPresupuesto(l, presupuesto))
-            .map(lugar => ({
-                lugar,
-                puntaje: calcularPuntaje(lugar, ahora, compania, lugar.categoria)
-            }))
-            .sort((a, b) => b.puntaje - a.puntaje);
-
-        if (complementos.length > 0 && (horasAcumuladas + (complementos[0].lugar.duracionHoras || 1.5) <= limiteHoras)) {
-            seleccionados.push(complementos[0].lugar);
-            horasAcumuladas += (complementos[0].lugar.duracionHoras || 1.5);
-        }
-    }
-
-    itinerarioActual = seleccionados;
-
-    // 4. Renderizar el resultado
-    renderizarItinerario(seleccionados, cantidadPrincipales, planificarParaManana);
+    renderizarItinerario(resultado.lugares, resultado.cantidadPrincipales, resultado.planificarParaManana);
 }
 
 // ========================================================
@@ -304,31 +535,50 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
     if (!contenedor) return;
 
     if (!lugares || lugares.length === 0) {
-        contenedor.innerHTML = `
-            <div style="text-align: center; padding: 24px;">
-                <div style="font-size: 44px; margin-bottom: 10px;">🦜</div>
-                <h3>Estamos buscando más alternativas</h3>
-                <p style="color: var(--color-text-muted);">Probá seleccionando un presupuesto más amplio o una duración diferente.</p>
-            </div>
-        `;
-        contenedor.classList.remove("hidden");
-        return;
+        const ahora = itinerarioContexto.ahora || contextoDeAhora();
+        const respaldo = construirPlanConFallback({
+            interes: itinerarioContexto.interes || "actividades",
+            tiempo: itinerarioContexto.tiempo || "medio día",
+            compania: itinerarioContexto.compania || "solo",
+            presupuesto: itinerarioContexto.presupuesto || "medio",
+            limiteHoras: itinerarioContexto.limiteHoras || 5,
+            ahora
+        });
+
+        if (respaldo.lugares.length > 0) {
+            lugares = respaldo.lugares;
+            cantidadPrincipales = respaldo.cantidadPrincipales;
+            planificarParaManana = respaldo.planificarParaManana;
+            itinerarioActual = respaldo.lugares;
+            itinerarioContexto.contextoPlan = respaldo.contextoPlan;
+            itinerarioContexto.adaptacion = respaldo.adaptacion;
+            itinerarioAdaptacion = respaldo.adaptacion;
+        } else {
+            contenedor.innerHTML = `
+                <div style="text-align: center; padding: 24px;">
+                    <div style="font-size: 44px; margin-bottom: 10px;">🦜</div>
+                    <h3>Tuki sigue acá para ayudarte</h3>
+                    <p style="color: var(--color-text-muted);">No pudimos leer el catálogo turístico. Recargá la aplicación para recuperar las recomendaciones guardadas.</p>
+                </div>
+            `;
+            contenedor.classList.remove("hidden");
+            return;
+        }
     }
 
     const { tiempo, compania, presupuesto, ahora } = itinerarioContexto;
+    const contextoPlan = itinerarioContexto.contextoPlan || ahora;
+    const adaptacion = itinerarioContexto.adaptacion || itinerarioAdaptacion;
 
-    let minutosInicio = 10 * 60; // 10:00 AM
+    let minutosInicio = Math.round((contextoPlan.horaNumero || 10) * 60);
     let avisoHorario = "";
 
     if (planificarParaManana) {
-        minutosInicio = 9 * 60; // 09:00 AM
-        avisoHorario = "🌙 Son más de las 20:00 hs y los parques naturales ya cerraron por hoy. Armamos tu plan optimizado para comenzar mañana a primera hora (09:00 hs).";
+        avisoHorario = `🌙 Las opciones compatibles ya no están disponibles hoy. Armamos tu plan para mañana a las ${contextoPlan.horaTexto} hs.`;
     } else {
-        const horaActualMinutos = Math.floor(ahora.horaNumero * 60);
-        if (horaActualMinutos >= 8 * 60 && horaActualMinutos < 21 * 60) {
-            minutosInicio = Math.min(horaActualMinutos + 30, 20 * 60);
-            avisoHorario = `⏱️ Plan generado a las ${ahora.horaTexto} hs, adaptado a tus tiempos.`;
-        }
+        avisoHorario = contextoPlan.horaNumero > ahora.horaNumero + 0.25
+            ? `⏱️ Plan programado para hoy a las ${contextoPlan.horaTexto} hs, cuando hay opciones compatibles abiertas.`
+            : `⏱️ Plan generado a las ${ahora.horaTexto} hs, adaptado a tus tiempos.`;
     }
 
     let minutosRecorrido = minutosInicio;
@@ -338,7 +588,7 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
         const esComplemento = index >= cantidadPrincipales;
         const tipoEtiqueta = esComplemento ? "➕ Parada recomendada" : "⭐ Parada principal";
         const horaInicioStr = formatearMinutosAHorario(minutosRecorrido);
-        const motivo = generarMotivoRecomendacion(lugar, ahora, compania);
+        const motivo = generarMotivoRecomendacion(lugar, contextoPlan, compania);
 
         duracionTotalHoras += (lugar.duracionHoras || 2);
         minutosRecorrido += Math.round((lugar.duracionHoras || 2) * 60);
@@ -388,12 +638,17 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
         enlaceGoogleMaps = `https://www.google.com/maps/dir/?api=1&origin=${origen}&destination=${destinoFinal}${waypoints ? `&waypoints=${waypoints}` : ""}`;
     }
 
-    // Plan B SOLO si llueve
+    // Alternativas cubiertas adicionales para lluvia, siempre válidas para el horario y el perfil.
     let planBHtml = "";
     if (climaActual.lluvia) {
         const nombresUsados = lugares.map(l => l.nombre);
         const opcionesCubiertas = lugaresReales
+            .filter(esLugarValidoParaItinerario)
             .filter(l => !l.alAireLibre && !nombresUsados.includes(l.nombre))
+            .filter(l => esCompatibleConPresupuesto(l, presupuesto))
+            .filter(l => l.aptoPara && l.aptoPara.includes(compania))
+            .filter(l => estaDisponibleDurantePlan(l, contextoPlan))
+            .sort((a, b) => calcularPuntaje(b, contextoPlan, compania, b.categoria) - calcularPuntaje(a, contextoPlan, compania, a.categoria))
             .slice(0, 2);
 
         if (opcionesCubiertas.length > 0) {
@@ -426,8 +681,15 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
 
     const textoPresupuesto = presupuesto === "economico" ? "Económico" : presupuesto === "medio" ? "Medio" : "Flexible / Sin límite";
     const textoCompania = compania === "solo" ? "Solo" : compania === "pareja" ? "En Pareja" : compania === "familia" ? "En Familia" : compania === "niños" ? "Con Niños" : "Con Amigos";
+    const avisoAdaptacionHtml = adaptacion && adaptacion.activa ? `
+        <div class="plan-adaptation-notice" role="status">
+            <span class="plan-adaptation-icon">🦜</span>
+            <p><strong>Tuki adaptó tu propuesta.</strong> ${escapar(adaptacion.mensaje)}</p>
+        </div>
+    ` : "";
 
     contenedor.innerHTML = `
+        ${avisoAdaptacionHtml}
         <div class="plan-result-header">
             <div class="plan-title-row">
                 <h3>🌴 Tu Itinerario en Iguazú</h3>
@@ -475,28 +737,61 @@ function cambiarActividad(indice, nombreActual) {
 
     const categoriaBuscada = lugarActual.categoria || interes;
     const nombresUsados = itinerarioActual.map(l => l.nombre);
+    const contextoBase = itinerarioContexto.contextoPlan || itinerarioContexto.ahora || contextoDeAhora();
+    const horasPrevias = itinerarioActual
+        .slice(0, indice)
+        .reduce((total, lugar) => total + obtenerDuracionPlan(lugar), 0);
+    const horaActividad = (contextoBase.horaNumero + horasPrevias) % 24;
+    const contextoActividad = {
+        ...contextoBase,
+        horaNumero: horaActividad,
+        momento: momentoParaHoraPlan(horaActividad)
+    };
+    const puedeRelajarCompania = compania !== "familia" && compania !== "niños";
 
-    let candidatos = lugaresReales
-        .filter(l => (l.categoria === categoriaBuscada || (l.intereses && l.intereses.includes(categoriaBuscada))) && !nombresUsados.includes(l.nombre))
-        .filter(l => esCompatibleConPresupuesto(l, presupuesto));
+    let candidatos = obtenerCandidatosPlan(categoriaBuscada, presupuesto, compania, contextoActividad, {
+        excluirNombres: nombresUsados
+    });
+
+    if (candidatos.length === 0 && puedeRelajarCompania) {
+        candidatos = obtenerCandidatosPlan(categoriaBuscada, presupuesto, compania, contextoActividad, {
+            excluirNombres: nombresUsados,
+            relajarCompania: true
+        });
+    }
 
     if (candidatos.length === 0) {
-        candidatos = lugaresReales
-            .filter(l => !nombresUsados.includes(l.nombre))
-            .filter(l => esCompatibleConPresupuesto(l, presupuesto));
+        candidatos = obtenerCandidatosPlan(categoriaBuscada, presupuesto, compania, contextoActividad, {
+            excluirNombres: nombresUsados,
+            relajarCompania: puedeRelajarCompania,
+            relajarPresupuesto: true
+        });
+    }
+
+    if (candidatos.length === 0) {
+        candidatos = obtenerCandidatosPlan(categoriaBuscada, presupuesto, compania, contextoActividad, {
+            excluirNombres: nombresUsados,
+            relajarCompania: puedeRelajarCompania,
+            relajarPresupuesto: true,
+            modoInteres: "relacionado"
+        });
     }
 
     if (candidatos.length > 0) {
-        candidatos.sort((a, b) => (b.prioridad || 5) - (a.prioridad || 5));
         const reemplazo = candidatos[0];
 
         itinerarioActual[indice] = reemplazo;
-        renderizarItinerario(itinerarioActual, itinerarioActual.length, false);
+        const esParaManana = (itinerarioContexto.contextoPlan && itinerarioContexto.ahora)
+            ? itinerarioContexto.contextoPlan.diaSemana !== itinerarioContexto.ahora.diaSemana
+            : false;
+        renderizarItinerario(itinerarioActual, itinerarioActual.length, esParaManana);
         if (typeof mostrarToast === "function") {
             mostrarToast(`🔄 Reemplazado por: ${reemplazo.nombre}`);
         }
     } else {
-        alert("No encontramos otra alternativa diferente disponible para este horario y presupuesto.");
+        const mensaje = `Tuki no encontró otra alternativa segura y disponible; mantuvo ${nombreActual || lugarActual.nombre} en tu plan.`;
+        if (typeof mostrarToast === "function") mostrarToast(`🦜 ${mensaje}`);
+        else console.info(mensaje);
     }
 }
 

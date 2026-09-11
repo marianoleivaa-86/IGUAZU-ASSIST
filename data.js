@@ -1331,6 +1331,10 @@ function comprobarRango(rango, horaNumero) {
     if (!rango) return true;
     const { apertura, cierre } = rango;
     if (apertura === 0 && cierre === 24) return true;
+    if (cierre > 24) {
+        const horaAjustada = horaNumero < apertura ? horaNumero + 24 : horaNumero;
+        return horaAjustada >= apertura && horaAjustada < cierre;
+    }
     if (apertura <= cierre) {
         return horaNumero >= apertura && horaNumero < cierre;
     } else {

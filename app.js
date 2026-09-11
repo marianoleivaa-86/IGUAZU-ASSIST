@@ -2,6 +2,26 @@
  * IGUAZÚ ASSIST — Controlador Principal de Interfaz, Navegación, Geolocalización y Efectos de Sonido
  */
 
+const CLAVE_AUDIO_ACTIVO = "iguazuAssist.audioActivo";
+const CLAVE_VOLUMEN_AMBIENTE = "iguazuAssist.volumenAmbiente";
+
+function leerPreferenciaLocal(clave, valorPorDefecto) {
+    try {
+        const valor = localStorage.getItem(clave);
+        return valor === null ? valorPorDefecto : valor;
+    } catch (error) {
+        return valorPorDefecto;
+    }
+}
+
+function guardarPreferenciaLocal(clave, valor) {
+    try {
+        localStorage.setItem(clave, String(valor));
+    } catch (error) {
+        // La aplicación continúa normalmente si el almacenamiento está bloqueado.
+    }
+}
+
 // ========================================================
 // ESTADO GLOBAL DE LA APLICACIÓN
 // ========================================================
@@ -13,7 +33,8 @@ const AppState = {
     lastView: "home", // 'home' | 'results' | 'planner' | 'nearby' | 'surprise'
     userCoords: null,
     gpsActive: false,
-    audioActivo: false, // 🔇 APAGADO POR DEFECTO
+    audioActivo: leerPreferenciaLocal(CLAVE_AUDIO_ACTIVO, "false") === "true",
+    volumenAmbiente: Math.min(100, Math.max(0, Number(leerPreferenciaLocal(CLAVE_VOLUMEN_AMBIENTE, "24")) || 24)),
     filtroCercaMio: "todos"
 };
 
@@ -23,6 +44,10 @@ const AppState = {
 const SoundFX = {
     audioCtx: null,
     activeOscillators: [],
+    ambientNodes: [],
+    ambientGain: null,
+    ambientBirdTimer: null,
+    ambientActive: false,
 
     init() {
         if (!this.audioCtx && (window.AudioContext || window.webkitAudioContext)) {
@@ -41,6 +66,104 @@ const SoundFX = {
         this.activeOscillators = [];
     },
 
+    getAmbientGainValue() {
+        return (AppState.volumenAmbiente / 100) * 0.055;
+    },
+
+    setAmbientVolume(valor) {
+        AppState.volumenAmbiente = Math.min(100, Math.max(0, Number(valor) || 0));
+        guardarPreferenciaLocal(CLAVE_VOLUMEN_AMBIENTE, AppState.volumenAmbiente);
+        if (this.ambientGain && this.audioCtx) {
+            this.ambientGain.gain.setTargetAtTime(this.getAmbientGainValue(), this.audioCtx.currentTime, 0.08);
+        }
+    },
+
+    playAmbientBird() {
+        if (!AppState.audioActivo || !this.ambientActive || !this.audioCtx) return;
+        const ctx = this.audioCtx;
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1680, now);
+        osc.frequency.exponentialRampToValueAtTime(2450, now + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(1850, now + 0.24);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(this.getAmbientGainValue() * 0.7, now + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.34);
+    },
+
+    startAmbient() {
+        if (!AppState.audioActivo || this.ambientActive) return;
+
+        try {
+            this.init();
+            if (!this.audioCtx) return;
+
+            const ctx = this.audioCtx;
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+            const datos = buffer.getChannelData(0);
+            let muestraAnterior = 0;
+            for (let i = 0; i < datos.length; i += 1) {
+                const ruido = (Math.random() * 2) - 1;
+                muestraAnterior = (muestraAnterior * 0.985) + (ruido * 0.015);
+                datos[i] = muestraAnterior;
+            }
+
+            const fuenteAgua = ctx.createBufferSource();
+            const filtroAgua = ctx.createBiquadFilter();
+            const filtroSelva = ctx.createBiquadFilter();
+            const gananciaAgua = ctx.createGain();
+            const gananciaSelva = ctx.createGain();
+            this.ambientGain = ctx.createGain();
+
+            fuenteAgua.buffer = buffer;
+            fuenteAgua.loop = true;
+            filtroAgua.type = "lowpass";
+            filtroAgua.frequency.value = 950;
+            filtroSelva.type = "bandpass";
+            filtroSelva.frequency.value = 260;
+            filtroSelva.Q.value = 0.7;
+            gananciaAgua.gain.value = 0.72;
+            gananciaSelva.gain.value = 0.28;
+            this.ambientGain.gain.value = this.getAmbientGainValue();
+
+            fuenteAgua.connect(filtroAgua);
+            filtroAgua.connect(gananciaAgua);
+            fuenteAgua.connect(filtroSelva);
+            filtroSelva.connect(gananciaSelva);
+            gananciaAgua.connect(this.ambientGain);
+            gananciaSelva.connect(this.ambientGain);
+            this.ambientGain.connect(ctx.destination);
+            fuenteAgua.start();
+
+            this.ambientNodes = [fuenteAgua, filtroAgua, filtroSelva, gananciaAgua, gananciaSelva, this.ambientGain];
+            this.ambientActive = true;
+            this.ambientBirdTimer = setInterval(() => this.playAmbientBird(), 18000);
+        } catch (error) {
+            console.info("Ambiente sonoro no disponible:", error);
+            this.stopAmbient();
+        }
+    },
+
+    stopAmbient() {
+        if (this.ambientBirdTimer) clearInterval(this.ambientBirdTimer);
+        this.ambientBirdTimer = null;
+        this.ambientNodes.forEach(node => {
+            try {
+                if (typeof node.stop === "function") node.stop();
+                node.disconnect();
+            } catch (error) {}
+        });
+        this.ambientNodes = [];
+        this.ambientGain = null;
+        this.ambientActive = false;
+    },
+
     play(effectName) {
         // Si el usuario tiene el sonido desactivado, no reproducir nada
         if (!AppState.audioActivo) return;
@@ -48,6 +171,7 @@ const SoundFX = {
         try {
             this.init();
             if (!this.audioCtx) return;
+            if (!this.ambientActive) this.startAmbient();
             this.stopAll();
 
             const ctx = this.audioCtx;
@@ -764,20 +888,31 @@ function initControlSonido() {
     const audioBtn = document.querySelector("#audio-toggle");
     if (!audioBtn) return;
 
+    const actualizarBoton = () => {
+        audioBtn.innerText = AppState.audioActivo ? "🔊" : "🔇";
+        audioBtn.classList.toggle("active", AppState.audioActivo);
+        audioBtn.title = AppState.audioActivo
+            ? "Ambiente y efectos activados (clic para silenciar)"
+            : "Sonido silenciado (clic para activar)";
+        audioBtn.setAttribute("aria-pressed", String(AppState.audioActivo));
+    };
+
+    actualizarBoton();
+
     audioBtn.addEventListener("click", () => {
         if (!AppState.audioActivo) {
             AppState.audioActivo = true;
-            audioBtn.innerText = "🔊";
-            audioBtn.classList.add("active");
-            audioBtn.title = "Efectos de sonido activados (Clic para silenciar)";
-            mostrarToast("🔊 Efectos de sonido activados");
+            guardarPreferenciaLocal(CLAVE_AUDIO_ACTIVO, true);
+            actualizarBoton();
+            SoundFX.startAmbient();
             SoundFX.play("wood");
+            mostrarToast("🔊 Ambiente de Misiones activado");
         } else {
             AppState.audioActivo = false;
+            guardarPreferenciaLocal(CLAVE_AUDIO_ACTIVO, false);
             SoundFX.stopAll();
-            audioBtn.innerText = "🔇";
-            audioBtn.classList.remove("active");
-            audioBtn.title = "Sonido silenciado (Clic para activar)";
+            SoundFX.stopAmbient();
+            actualizarBoton();
             mostrarToast("🔇 Sonido desactivado");
         }
     });

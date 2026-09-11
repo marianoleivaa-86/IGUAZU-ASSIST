@@ -899,6 +899,26 @@ body {
     animation: slideUp 0.4s ease;
 }
 
+.plan-adaptation-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid #bae6fd;
+    border-radius: var(--radius-md);
+    background: #f0f9ff;
+    color: #0c4a6e;
+    font-size: 13.5px;
+    line-height: 1.45;
+}
+
+.plan-adaptation-icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
 .plan-result-header {
     border-bottom: 1px solid var(--color-border);
     padding-bottom: 18px;
@@ -1444,6 +1464,433 @@ body {
 }
 
 /* ========================================================
+   TUKI — ASISTENTE TURÍSTICO LOCAL
+   ======================================================== */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+body.tuki-open {
+    overflow: hidden;
+}
+
+.tuki-fab {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 1150;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 54px;
+    padding: 8px 16px 8px 9px;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, #0a3d24 0%, #168052 100%);
+    color: white;
+    box-shadow: 0 12px 32px rgba(10, 61, 36, 0.34);
+    cursor: pointer;
+    transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tuki-fab:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 38px rgba(10, 61, 36, 0.42);
+}
+
+.tuki-fab:active {
+    transform: scale(0.97);
+}
+
+.tuki-fab-avatar {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.16);
+    font-size: 23px;
+}
+
+.tuki-fab-label {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.12;
+}
+
+.tuki-fab-label strong {
+    font-size: 13.5px;
+    letter-spacing: 0.1px;
+}
+
+.tuki-fab-label small {
+    margin-top: 3px;
+    color: #d1fae5;
+    font-size: 10.5px;
+}
+
+.tuki-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1175;
+    background: rgba(5, 29, 18, 0.42);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    opacity: 1;
+    transition: opacity 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.tuki-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    width: min(430px, 100vw);
+    height: 100dvh;
+    background: #f7fbf8;
+    border-left: 1px solid rgba(22, 128, 82, 0.18);
+    box-shadow: -18px 0 48px rgba(5, 46, 27, 0.22);
+    transform: translateX(102%);
+    visibility: hidden;
+    transition: transform 240ms cubic-bezier(0.23, 1, 0.32, 1), visibility 240ms;
+}
+
+.tuki-panel.open {
+    transform: translateX(0);
+    visibility: visible;
+}
+
+.tuki-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 17px 18px;
+    background: linear-gradient(135deg, #0a3d24 0%, #146c43 100%);
+    color: white;
+}
+
+.tuki-panel-identity {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+}
+
+.tuki-panel-avatar {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 27px;
+}
+
+.tuki-eyebrow {
+    display: block;
+    margin-bottom: 2px;
+    color: #bbf7d0;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.tuki-panel-header h2 {
+    color: white;
+    font-size: 20px;
+    line-height: 1.1;
+}
+
+.tuki-icon-button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.tuki-context-strip {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--color-border);
+    background: #eef8f2;
+    scrollbar-width: none;
+}
+
+.tuki-context-strip::-webkit-scrollbar {
+    display: none;
+}
+
+.tuki-context-strip span {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border: 1px solid #cce5d5;
+    border-radius: var(--radius-full);
+    background: white;
+    color: var(--color-primary-dark);
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.tuki-conversation {
+    flex: 1;
+    min-height: 0;
+    padding: 16px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background:
+        radial-gradient(circle at 90% 8%, rgba(245, 183, 49, 0.09), transparent 28%),
+        linear-gradient(180deg, #f9fcfa 0%, #f2f8f4 100%);
+}
+
+.tuki-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    margin-bottom: 13px;
+}
+
+.tuki-message-user {
+    justify-content: flex-end;
+}
+
+.tuki-message-avatar {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #d9eee1;
+    border-radius: 50%;
+    background: white;
+    font-size: 17px;
+}
+
+.tuki-message-body {
+    max-width: calc(100% - 39px);
+    padding: 11px 13px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px 16px 16px 16px;
+    background: white;
+    color: var(--color-text);
+    box-shadow: 0 4px 14px rgba(17, 78, 48, 0.06);
+    font-size: 13.5px;
+    line-height: 1.48;
+}
+
+.tuki-message-user .tuki-message-body {
+    max-width: 84%;
+    border: none;
+    border-radius: 16px 6px 16px 16px;
+    background: var(--color-primary);
+    color: white;
+}
+
+.tuki-recommendations {
+    display: grid;
+    gap: 9px;
+    margin-top: 11px;
+}
+
+.tuki-place-card {
+    display: grid;
+    grid-template-columns: 38px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #d7eadf;
+    border-radius: 12px;
+    background: #fbfefc;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1), border-color 150ms;
+}
+
+.tuki-place-card:hover {
+    transform: translateY(-1px);
+    border-color: var(--color-primary);
+}
+
+.tuki-place-icon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: #e9f6ee;
+    font-size: 21px;
+}
+
+.tuki-place-info {
+    min-width: 0;
+}
+
+.tuki-place-info strong,
+.tuki-place-info span {
+    display: block;
+}
+
+.tuki-place-info strong {
+    overflow: hidden;
+    color: var(--color-primary-dark);
+    font-size: 12.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tuki-place-info span {
+    margin-top: 3px;
+    color: var(--color-text-muted);
+    font-size: 10.5px;
+    line-height: 1.3;
+}
+
+.tuki-place-arrow {
+    color: var(--color-primary);
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.tuki-quick-prompts {
+    display: flex;
+    gap: 7px;
+    padding: 10px 14px 8px;
+    overflow-x: auto;
+    background: white;
+    scrollbar-width: none;
+}
+
+.tuki-quick-prompts::-webkit-scrollbar {
+    display: none;
+}
+
+.tuki-quick-prompts button {
+    flex: 0 0 auto;
+    padding: 7px 10px;
+    border: 1px solid #cfe6d8;
+    border-radius: var(--radius-full);
+    background: #f4faf6;
+    color: var(--color-primary-dark);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.tuki-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 8px;
+    padding: 8px 14px 12px;
+    background: white;
+}
+
+.tuki-form textarea {
+    width: 100%;
+    min-height: 44px;
+    max-height: 110px;
+    resize: none;
+    padding: 11px 12px;
+    border: 1px solid #bfdaca;
+    border-radius: 13px;
+    background: #fbfefc;
+    color: var(--color-text);
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.35;
+}
+
+.tuki-form textarea:focus {
+    outline: 3px solid rgba(22, 128, 82, 0.14);
+    border-color: var(--color-primary);
+}
+
+.tuki-form button {
+    min-height: 44px;
+    padding: 0 14px;
+    border: none;
+    border-radius: 12px;
+    background: var(--color-primary);
+    color: white;
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.tuki-panel-footer {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-border);
+    background: #eef8f2;
+    color: var(--color-primary-dark);
+    font-size: 10.5px;
+    font-weight: 800;
+}
+
+.tuki-panel-footer input[type="range"] {
+    width: 100%;
+    accent-color: var(--color-primary);
+}
+
+.tuki-panel-footer button {
+    padding: 6px 9px;
+    border: 1px solid #bfdaca;
+    border-radius: 8px;
+    background: white;
+    color: var(--color-primary-dark);
+    font-size: 10.5px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.tuki-panel-footer button.active {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: white;
+}
+
+.tuki-fab:focus-visible,
+.tuki-icon-button:focus-visible,
+.tuki-place-card:focus-visible,
+.tuki-quick-prompts button:focus-visible,
+.tuki-form button:focus-visible,
+.tuki-panel-footer button:focus-visible {
+    outline: 3px solid rgba(245, 183, 49, 0.65);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tuki-fab,
+    .tuki-panel,
+    .tuki-backdrop,
+    .tuki-place-card {
+        transition: none;
+    }
+}
+/* ========================================================
    UTILIDADES & ANIMACIONES
    ======================================================== */
 
@@ -1466,6 +1913,32 @@ body {
    ======================================================== */
 
 @media (max-width: 768px) {
+    .tuki-fab {
+        right: 14px;
+        bottom: calc(14px + env(safe-area-inset-bottom));
+        min-height: 50px;
+        padding-right: 13px;
+    }
+    .tuki-fab-label small {
+        display: none;
+    }
+    .tuki-panel {
+        top: auto;
+        bottom: 0;
+        width: 100%;
+        height: min(88dvh, 760px);
+        border-top: 1px solid rgba(22, 128, 82, 0.18);
+        border-left: none;
+        border-radius: 22px 22px 0 0;
+        transform: translateY(102%);
+        box-shadow: 0 -18px 44px rgba(5, 46, 27, 0.24);
+    }
+    .tuki-panel.tuki-panel.open {
+        transform: translateY(0);
+    }
+    .tuki-panel-header {
+        border-radius: 21px 21px 0 0;
+    }
     .hero {
         padding: 28px 20px;
         margin: 12px auto;
@@ -1533,5 +2006,28 @@ body {
 
     .weather-badge span.weather-text {
         display: none;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 768px) {
+    .tuki-panel {
+        top: 0;
+        right: 0;
+        bottom: auto;
+        width: min(430px, 100vw);
+        height: 100dvh;
+        border-top: none;
+        border-left: 1px solid rgba(22, 128, 82, 0.18);
+        border-radius: 0;
+        transform: translateX(102%);
+        box-shadow: -18px 0 48px rgba(5, 46, 27, 0.22);
+    }
+
+    .tuki-panel.tuki-panel.open {
+        transform: translateX(0);
+    }
+
+    .tuki-panel-header {
+        border-radius: 0;
     }
 }

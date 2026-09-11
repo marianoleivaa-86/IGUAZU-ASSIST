@@ -416,10 +416,69 @@
 
 </div>
 
+<!-- ASISTENTE TURÍSTICO LOCAL TUKI -->
+<button id="tuki-fab" class="tuki-fab" type="button" aria-controls="tuki-panel" aria-expanded="false">
+    <span class="tuki-fab-avatar" aria-hidden="true">🦜</span>
+    <span class="tuki-fab-label">
+        <strong>Preguntale a Tuki</strong>
+        <small>Tu guía local</small>
+    </span>
+</button>
+
+<div id="tuki-backdrop" class="tuki-backdrop hidden" aria-hidden="true"></div>
+
+<aside id="tuki-panel" class="tuki-panel" role="dialog" aria-modal="true" aria-labelledby="tuki-panel-title" aria-hidden="true">
+    <header class="tuki-panel-header">
+        <div class="tuki-panel-identity">
+            <span class="tuki-panel-avatar" aria-hidden="true">🦜</span>
+            <div>
+                <span class="tuki-eyebrow">Guía de Puerto Iguazú</span>
+                <h2 id="tuki-panel-title">Preguntale a Tuki</h2>
+            </div>
+        </div>
+        <button id="tuki-close" class="tuki-icon-button" type="button" aria-label="Cerrar asistente">×</button>
+    </header>
+
+    <div class="tuki-context-strip">
+        <span id="tuki-context-time">Ahora en Iguazú</span>
+        <span id="tuki-context-weather">Clima local</span>
+        <span>Catálogo verificado</span>
+    </div>
+
+    <div id="tuki-conversation" class="tuki-conversation" aria-live="polite" aria-label="Conversación con Tuki">
+        <article class="tuki-message tuki-message-assistant">
+            <div class="tuki-message-avatar" aria-hidden="true">🦜</div>
+            <div class="tuki-message-body">
+                <p><strong>¡Hola! Soy Tuki.</strong> Puedo ayudarte a descubrir qué hacer, dónde comer y qué lugares están disponibles según la hora, el clima y tu presupuesto.</p>
+            </div>
+        </article>
+    </div>
+
+    <div class="tuki-quick-prompts" aria-label="Preguntas sugeridas">
+        <button type="button" data-tuki-question="¿Qué puedo hacer ahora?">Ahora</button>
+        <button type="button" data-tuki-question="¿Qué puedo hacer si llueve?">Si llueve</button>
+        <button type="button" data-tuki-question="¿Dónde puedo comer?">Dónde comer</button>
+        <button type="button" data-tuki-question="¿Qué me recomendás cerca?">Cerca mío</button>
+    </div>
+
+    <form id="tuki-form" class="tuki-form">
+        <label class="sr-only" for="tuki-input">Escribí tu consulta turística</label>
+        <textarea id="tuki-input" rows="1" maxlength="240" placeholder="Ej.: ¿Qué puedo hacer esta noche?" required></textarea>
+        <button type="submit" aria-label="Enviar consulta a Tuki">Enviar</button>
+    </form>
+
+    <footer class="tuki-panel-footer">
+        <label for="tuki-volume">Ambiente</label>
+        <input id="tuki-volume" type="range" min="0" max="100" step="1" value="24" aria-label="Volumen del ambiente de Misiones">
+        <button id="tuki-sound-toggle" type="button">Activar sonido</button>
+    </footer>
+</aside>
+
 <!-- SCRIPTS DE LA APLICACIÓN -->
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="planificador-inteligente.js"></script>
+<script src="tuki-asistente.js"></script>
 
 <script>
   if ("serviceWorker" in navigator) {

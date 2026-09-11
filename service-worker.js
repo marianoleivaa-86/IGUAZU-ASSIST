@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v5";
+const CACHE_NAME = "iguazu-assist-v7";
 
 const ARCHIVOS_CACHE = [
   "./",
@@ -7,6 +7,7 @@ const ARCHIVOS_CACHE = [
   "./data.js",
   "./app.js",
   "./planificador-inteligente.js",
+  "./tuki-asistente.js",
   "./manifest.json",
   "./icon.svg"
 ];
