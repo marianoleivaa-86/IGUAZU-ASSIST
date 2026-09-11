@@ -2100,6 +2100,7 @@ function obtenerFechaHoraArgentina() {
             hour12: false
         });
 
+
         const parts = formatter.formatToParts(d);
         const map = {};
         parts.forEach(p => map[p.type] = p.value);
@@ -2109,6 +2110,7 @@ function obtenerFechaHoraArgentina() {
         const day = parseInt(map.day);
         const hour = parseInt(map.hour);
         const minute = parseInt(map.minute);
+
 
         const argDate = new Date(year, month, day, hour, minute);
 
@@ -2203,7 +2205,6 @@ function obtenerEstadoDisponibilidad(lugar, horaNumero, diaSemana) {
     const diaAnterior = (diaSemana - 1 + 7) % 7;
     const abreHoy = !lugar.diasApertura || lugar.diasApertura.includes(diaSemana);
     const abreAyer = !lugar.diasApertura || lugar.diasApertura.includes(diaAnterior);
-
     let diaAbre = abreHoy;
     // Si la hora es de madrugada y continúa el turno de ayer, el comercio se considera "abierto"
     if (abierto && !abreHoy && abreAyer) {

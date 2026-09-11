@@ -13,22 +13,18 @@
     --bg-surface: rgba(8, 25, 13, 0.95);
     --bg-surface-elevated: rgba(13, 38, 20, 0.95);
     --bg-card: linear-gradient(135deg, rgba(8, 25, 13, 0.95) 0%, rgba(4, 15, 8, 0.98) 100%);
-
     --color-lime: #7ee529;
     --color-lime-glow: rgba(126, 229, 41, 0.45);
     --color-lime-dark: #061c0b;
     --color-gold: #f59e0b;
     --color-gold-glow: rgba(245, 158, 11, 0.3);
-
     --border-forest: rgba(46, 125, 50, 0.45);
     --border-glass: rgba(255, 255, 255, 0.18);
     --border-lime: rgba(126, 229, 41, 0.6);
-
     --text-white: #ffffff;
     --text-emerald: #d0edd8;
     --text-muted: #9bc5a0;
     --text-dim: #6b8f75;
-
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -1384,12 +1380,15 @@ img {
     padding: 4px 8px;
     transition: color 0.2s;
 }
+
 .bottom-nav-icon {
     font-size: 18px;
 }
+
 .bottom-nav-btn:hover {
     color: var(--text-emerald);
 }
+
 .bottom-nav-btn.active {
     color: var(--color-lime);
     font-weight: 700;
@@ -1405,6 +1404,7 @@ img {
     border: none;
     cursor: pointer;
 }
+
 .tuki-circle-glow {
     width: 52px;
     height: 52px;
@@ -1415,11 +1415,398 @@ img {
     background: #041407;
     transition: transform 0.2s, box-shadow 0.2s;
 }
+
 .bottom-nav-center-btn:hover .tuki-circle-glow {
     transform: scale(1.08);
     box-shadow: 0 0 24px var(--color-lime);
 }
+
 .tuki-nav-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tuki-nav-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--color-lime);
+    margin-top: 2px;
+}
+
+/* ========================================================
+   RESPONSIVE (MOBILE & DESKTOP)
+   ======================================================== */
+@media (max-width: 480px) {
+    .place-feed-card {
+        grid-template-columns: 88px 1fr auto;
+        gap: 10px;
+        padding: 10px 12px;
+    }
+    .place-card-thumb-wrap {
+        width: 88px;
+        height: 88px;
+    }
+    .place-card-title {
+        font-size: 14px;
+    }
+    .place-card-actions-col {
+        min-width: 92px;
+    }
+    .btn-action-detail, .btn-action-directions {
+        padding: 6px 8px;
+        font-size: 11px;
+    }
+    .brand-word-iguazu {
+        font-size: 36px;
+    }
+    .brand-word-assist {
+        font-size: 28px;
+    }
+    .hero-brand-container {
+        min-height: 130px;
+    }
+    .hero-brand-container .tuki-hero-perched {
+        width: 92px;
+        height: 100px;
+        right: 0;
+        bottom: 0;
+    }
+    .hero-brand-container .hero-brand-text {
+        padding-right: 78px;
+    }
+}
+
+
+/* ========================================================
+   MEJORAS UX v3.1 — Búsqueda, favoritos y accesibilidad
+   ======================================================== */
+.nearby-search-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+}
+
+.nearby-search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+    padding: 0 8px 0 12px;
+    min-height: 42px;
+    background: rgba(8, 28, 14, 0.92);
+    border: 1px solid var(--border-forest);
+    border-radius: 12px;
+    color: var(--color-lime);
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+.nearby-search-box:focus-within {
+    border-color: var(--color-lime);
+    box-shadow: 0 0 0 3px rgba(126, 229, 41, .12);
+}
+.nearby-search-box input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text-white);
+    font: inherit;
+    font-size: 13px;
+}
+.nearby-search-box input::placeholder { color: var(--text-dim); }
+.search-clear-btn {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+.search-clear-btn:hover { background: rgba(255,255,255,.08); color: var(--text-white); }
+.nearby-results-count {
+    flex: 0 0 auto;
+    color: var(--text-dim);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
+.btn-action-favorite {
+    background: rgba(245, 158, 11, .08);
+    border: 1px solid rgba(245, 158, 11, .5);
+    border-radius: 8px;
+    color: #fbbf24;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 7px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.btn-action-favorite:hover,
+.btn-action-favorite.is-favorite {
+    background: rgba(245, 158, 11, .18);
+    border-color: #fbbf24;
+    box-shadow: 0 0 12px rgba(245,158,11,.2);
+}
+.detail-secondary-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 2px;
+}
+.secondary-action-btn {
+    min-height: 40px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    color: var(--text-emerald);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.secondary-action-btn:hover,
+.secondary-action-btn.is-favorite {
+    border-color: var(--color-lime);
+    color: var(--color-lime);
+    background: rgba(126,229,41,.1);
+}
+
+.gps-ref-pill.searching { border-color: var(--color-gold); color: #fbbf24; }
+.gps-ref-pill.active { border-color: #4ade80; color: #86efac; }
+.gps-ref-pill.stored { border-color: #60a5fa; color: #93c5fd; }
+.gps-ref-pill.fallback { border-color: rgba(255,255,255,.2); }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 3px;
+}
+
+@media (min-width: 681px) {
+    .app { border-left: 1px solid rgba(126,229,41,.08); border-right: 1px solid rgba(126,229,41,.08); }
+}
+
+@media (max-width: 480px) {
+    .nearby-search-toolbar { align-items: stretch; flex-direction: column; gap: 6px; }
+    .nearby-results-count { padding-left: 4px; }
+    .place-feed-card { grid-template-columns: 76px minmax(0, 1fr); align-items: start; }
+    .place-card-thumb-wrap { width: 76px; height: 76px; }
+    .place-card-actions-col { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); min-width: 0; }
+    .btn-action-detail, .btn-action-favorite, .btn-action-directions { padding: 8px 5px; font-size: 10.5px; }
+    .detail-secondary-actions { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+@media (prefers-color-scheme: light) {
+    /* La identidad sigue siendo selva oscura; sólo se evita transparencia excesiva en contextos claros. */
+    .nearby-search-box input::placeholder { color: #8ba58f; }
+}
+
+.place-card-thumb-img { background: linear-gradient(135deg, #123d22, #07140a); }
+.detail-photo-img { background: linear-gradient(135deg, #123d22, #07140a); }
+
+.place-card-thumb-wrap { position: relative; }
+.place-card-thumb-badge {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    display: grid;
+    place-items: center;
+    width: 27px;
+    height: 27px;
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 9px;
+    background: rgba(3,14,6,.82);
+    backdrop-filter: blur(6px);
+    font-size: 15px;
+    box-shadow: 0 3px 8px rgba(0,0,0,.35);
+}
+
+/* El halo aporta contraste al tucán transparente sin convertirlo en una tarjeta opaca. */
+.tuki-hero-perched {
+    position: relative;
+    isolation: isolate;
+}
+.tuki-hero-perched::before {
+    content: "";
+    position: absolute;
+    inset: 18px 8px 24px;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(48, 130, 62, .38) 0%, rgba(10, 45, 20, .2) 44%, transparent 74%);
+    filter: blur(10px);
+    pointer-events: none;
+}
+.tuki-branch-img {
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .78)) drop-shadow(0 0 10px rgba(126, 229, 41, .18));
+}
+
+/* Al retirar la acción izquierda, los controles superiores conservan su alineación original. */
+.hero-top-right { margin-left: auto; }
+
+
+/* ========================================================
+   ¿QUÉ HAGO AHORA? — RECOMENDACIONES CONTEXTUALES
+   ======================================================== */
+.hero-now-btn {
+    margin-top: 8px;
+    padding: 7px 14px;
+    border: 1px solid #f59e0b;
+    border-radius: 9999px;
+    background: rgba(45, 30, 5, 0.88);
+    color: #fff7ed;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+.hero-now-btn:hover,
+.hero-now-btn:focus-visible { background: #f59e0b; color: #241304; }
+.now-recommendations {
+    margin: 16px 0 18px;
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-lime);
+    border-radius: 18px;
+}
+.now-recommendations-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.now-recommendations-heading h3 { font-size: 18px; color: var(--text-white); }
+.now-recommendations-heading p { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
+.now-recommendations-list { display: flex; flex-direction: column; gap: 10px; }
+.now-recommendation-card {
+    padding: 12px;
+    background: rgba(8, 28, 14, .86);
+    border: 1px solid var(--border-forest);
+    border-radius: 14px;
+}
+.now-recommendation-group { display: flex; flex-direction: column; gap: 8px; }
+.now-recommendation-group + .now-recommendation-group { margin-top: 14px; }
+.now-recommendation-group-title {
+    color: var(--text-white);
+    font-size: 13px;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+}
+.now-recommendation-card.best { border-color: var(--color-gold); box-shadow: 0 0 14px var(--color-gold-glow); }
+.now-recommendation-title { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 5px; }
+.now-recommendation-title h4 { font-size: 15px; color: var(--text-white); }
+.now-recommendation-why-label { color: var(--color-gold); font-size: 12px; font-weight: 800; margin-bottom: 3px; }
+.now-recommendation-reason { color: var(--text-emerald); font-size: 12px; margin-bottom: 8px; }
+.now-recommendation-meta { display: flex; flex-wrap: wrap; gap: 5px 9px; color: var(--text-muted); font-size: 11px; margin-bottom: 9px; }
+.now-recommendation-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.now-compare-button { width: 100%; justify-content: center; margin-top: 4px; }
+.now-comparison { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-forest); }
+.now-comparison-header h4 { color: var(--text-white); font-size: 17px; }
+.now-comparison-header p { color: var(--text-muted); font-size: 12px; margin: 3px 0 10px; }
+.now-comparison-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.now-comparison-card { padding: 11px; background: rgba(8, 28, 14, .86); border: 1px solid var(--border-forest); border-radius: 13px; }
+.now-comparison-card.best { border-color: var(--color-gold); box-shadow: 0 0 12px var(--color-gold-glow); }
+.now-comparison-card h5 { color: var(--color-gold); font-size: 11px; margin-bottom: 5px; }
+.now-comparison-card h4 { color: var(--text-white); font-size: 15px; margin-bottom: 8px; }
+.now-comparison-image { display: block; width: 100%; height: 110px; object-fit: cover; border-radius: 9px; margin-bottom: 8px; }
+.now-comparison-indicators { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.now-comparison-indicators span { color: var(--text-muted); font-size: 11px; }
+.now-comparison-why { color: var(--text-emerald); font-size: 12px; margin-bottom: 9px; }
+.quick-actions { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border-forest); }
+.quick-actions-label { display: block; color: var(--text-muted); font-size: 11px; font-weight: 800; margin-bottom: 6px; }
+.quick-actions-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.quick-action { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 7px 9px; border: 1px solid var(--border-forest); border-radius: 9px; background: rgba(20, 58, 29, .72); color: var(--text-white); font-size: 11px; text-decoration: none; cursor: pointer; }
+.quick-action:hover, .quick-action:focus-visible { border-color: var(--color-gold); color: var(--color-gold); }
+.quick-actions.compact .quick-action { padding: 6px 8px; }
+@media (max-width: 480px) {
+    .now-recommendations-heading { flex-direction: column; }
+    .now-recommendations-heading .btn-card-action { width: 100%; justify-content: center; }
+    .now-recommendation-actions .btn-card-action { flex: 1 1 120px; justify-content: center; }
+    .now-comparison-grid { grid-template-columns: 1fr; }
+}
+
+
+/* ========================================================
+   SORPRÉNDEME INTELIGENTE
+   ======================================================== */
+.surprise-icon { font-size: 64px; margin-bottom: 8px; }
+.surprise-place-title { font-size: 26px; font-weight: 900; color: var(--color-primary-dark); margin-bottom: 6px; }
+.surprise-tags { justify-content: center; margin-bottom: 14px; }
+.surprise-tuki-quote { margin: 9px auto 0; max-width: 680px; color: var(--color-text); font-size: 15px; line-height: 1.55; }
+.surprise-factor-list { margin-top: 8px; display: flex; flex-wrap: wrap; justify-content: center; }
+.surprise-description { font-size: 14px; color: var(--color-text-muted); margin-bottom: 20px; line-height: 1.5; }
+.surprise-empty { padding: 24px 8px; text-align: center; }
+.surprise-empty-icon { font-size: 46px; margin-bottom: 10px; }
+@media (max-width: 480px) {
+    .surprise-place-title { font-size: 22px; }
+    .surprise-actions-row { flex-direction: column; }
+    .surprise-actions-row .btn-card-action { width: 100%; justify-content: center; }
+}
+
+/* ========================================================
+   TUKI ASISTENTE TURÍSTICO & EXPERIENCIA SENSORIAL MISIONES
+   ======================================================== */
+
+/* 1. Botón Flotante "Preguntale a Tuki" */
+.tuki-floating-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 84px; /* Por encima del bottom-nav (70px + margen) */
+    z-index: 998;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px 7px 8px;
+    background: linear-gradient(135deg, rgba(8, 28, 14, 0.96) 0%, rgba(4, 15, 8, 0.98) 100%);
+    border: 1.5px solid var(--color-lime);
+    border-radius: 9999px;
+    color: var(--text-white);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 16px var(--color-lime-glow);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.tuki-floating-btn:hover {
+    transform: translateY(-3px) scale(1.03);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.7), 0 0 22px var(--color-lime);
+    border-color: #a3f74d;
+}
+
+.tuki-floating-btn:active {
+    transform: translateY(0) scale(0.97);
+}
+
+.tuki-float-avatar-wrap {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--color-lime);
+    overflow: hidden;
+    background: #041407;
+    flex-shrink: 0;
+}
+
+.tuki-float-avatar-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -2189,5 +2576,676 @@ body.tuki-open {
 @media (max-width: 768px) {
     .tuki-fab {
         bottom: calc(84px + env(safe-area-inset-bottom));
+
+
+.tuki-float-pulse-dot {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 8px #4ade80;
+    border: 1.5px solid #030e06;
+    animation: tukiPulse 2.2s infinite;
+}
+
+@keyframes tukiPulse {
+    0% { transform: scale(0.9); opacity: 0.85; box-shadow: 0 0 4px #4ade80; }
+    50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 12px #4ade80; }
+    100% { transform: scale(0.9); opacity: 0.85; box-shadow: 0 0 4px #4ade80; }
+}
+
+.tuki-float-text {
+    white-space: nowrap;
+    color: #f0fdf4;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* 2. Modal / Ventana del Asistente */
+.tuki-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    background: rgba(2, 8, 4, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+    padding: 0;
+}
+
+.tuki-modal.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.tuki-modal-active {
+    overflow: hidden;
+}
+
+.tuki-modal-container {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 88vh;
+    max-height: 760px;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(180deg, rgba(8, 25, 13, 0.98) 0%, rgba(3, 14, 7, 0.99) 100%);
+    border: 1.5px solid var(--border-forest);
+    border-bottom: none;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(16, 185, 129, 0.15);
+    overflow: hidden;
+    transform: translateY(40px);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tuki-modal.open .tuki-modal-container {
+    transform: translateY(0);
+}
+
+/* Cabecera del Asistente */
+.tuki-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(4, 15, 8, 0.95);
+    border-bottom: 1px solid var(--border-forest);
+    flex-shrink: 0;
+}
+
+.tuki-header-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.tuki-header-avatar-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2.5px solid var(--color-lime);
+    box-shadow: 0 0 14px var(--color-lime-glow);
+    overflow: hidden;
+    background: #041407;
+    flex-shrink: 0;
+}
+
+.tuki-header-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tuki-status-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #22c55e;
+    border: 2px solid #041407;
+}
+
+.tuki-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tuki-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--text-white);
+    letter-spacing: -0.01em;
+}
+
+.tuki-tag-badge {
+    display: inline-block;
+    padding: 2px 7px;
+    background: rgba(126, 229, 41, 0.18);
+    border: 1px solid var(--border-lime);
+    border-radius: 6px;
+    color: var(--color-lime);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.tuki-subtitle {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.tuki-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tuki-ambient-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-forest);
+    border-radius: 8px;
+    color: var(--text-emerald);
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tuki-ambient-btn:hover {
+    background: rgba(126, 229, 41, 0.12);
+    border-color: var(--color-lime);
+    color: var(--color-lime);
+}
+
+.tuki-ambient-btn.active {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #34d399;
+    color: #a7f3d0;
+    box-shadow: 0 0 12px rgba(52, 211, 153, 0.3);
+}
+
+.tuki-close-btn {
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-glass);
+    border-radius: 50%;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tuki-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #fca5a5;
+}
+
+/* Control deslizante de volumen ambiental */
+.tuki-vol-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 18px;
+    background: rgba(13, 38, 20, 0.9);
+    border-bottom: 1px solid var(--border-forest);
+    font-size: 11.5px;
+    color: var(--text-emerald);
+}
+
+.tuki-vol-label {
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.tuki-vol-row input[type="range"] {
+    flex: 1;
+    accent-color: var(--color-lime);
+    cursor: pointer;
+}
+
+/* Carrusel de Sugerencias Rápidas */
+.tuki-suggestions-bar {
+    display: flex;
+    gap: 7px;
+    padding: 10px 14px;
+    background: rgba(4, 15, 8, 0.7);
+    border-bottom: 1px solid rgba(46, 125, 50, 0.3);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+}
+
+.tuki-suggestions-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.tuki-chip {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    background: rgba(20, 58, 29, 0.65);
+    border: 1px solid var(--border-forest);
+    border-radius: 9999px;
+    color: var(--text-emerald);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.tuki-chip:hover,
+.tuki-chip:focus-visible {
+    background: rgba(126, 229, 41, 0.15);
+    border-color: var(--color-lime);
+    color: var(--color-lime);
+    box-shadow: 0 0 10px var(--color-lime-glow);
+}
+
+.tuki-chip-mini {
+    padding: 5px 10px;
+    font-size: 11.5px;
+    background: rgba(15, 45, 23, 0.75);
+    border: 1px solid var(--border-forest);
+    border-radius: 9999px;
+    color: var(--text-emerald);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tuki-chip-mini:hover {
+    background: rgba(126, 229, 41, 0.18);
+    border-color: var(--color-lime);
+    color: var(--color-lime);
+}
+
+/* Cuerpo de Conversación */
+.tuki-chat-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overscroll-behavior: contain;
+}
+
+.tuki-msg-row {
+    display: flex;
+    width: 100%;
+}
+
+.tuki-msg-row.tuki-bot {
+    justify-content: flex-start;
+}
+
+.tuki-msg-row.tuki-user {
+    justify-content: flex-end;
+}
+
+.tuki-bubble {
+    max-width: 92%;
+    padding: 12px 15px;
+    border-radius: 18px;
+    position: relative;
+    font-size: 13.5px;
+    line-height: 1.5;
+    animation: bubbleFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bubbleFadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tuki-msg-row.tuki-bot .tuki-bubble {
+    background: rgba(13, 38, 20, 0.88);
+    border: 1px solid var(--border-forest);
+    border-top-left-radius: 4px;
+    color: #e2f5e7;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tuki-msg-row.tuki-user .tuki-bubble {
+    background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    border-top-right-radius: 4px;
+    color: #ffffff;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.35);
+}
+
+.tuki-bubble-author {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--color-lime);
+    margin-bottom: 5px;
+}
+
+.tuki-bubble-time {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    font-weight: normal;
+}
+
+.tuki-response-title {
+    font-size: 14.5px;
+    font-weight: 800;
+    color: #fef08a;
+    margin-bottom: 6px;
+}
+
+.tuki-bubble-text {
+    margin: 0;
+    word-break: break-word;
+}
+
+.tuki-bubble-text strong {
+    color: var(--color-lime);
+}
+
+/* Tarjetas Compactas de Lugares en Respuesta de Tuki */
+.tuki-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 12px;
+}
+
+.tuki-place-card {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 10px;
+    background: rgba(4, 15, 8, 0.85);
+    border: 1px solid var(--border-forest);
+    border-radius: 12px;
+    padding: 8px;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.tuki-place-card:hover {
+    border-color: var(--color-lime);
+    transform: translateY(-1.5px);
+}
+
+.tuki-place-thumb {
+    position: relative;
+    width: 78px;
+    height: 78px;
+    border-radius: 9px;
+    overflow: hidden;
+    background: #041407;
+}
+
+.tuki-place-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tuki-place-icon {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    font-size: 13px;
+    background: rgba(3, 14, 6, 0.85);
+    border-radius: 6px;
+    padding: 1px 3px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tuki-place-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tuki-place-header-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}
+
+.tuki-place-cat {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.tuki-place-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--text-white);
+    margin: 0 0 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.tuki-place-desc {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    margin: 0 0 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.35;
+}
+
+.tuki-place-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-bottom: 7px;
+}
+
+.tuki-card-pill {
+    display: inline-block;
+    padding: 2px 6px;
+    background: rgba(20, 58, 29, 0.65);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    border-radius: 5px;
+    color: var(--text-emerald);
+    font-size: 10.5px;
+}
+
+.tuki-pill-price {
+    color: #fde047;
+    border-color: rgba(253, 224, 71, 0.3);
+}
+
+.tuki-pill-roof {
+    background: rgba(2, 132, 199, 0.2);
+    color: #7dd3fc;
+    border-color: rgba(125, 211, 252, 0.3);
+}
+
+.tuki-place-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: auto;
+}
+
+.tuki-action-btn {
+    padding: 5px 9px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.tuki-action-btn.primary {
+    background: rgba(126, 229, 41, 0.16);
+    border-color: var(--color-lime);
+    color: var(--color-lime);
+}
+
+.tuki-action-btn.primary:hover {
+    background: var(--color-lime);
+    color: var(--color-lime-dark);
+}
+
+.tuki-action-btn.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-glass);
+    color: var(--text-emerald);
+}
+
+.tuki-action-btn.secondary:hover {
+    border-color: var(--color-lime);
+    color: var(--color-lime);
+}
+
+.tuki-followup-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Indicador de Tipeo (Escribiendo...) */
+.tuki-typing-row .typing-bubble {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 14px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-lime);
+    animation: typingPulse 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingPulse {
+    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+    40% { transform: scale(1.1); opacity: 1; }
+}
+
+/* Barra Inferior de Entrada */
+.tuki-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px 14px;
+    background: rgba(4, 15, 8, 0.98);
+    border-top: 1px solid var(--border-forest);
+    flex-shrink: 0;
+}
+
+.tuki-input-field {
+    flex: 1;
+    min-width: 0;
+    height: 42px;
+    background: rgba(8, 28, 14, 0.9);
+    border: 1px solid var(--border-forest);
+    border-radius: 9999px;
+    padding: 0 16px;
+    color: var(--text-white);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.tuki-input-field:focus {
+    border-color: var(--color-lime);
+    box-shadow: 0 0 0 3px rgba(126, 229, 41, 0.18);
+}
+
+.tuki-input-field::placeholder {
+    color: var(--text-dim);
+}
+
+.tuki-send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--color-lime);
+    border: none;
+    color: var(--color-lime-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+    box-shadow: 0 0 14px var(--color-lime-glow);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.tuki-send-btn:hover {
+    transform: scale(1.06);
+    background: #8cf037;
+}
+
+.tuki-send-btn:active {
+    transform: scale(0.95);
+}
+
+/* Adaptación para pantallas mayores (Escritorio / Tablet) */
+@media (min-width: 601px) {
+    .tuki-floating-btn {
+        right: 28px;
+        bottom: 28px;
+    }
+
+    .tuki-modal {
+        padding: 24px 24px 24px 0;
+    }
+
+    .tuki-modal-container {
+        border-radius: 24px;
+        border-bottom: 1.5px solid var(--border-forest);
+        height: 82vh;
+        max-height: 720px;
+    }
+}
+
+@media (max-width: 480px) {
+    .tuki-floating-btn {
+        bottom: 80px;
+        right: 14px;
+        padding: 6px 12px 6px 6px;
+        font-size: 12.5px;
+    }
+    .tuki-float-avatar-wrap {
+        width: 34px;
+        height: 34px;
+    }
+    .tuki-modal-container {
+        height: 94vh;
+        max-height: 94vh;
+    }
+    .tuki-place-card {
+        grid-template-columns: 68px minmax(0, 1fr);
+    }
+    .tuki-place-thumb {
+        width: 68px;
+        height: 68px;
+
+    }
+}
     }
 }

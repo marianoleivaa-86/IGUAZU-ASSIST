@@ -89,6 +89,7 @@ const SoundFX = {
         }
     },
 
+
     getAmbientGainValue() {
         return (AppState.volumenAmbiente / 100) * 0.055;
     },
@@ -1578,12 +1579,20 @@ function initControlSonido() {
         AppState.audioActivo = !AppState.audioActivo;
         if (AppState.audioActivo) {
             actualizarControl();
-            mostrarToast("🔊 Efectos de sonido activados");
+
+            mostrarToast("🔊 Sonido y ambiente de selva activados");
+
             SoundFX.play("wood");
-        } else {
+            if (window.MisionesAudio && typeof window.MisionesAudio.activarAmbiental === "function") {
+                window.MisionesAudio.activarAmbiental();
+            }
+                } else {
             SoundFX.stopAll();
+            if (window.MisionesAudio && typeof window.MisionesAudio.desactivarAmbiental === "function") {
+                window.MisionesAudio.desactivarAmbiental();
+            }
             actualizarControl();
-            mostrarToast("🔇 Sonido desactivado");
+            mostrarToast("🔇 Sonido silenciado");
         }
     });
 }

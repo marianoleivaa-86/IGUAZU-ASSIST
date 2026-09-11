@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v7";
+const CACHE_NAME = "iguazu-assist-v22";
 
 const ARCHIVOS_CACHE = [
   "./",
@@ -9,14 +9,25 @@ const ARCHIVOS_CACHE = [
   "./planificador-inteligente.js",
   "./tuki-asistente.js",
   "./manifest.json",
-  "./icon.svg"
+  "./circuitos-estado.json",
+  "./icon.svg",
+  "./icon.jpg",
+  "./tuki-branch.jpg",
+  "./tuki-branch-transparent.png",
+  "./tuki-avatar.jpg",
+  "./hero-bg.jpg",
+  "./img_aqva.jpg",
+  "./img_casanova.jpg",
+  "./img_cataratas.jpg",
+  "./img_hito.jpg",
+  "./img_mirador.jpg",
+  "./img_saintgeorge.jpg"
 ];
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(ARCHIVOS_CACHE))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -28,7 +39,7 @@ self.addEventListener("activate", event => {
           .filter(llave => llave !== CACHE_NAME)
           .map(llave => caches.delete(llave))
       )
-    ).then(() => self.clients.claim())
+    )
   );
 });
 
@@ -38,23 +49,24 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Todas las respuestas locales salen del mismo cache versionado. La red
+  // sólo completa recursos no incluidos en el precache y nunca reemplaza
+  // silenciosamente una versión ya instalada del conjunto crítico.
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      const fetchPromise = fetch(event.request)
-        .then(networkResponse => {
+    caches.open(CACHE_NAME).then(cache =>
+      cache.match(event.request).then(cachedResponse => {
+        if (cachedResponse) return cachedResponse;
+
+        return fetch(event.request).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
-            const copia = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(event.request, copia));
+            cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
-        })
-        .catch(() => {
-          if (event.request.mode === "navigate") {
-            return caches.match("./index.html");
-          }
+        }).catch(() => {
+          if (event.request.mode === "navigate") return cache.match("./index.html");
+          return undefined;
         });
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+    )
   );
 });
