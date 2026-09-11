@@ -2,26 +2,6 @@
  * IGUAZÚ ASSIST — Controlador Principal de Interfaz, Navegación, Geolocalización y Efectos de Sonido
  */
 
-const CLAVE_AUDIO_ACTIVO = "iguazuAssist.audioActivo";
-const CLAVE_VOLUMEN_AMBIENTE = "iguazuAssist.volumenAmbiente";
-
-function leerPreferenciaLocal(clave, valorPorDefecto) {
-    try {
-        const valor = localStorage.getItem(clave);
-        return valor === null ? valorPorDefecto : valor;
-    } catch (error) {
-        return valorPorDefecto;
-    }
-}
-
-function guardarPreferenciaLocal(clave, valor) {
-    try {
-        localStorage.setItem(clave, String(valor));
-    } catch (error) {
-        // La aplicación continúa normalmente si el almacenamiento está bloqueado.
-    }
-}
-
 // ========================================================
 // ESTADO GLOBAL DE LA APLICACIÓN
 // ========================================================
@@ -30,13 +10,60 @@ const AppState = {
     tiempo: "medio día",
     compania: "solo",
     presupuesto: "medio",
-    lastView: "home", // 'home' | 'results' | 'planner' | 'nearby' | 'surprise'
+    lastView: "home", // Vista de origen del detalle.
+    currentView: "home",
+    detailPlace: null,
     userCoords: null,
     gpsActive: false,
-    audioActivo: leerPreferenciaLocal(CLAVE_AUDIO_ACTIVO, "false") === "true",
-    volumenAmbiente: Math.min(100, Math.max(0, Number(leerPreferenciaLocal(CLAVE_VOLUMEN_AMBIENTE, "24")) || 24)),
-    filtroCercaMio: "todos"
+    audioActivo: false, // Apagado por defecto; respeta la decisión del usuario.
+    volumenAmbiente: 50,
+    filtroCercaMio: "todos",
+    searchTerm: "",
+    favoriteIds: new Set(),
+    currentPlanId: null
 };
+
+const APP_CONSTANTS = Object.freeze({
+    FALLBACK_IMAGE: "hero-bg.jpg",
+    NEARBY_LIMIT_KM: 25,
+    WALKING_LIMIT_KM: 1.5,
+    GPS_STORAGE_KEY: "iguazu-assist-last-coords",
+    DEFAULT_CENTER: Object.freeze({ lat: -25.5979, lng: -54.5742 }),
+    SECTION_IDS: Object.freeze([
+        "hero-section",
+        "categories-section",
+        "planner",
+        "surprise",
+        "profile",
+        "results",
+        "detail"
+    ]),
+    SECTION_ALIASES: Object.freeze({
+        home: "hero-section",
+        nearby: "hero-section",
+        categories: "categories-section"
+    }),
+        NAV_BY_SECTION: Object.freeze({
+        "hero-section": "bnav-home",
+        "categories-section": "bnav-explore",
+        planner: "bnav-plans",
+        profile: "bnav-profile"
+    }),
+    FAVORITES_STORAGE_KEY: "iguazu-assist-favorites",
+    CATEGORY_IMAGES: Object.freeze({
+        naturaleza: "img_cataratas.jpg",
+        comida: "img_aqva.jpg",
+        noche: "img_casanova.jpg",
+        actividades: "img_hito.jpg",
+        alojamiento: "img_saintgeorge.jpg",
+        movilidad: "img_mirador.jpg"
+    })
+});
+
+let appInitialized = false;
+let gpsRequestId = 0;
+let gpsWatchId = null;
+let lastGpsWatchUpdate = 0;
 
 // ========================================================
 // SISTEMA DE EFECTOS DE SONIDO CORTOS (WEB AUDIO API)
@@ -55,15 +82,11 @@ const SoundFX = {
             this.audioCtx = new AudioContext();
         }
         if (this.audioCtx && this.audioCtx.state === "suspended") {
-            this.audioCtx.resume();
+            const resumePromise = this.audioCtx.resume();
+            if (resumePromise && typeof resumePromise.catch === "function") {
+                resumePromise.catch(() => { });
+            }
         }
-    },
-
-    stopAll() {
-        this.activeOscillators.forEach(osc => {
-            try { osc.stop(); osc.disconnect(); } catch (e) {}
-        });
-        this.activeOscillators = [];
     },
 
     getAmbientGainValue() {
@@ -72,96 +95,79 @@ const SoundFX = {
 
     setAmbientVolume(valor) {
         AppState.volumenAmbiente = Math.min(100, Math.max(0, Number(valor) || 0));
-        guardarPreferenciaLocal(CLAVE_VOLUMEN_AMBIENTE, AppState.volumenAmbiente);
         if (this.ambientGain && this.audioCtx) {
             this.ambientGain.gain.setTargetAtTime(this.getAmbientGainValue(), this.audioCtx.currentTime, 0.08);
         }
     },
 
-    playAmbientBird() {
-        if (!AppState.audioActivo || !this.ambientActive || !this.audioCtx) return;
-        const ctx = this.audioCtx;
-        const now = ctx.currentTime;
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(1680, now);
-        osc.frequency.exponentialRampToValueAtTime(2450, now + 0.1);
-        osc.frequency.exponentialRampToValueAtTime(1850, now + 0.24);
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(this.getAmbientGainValue() * 0.7, now + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.34);
-    },
-
     startAmbient() {
-        if (!AppState.audioActivo || this.ambientActive) return;
-
+        if (this.ambientActive) return;
+        this.init();
+        if (!this.audioCtx) return;
         try {
-            this.init();
-            if (!this.audioCtx) return;
-
             const ctx = this.audioCtx;
             const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-            const datos = buffer.getChannelData(0);
-            let muestraAnterior = 0;
-            for (let i = 0; i < datos.length; i += 1) {
-                const ruido = (Math.random() * 2) - 1;
-                muestraAnterior = (muestraAnterior * 0.985) + (ruido * 0.015);
-                datos[i] = muestraAnterior;
+            const data = buffer.getChannelData(0);
+            let previous = 0;
+            for (let i = 0; i < data.length; i += 1) {
+                previous = previous * 0.985 + (Math.random() * 2 - 1) * 0.015;
+                data[i] = previous;
             }
-
-            const fuenteAgua = ctx.createBufferSource();
-            const filtroAgua = ctx.createBiquadFilter();
-            const filtroSelva = ctx.createBiquadFilter();
-            const gananciaAgua = ctx.createGain();
-            const gananciaSelva = ctx.createGain();
+            const source = ctx.createBufferSource();
+            const waterFilter = ctx.createBiquadFilter();
+            const forestFilter = ctx.createBiquadFilter();
+            const waterGain = ctx.createGain();
+            const forestGain = ctx.createGain();
             this.ambientGain = ctx.createGain();
-
-            fuenteAgua.buffer = buffer;
-            fuenteAgua.loop = true;
-            filtroAgua.type = "lowpass";
-            filtroAgua.frequency.value = 950;
-            filtroSelva.type = "bandpass";
-            filtroSelva.frequency.value = 260;
-            filtroSelva.Q.value = 0.7;
-            gananciaAgua.gain.value = 0.72;
-            gananciaSelva.gain.value = 0.28;
+            source.buffer = buffer; source.loop = true;
+            waterFilter.type = "lowpass"; waterFilter.frequency.value = 950;
+            forestFilter.type = "bandpass"; forestFilter.frequency.value = 260; forestFilter.Q.value = 0.7;
+            waterGain.gain.value = 0.72; forestGain.gain.value = 0.28;
             this.ambientGain.gain.value = this.getAmbientGainValue();
-
-            fuenteAgua.connect(filtroAgua);
-            filtroAgua.connect(gananciaAgua);
-            fuenteAgua.connect(filtroSelva);
-            filtroSelva.connect(gananciaSelva);
-            gananciaAgua.connect(this.ambientGain);
-            gananciaSelva.connect(this.ambientGain);
-            this.ambientGain.connect(ctx.destination);
-            fuenteAgua.start();
-
-            this.ambientNodes = [fuenteAgua, filtroAgua, filtroSelva, gananciaAgua, gananciaSelva, this.ambientGain];
+            source.connect(waterFilter); waterFilter.connect(waterGain); waterGain.connect(this.ambientGain);
+            source.connect(forestFilter); forestFilter.connect(forestGain); forestGain.connect(this.ambientGain);
+            this.ambientGain.connect(ctx.destination); source.start();
+            this.ambientNodes = [source, waterFilter, forestFilter, waterGain, forestGain, this.ambientGain];
             this.ambientActive = true;
             this.ambientBirdTimer = setInterval(() => this.playAmbientBird(), 18000);
-        } catch (error) {
-            console.info("Ambiente sonoro no disponible:", error);
-            this.stopAmbient();
-        }
+        } catch (error) { this.stopAmbient(); }
     },
 
     stopAmbient() {
         if (this.ambientBirdTimer) clearInterval(this.ambientBirdTimer);
         this.ambientBirdTimer = null;
         this.ambientNodes.forEach(node => {
-            try {
-                if (typeof node.stop === "function") node.stop();
-                node.disconnect();
-            } catch (error) {}
+            try { if (typeof node.stop === "function") node.stop(); node.disconnect(); } catch (error) {}
         });
-        this.ambientNodes = [];
-        this.ambientGain = null;
-        this.ambientActive = false;
+        this.ambientNodes = []; this.ambientGain = null; this.ambientActive = false;
+    },
+
+    playAmbientBird() {
+        if (!AppState.audioActivo || !this.ambientActive || !this.audioCtx) return;
+        const ctx = this.audioCtx; const now = ctx.currentTime;
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type = "sine"; osc.frequency.setValueAtTime(1680, now);
+        osc.frequency.exponentialRampToValueAtTime(2450, now + 0.1);
+        osc.frequency.exponentialRampToValueAtTime(1850, now + 0.24);
+        gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.035, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain); gain.connect(ctx.destination); osc.start(now); osc.stop(now + 0.36);
+        this.trackOscillator(osc);
+    },
+
+    stopAll() {
+        const oscillators = this.activeOscillators.splice(0);
+        oscillators.forEach(osc => {
+            try { osc.stop(); } catch (e) { /* Ya finalizado. */ }
+            try { osc.disconnect(); } catch (e) { /* Ya desconectado. */ }
+        });
+    },
+
+    trackOscillator(osc) {
+        this.activeOscillators.push(osc);
+        osc.onended = () => {
+            this.activeOscillators = this.activeOscillators.filter(item => item !== osc);
+        };
     },
 
     play(effectName) {
@@ -192,7 +198,7 @@ const SoundFX = {
                 gain.connect(ctx.destination);
                 osc.start(now);
                 osc.stop(now + 0.36);
-                this.activeOscillators.push(osc);
+                this.trackOscillator(osc);
 
             } else if (effectName === "shimmer" || effectName === "sorpresa") {
                 // Arpegio armónico selvático suave (~0.7s)
@@ -209,7 +215,7 @@ const SoundFX = {
                     gain.connect(ctx.destination);
                     osc.start(now + idx * 0.07);
                     osc.stop(now + idx * 0.07 + 0.6);
-                    this.activeOscillators.push(osc);
+                    this.trackOscillator(osc);
                 });
 
             } else if (effectName === "plan" || effectName === "wood") {
@@ -227,7 +233,7 @@ const SoundFX = {
                     gain.connect(ctx.destination);
                     osc.start(now + idx * 0.05);
                     osc.stop(now + idx * 0.05 + 0.45);
-                    this.activeOscillators.push(osc);
+                    this.trackOscillator(osc);
                 });
 
             } else if (effectName === "drop" || effectName === "cambio") {
@@ -245,7 +251,7 @@ const SoundFX = {
                 gain.connect(ctx.destination);
                 osc.start(now);
                 osc.stop(now + 0.22);
-                this.activeOscillators.push(osc);
+                this.trackOscillator(osc);
             }
         } catch (e) {
             console.log("Audio FX no disponible:", e);
@@ -262,11 +268,15 @@ function mostrarToast(mensaje) {
         toast = document.createElement("div");
         toast.id = "app-toast";
         toast.className = "app-toast";
+        toast.setAttribute("role", "status");
+        toast.setAttribute("aria-live", "polite");
         document.body.appendChild(toast);
     }
-    toast.innerText = mensaje;
+
+    toast.textContent = String(mensaje ?? "");
     toast.classList.add("visible");
-    setTimeout(() => {
+    clearTimeout(mostrarToast.timer);
+    mostrarToast.timer = setTimeout(() => {
         toast.classList.remove("visible");
     }, 2200);
 }
@@ -274,139 +284,177 @@ function mostrarToast(mensaje) {
 // ========================================================
 // INICIALIZACIÓN AL CARGAR EL DOM
 // ========================================================
-document.addEventListener("DOMContentLoaded", () => {
+function inicializarAplicacion() {
+    if (appInitialized) return;
+    appInitialized = true;
+
     initNavegacion();
     initCategorias();
     initPlanificadorOpciones();
     initCercaMio();
     initSorprendeme();
+    initFichaClima();
     initControlSonido();
-});
+    initAccionesDelegadas();
+    cargarFavoritos();
+
+    // GPS al cargar: getCurrentPosition automático, feed por distancia, fallback Plaza San Martín.
+    initGeolocalizacion();
+
+    const initialHash = window.location.hash.replace(/^#/, "");
+    if (initialHash) manejarHash(initialHash);
+}
 
 // ========================================================
 // NAVEGACIÓN Y GESTIÓN DE VISTAS CON MEMORIA DE ORIGEN
 // ========================================================
 
 function initNavegacion() {
-    const btnPlan = document.querySelector("#btn-open-planner");
-    if (btnPlan) {
-        btnPlan.addEventListener("click", () => {
-            mostrarSeccion("planner");
-            SoundFX.play("plan");
-        });
-    }
+    window.addEventListener("hashchange", () => {
+        manejarHash(window.location.hash.replace(/^#/, ""));
+    });
 
-    const btnNearby = document.querySelector("#btn-open-nearby");
-    if (btnNearby) {
-        btnNearby.addEventListener("click", () => {
-            abrirCercaMio();
-            SoundFX.play("bird");
+    // Admite tanto data-section como data-view/data-nav en el marcado existente.
+    const navigationElements = new Set(
+        document.querySelectorAll("[data-section], [data-view], [data-nav]")
+    );
+    navigationElements.forEach(element => {
+        element.addEventListener("click", event => {
+            const section = element.dataset.section || element.dataset.view || element.dataset.nav;
+            if (!section) return;
+            event.preventDefault();
+            mostrarSeccion(section);
         });
-    }
-
-    const btnSurprise = document.querySelector("#btn-open-surprise");
-    if (btnSurprise) {
-        btnSurprise.addEventListener("click", () => {
-            abrirSorprendeme();
-            SoundFX.play("shimmer");
-        });
-    }
+    });
 }
 
-function mostrarSeccion(seccionId) {
-    const hero = document.querySelector("#hero-section");
-    const assistant = document.querySelector("#assistant-banner");
-    const categories = document.querySelector("#categories-section");
-    const results = document.querySelector("#results");
-    const planner = document.querySelector("#planner");
-    const detail = document.querySelector("#detail");
-    const nearby = document.querySelector("#nearby");
-    const surprise = document.querySelector("#surprise");
+function normalizarSeccion(seccionId) {
+    const requestedId = String(seccionId || "home").replace(/^#/, "");
+    return APP_CONSTANTS.SECTION_ALIASES[requestedId] || requestedId;
+}
 
-    // Si vamos a abrir el detalle, guardamos cuál era la vista anterior exacta
-    if (seccionId === "detail") {
-        if (!planner.classList.contains("hidden")) {
-            AppState.lastView = "planner";
-        } else if (!results.classList.contains("hidden")) {
-            AppState.lastView = "results";
-        } else if (!nearby.classList.contains("hidden")) {
-            AppState.lastView = "nearby";
-        } else if (!surprise.classList.contains("hidden")) {
-            AppState.lastView = "surprise";
-        } else {
-            AppState.lastView = "home";
+function vistaParaHash(seccionId) {
+    if (seccionId === "hero-section") return "home";
+    return seccionId;
+}
+
+function manejarHash(hash) {
+    let requestedId = "home";
+    try {
+        requestedId = decodeURIComponent(String(hash || "")).trim() || "home";
+    } catch (error) {
+        console.warn("Hash de navegación inválido; se muestra el inicio.", error);
+    }
+
+    const routeParts = requestedId.split("/");
+    if (routeParts[0] === "detail" && routeParts[1]) {
+        const linkedPlace = buscarLugarSeguro(routeParts[1]);
+        if (linkedPlace) {
+            AppState.detailPlace = linkedPlace;
+            mostrarDetalle(linkedPlace);
+            return;
         }
+        requestedId = "detail";
     }
 
-    // Ocultar todas las vistas
-    hero.classList.add("hidden");
-    assistant.classList.add("hidden");
-    categories.classList.add("hidden");
-    results.classList.add("hidden");
-    planner.classList.add("hidden");
-    detail.classList.add("hidden");
-    nearby.classList.add("hidden");
-    surprise.classList.add("hidden");
+    const supportedViews = new Set([
+        "home", "nearby", "categories", "categories-section",
+        "planner", "surprise", "profile", "results", "detail"
+    ]);
 
-    // Mostrar la vista solicitada
-    if (seccionId === "home") {
-        hero.classList.remove("hidden");
-        assistant.classList.remove("hidden");
-        categories.classList.remove("hidden");
-        AppState.lastView = "home";
-    } else if (seccionId === "planner") {
-        planner.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (seccionId === "results") {
-        results.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (seccionId === "detail") {
-        detail.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (seccionId === "nearby") {
-        nearby.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    } else if (seccionId === "surprise") {
-        surprise.classList.remove("hidden");
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-}
-
-function volverInicio() {
-    mostrarSeccion("home");
-    SoundFX.play("drop");
-}
-
-function volverAtras() {
-    const detail = document.querySelector("#detail");
-    const planner = document.querySelector("#planner");
-    const results = document.querySelector("#results");
-    const nearby = document.querySelector("#nearby");
-    const surprise = document.querySelector("#surprise");
-
-    SoundFX.play("drop");
-
-    // Si estamos en la ficha de detalle, volvemos a la vista previa que originó la visita
-    if (!detail.classList.contains("hidden")) {
-        if (AppState.lastView === "planner") {
-            mostrarSeccion("planner");
-        } else if (AppState.lastView === "results") {
-            mostrarSeccion("results");
-        } else if (AppState.lastView === "nearby") {
-            mostrarSeccion("nearby");
-        } else if (AppState.lastView === "surprise") {
-            mostrarSeccion("surprise");
-        } else {
-            mostrarSeccion("home");
-        }
+    if (!supportedViews.has(requestedId)) {
+        mostrarSeccion("home", { updateHash: false });
         return;
     }
 
-    // Desde cualquier sección secundaria, volvemos al inicio
-    if (!planner.classList.contains("hidden") ||
-        !results.classList.contains("hidden") ||
-        !nearby.classList.contains("hidden") ||
-        !surprise.classList.contains("hidden")) {
+    // Un detalle requiere un lugar seleccionado; no se muestra vacío por un hash directo.
+    if (requestedId === "detail" && !AppState.detailPlace) {
+        mostrarSeccion("home", { updateHash: false });
+        return;
+    }
+
+    mostrarSeccion(requestedId, { updateHash: false });
+}
+
+function actualizarHash(seccionId) {
+    let hash = vistaParaHash(seccionId);
+    if (seccionId === "detail" && AppState.detailPlace?.id != null) {
+        hash = `detail/${encodeURIComponent(AppState.detailPlace.id)}`;
+    }
+    if (window.location.hash.replace(/^#/, "") === hash) return;
+
+    if (window.history?.pushState) {
+        window.history.pushState({ view: hash }, "", `#${encodeURIComponent(hash)}`);
+    } else {
+        window.location.hash = hash;
+    }
+}
+
+function actualizarNavegacionActiva(targetId) {
+    const navId = APP_CONSTANTS.NAV_BY_SECTION[targetId];
+    if (typeof setActiveNav === "function" && navId) {
+        setActiveNav(navId);
+        return;
+    }
+
+    document.querySelectorAll(".bottom-nav a, .bottom-nav button, [data-nav]").forEach(item => {
+        const itemSection = item.dataset.section || item.dataset.view || item.dataset.nav;
+        const isActive = itemSection && normalizarSeccion(itemSection) === targetId;
+        item.classList.toggle("active", Boolean(isActive));
+        if (isActive) item.setAttribute("aria-current", "page");
+        else item.removeAttribute("aria-current");
+    });
+}
+
+function mostrarSeccion(seccionId, { updateHash = true } = {}) {
+    const requestedId = String(seccionId || "home").replace(/^#/, "");
+    const targetId = normalizarSeccion(requestedId);
+
+    if (!APP_CONSTANTS.SECTION_IDS.includes(targetId)) {
+        console.warn(`Sección no encontrada: ${requestedId}`);
+        return false;
+    }
+
+    if (targetId === "detail" && AppState.currentView !== "detail") {
+        AppState.lastView = AppState.currentView || "home";
+    }
+
+    const target = document.getElementById(targetId);
+    if (!target) {
+        console.warn(`No existe el elemento #${targetId}`);
+        return false;
+    }
+
+    APP_CONSTANTS.SECTION_IDS.forEach(id => {
+        document.getElementById(id)?.classList.add("hidden");
+    });
+    target.classList.remove("hidden");
+    AppState.currentView = requestedId === "hero-section" ? "home" : requestedId;
+
+    if (updateHash) actualizarHash(requestedId === "nearby" ? "nearby" : targetId);
+    actualizarNavegacionActiva(targetId);
+
+    if (typeof window.scrollTo === "function") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    return true;
+}
+
+function volverInicio() {
+    SoundFX.play("cambio");
+    AppState.lastView = "home";
+    mostrarSeccion("home");
+}
+
+function volverAtras() {
+    SoundFX.play("cambio");
+
+    if (AppState.currentView === "detail") {
+        mostrarSeccion(AppState.lastView || "home");
+        return;
+    }
+
+    if (AppState.currentView !== "home") {
         volverInicio();
     }
 }
@@ -415,84 +463,233 @@ function volverAtras() {
 // GEOLOCALIZACIÓN Y DISTANCIA (FÓRMULA DE HAVERSINE)
 // ========================================================
 
+function esCoordenadaValida(lat, lng) {
+    return Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) &&
+        Number(lat) >= -90 && Number(lat) <= 90 &&
+        Number(lng) >= -180 && Number(lng) <= 180;
+}
+
+function obtenerCentroDeReferencia() {
+    const configuredCenter = typeof CONFIG_APP !== "undefined" && CONFIG_APP?.coordenadasCentro
+        ? CONFIG_APP.coordenadasCentro
+        : APP_CONSTANTS.DEFAULT_CENTER;
+
+    if (esCoordenadaValida(configuredCenter?.lat, configuredCenter?.lng)) {
+        return {
+            lat: Number(configuredCenter.lat),
+            lng: Number(configuredCenter.lng)
+        };
+    }
+    return { ...APP_CONSTANTS.DEFAULT_CENTER };
+}
+
 function calcularDistanciaKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radio de la Tierra en km
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    if (!esCoordenadaValida(lat1, lon1) || !esCoordenadaValida(lat2, lon2)) {
+        return Number.NaN;
+    }
+
+    const earthRadiusKm = 6371;
+    const latitude1 = Number(lat1) * (Math.PI / 180);
+    const latitude2 = Number(lat2) * (Math.PI / 180);
+    const dLat = (Number(lat2) - Number(lat1)) * (Math.PI / 180);
+    const dLon = (Number(lon2) - Number(lon1)) * (Math.PI / 180);
+    const a = Math.min(1, Math.max(0,
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(latitude1) * Math.cos(latitude2) * Math.sin(dLon / 2) ** 2
+    ));
+
+    return earthRadiusKm * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
 function formatearDistancia(km) {
-    if (km < 1) {
-        return `a ${Math.round(km * 1000)} m`;
-    }
+    if (!Number.isFinite(km) || km < 0) return "distancia no disponible";
+    if (km < 1) return `a ${Math.round(km * 1000)} m`;
     return `a ${km.toFixed(1)} km`;
 }
 
 function calcularEstimacionTraslado(km) {
-    if (km <= 1.5) {
+    if (!Number.isFinite(km) || km < 0) return "";
+    if (km <= APP_CONSTANTS.WALKING_LIMIT_KM) {
         const mins = Math.max(1, Math.round(km * 12));
-        return `<span class="tag-badge walk-badge">🚶 ~${mins} min a pie</span>`;
-    } else {
-        // Entre 1.5 km y 10 km (≤10 km es el límite de Cerca Tuyo)
-        const mins = Math.max(3, Math.round(km * 1.6 + 2));
-        return `<span class="tag-badge car-badge">🚗 ~${mins} min en auto</span>`;
+        return `🚶 ~${mins} min a pie`;
+    }
+
+    const mins = Math.max(3, Math.round(km * 1.6 + 2));
+    return `🚗 ~${mins} min en auto`;
+}
+
+function obtenerRadioCercaniaKm() {
+    const configured = typeof CONFIG_APP !== "undefined" ? Number(CONFIG_APP.radioCercaniaKm) : NaN;
+    return Number.isFinite(configured) && configured > 0 ? configured : APP_CONSTANTS.NEARBY_LIMIT_KM;
+}
+
+function esImperdibleSiempreVisible(lugar) {
+    const ids = typeof CONFIG_APP !== "undefined" && Array.isArray(CONFIG_APP.idsImperdiblesSiempreVisibles)
+        ? CONFIG_APP.idsImperdiblesSiempreVisibles
+        : [1];
+    if (ids.includes(lugar?.id)) return true;
+    const nombre = textoNormalizado(lugar?.nombre);
+    return nombre.includes("parque nacional iguazú") || nombre.includes("parque nacional iguazu");
+}
+
+function actualizarEstadoGps(texto, estado) {
+    const gpsStatus = document.querySelector("#nearby-gps-status");
+    if (!gpsStatus) return;
+    gpsStatus.className = `gps-ref-pill ${estado || ""}`.trim();
+    const icon = document.createElement("span");
+    icon.className = "gps-icon";
+    icon.textContent = "📍";
+    const label = document.createElement("span");
+    label.className = "gps-text";
+    label.textContent = String(texto ?? "").replace(/^📍\s*/, "");
+    gpsStatus.replaceChildren(icon, label);
+}
+
+function leerCoordenadasGuardadas() {
+    try {
+        const raw = localStorage.getItem(APP_CONSTANTS.GPS_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!esCoordenadaValida(parsed?.lat, parsed?.lng)) return null;
+        return { lat: Number(parsed.lat), lng: Number(parsed.lng) };
+    } catch (error) {
+        console.info("No se pudo leer la última ubicación guardada.", error);
+        return null;
     }
 }
 
-function obtenerUbicacionUsuario(onSuccess) {
-    const gpsStatus = document.querySelector("#nearby-gps-status");
+function guardarCoordenadasUsuario(coords) {
+    if (!esCoordenadaValida(coords?.lat, coords?.lng)) return;
+    try {
+        localStorage.setItem(APP_CONSTANTS.GPS_STORAGE_KEY, JSON.stringify({
+            lat: Number(coords.lat),
+            lng: Number(coords.lng),
+            savedAt: Date.now()
+        }));
+    } catch (error) {
+        console.info("No se pudo guardar la ubicación para el arranque offline.", error);
+    }
+}
 
-    if ("geolocation" in navigator) {
-        if (gpsStatus) {
-            gpsStatus.innerText = "🔍 Localizando GPS…";
-            gpsStatus.className = "gps-pill searching";
-        }
+function aplicarUbicacionGps(lat, lng, accuracy) {
+    AppState.userCoords = { lat: Number(lat), lng: Number(lng) };
+    AppState.gpsActive = true;
+    guardarCoordenadasUsuario(AppState.userCoords);
+    const accuracyM = Number.isFinite(Number(accuracy)) ? Math.round(Number(accuracy)) : null;
+    const precisionLabel = accuracyM ? ` (±${accuracyM} m)` : "";
+    actualizarEstadoGps(`GPS Activo${precisionLabel}`, "active");
+    return accuracyM;
+}
 
+function aplicarFallbackUbicacion() {
+    AppState.userCoords = obtenerCentroDeReferencia();
+    AppState.gpsActive = false;
+    actualizarEstadoGps("Ref: Plaza San Martín (Centro)", "fallback");
+}
+
+function restaurarUbicacionGuardada() {
+    const stored = leerCoordenadasGuardadas();
+    if (!stored) return false;
+    AppState.userCoords = stored;
+    AppState.gpsActive = false;
+    actualizarEstadoGps("Última ubicación conocida (offline)", "stored");
+    return true;
+}
+
+function refrescarFeedCercano() {
+    renderizarCercaMio(AppState.filtroCercaMio || "todos");
+}
+
+function esPermisoGpsDenegado(error) {
+    if (!error) return false;
+    if (Number(error.code) === 1) return true;
+    return /denied/i.test(String(error.message || ""));
+}
+
+function aplicarUbicacionTrasErrorGps(error) {
+    if (esPermisoGpsDenegado(error)) {
+        aplicarFallbackUbicacion();
+        mostrarToast("📍 Permiso GPS denegado · referencia Plaza San Martín (Centro)");
+        return;
+    }
+
+    if (restaurarUbicacionGuardada()) {
+        mostrarToast("📍 GPS no disponible · usando última ubicación conocida");
+        return;
+    }
+
+    aplicarFallbackUbicacion();
+    mostrarToast("📍 Usando Plaza San Martín (Centro) como referencia");
+}
+
+function iniciarSeguimientoGps() {
+    if (typeof navigator === "undefined" || !navigator.geolocation || gpsWatchId != null) return;
+
+    gpsWatchId = navigator.geolocation.watchPosition(
+        position => {
+            const now = Date.now();
+            if (now - lastGpsWatchUpdate < 20000) return;
+            lastGpsWatchUpdate = now;
+            const { latitude, longitude, accuracy } = position.coords || {};
+            if (!esCoordenadaValida(latitude, longitude)) return;
+            aplicarUbicacionGps(latitude, longitude, accuracy);
+            refrescarFeedCercano();
+        },
+        () => { /* El watch es opcional; el fallback ya cubre el permiso denegado. */ },
+        { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
+    );
+}
+
+function initGeolocalizacion() {
+    if (!restaurarUbicacionGuardada()) aplicarFallbackUbicacion();
+    refrescarFeedCercano();
+    obtenerUbicacionUsuario(refrescarFeedCercano, refrescarFeedCercano);
+}
+
+function obtenerUbicacionUsuario(onSuccess, onError) {
+    const success = typeof onSuccess === "function" ? onSuccess : refrescarFeedCercano;
+    const failure = typeof onError === "function" ? onError : () => { };
+    const requestId = ++gpsRequestId;
+    const completar = (huboExito, error) => {
+        if (requestId !== gpsRequestId) return;
+        if (huboExito) success();
+        else failure(error);
+        refrescarFeedCercano();
+    };
+
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+        aplicarUbicacionTrasErrorGps({ code: 2, message: "Geolocation API no disponible" });
+        completar(false);
+        return;
+    }
+
+    actualizarEstadoGps("Localizando GPS…", "searching");
+
+    try {
         navigator.geolocation.getCurrentPosition(
-            (position) => {
-                AppState.userCoords = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                AppState.gpsActive = true;
-                const accuracyM = position.coords.accuracy ? Math.round(position.coords.accuracy) : null;
-                const precisionLabel = accuracyM ? ` (±${accuracyM}m)` : "";
-                if (gpsStatus) {
-                    gpsStatus.innerText = `📍 GPS Activo${precisionLabel}`;
-                    gpsStatus.className = "gps-pill active";
+            position => {
+                const { latitude, longitude, accuracy } = position.coords || {};
+                if (!esCoordenadaValida(latitude, longitude)) {
+                    aplicarUbicacionTrasErrorGps(new Error("Coordenadas GPS inválidas"));
+                    completar(false, new Error("Coordenadas GPS inválidas"));
+                    return;
                 }
-                // Mostrar precisión real en el toast, sin adjetivos sobre la calidad
-                const toastPrecision = accuracyM ? ` · precisión ±${accuracyM} m` : "";
-                mostrarToast(`📍 Ubicación GPS obtenida${toastPrecision}`);
-                if (onSuccess) onSuccess();
+
+                const accuracyM = aplicarUbicacionGps(latitude, longitude, accuracy);
+                mostrarToast(`📍 Ubicación GPS obtenida${accuracyM ? ` · precisión ±${accuracyM} m` : ""}`);
+                iniciarSeguimientoGps();
+                completar(true);
             },
-            (error) => {
-                console.log("Ubicación rechazada o no disponible, usando Centro de Iguazú:", error.message);
-                AppState.userCoords = CONFIG_APP.coordenadasCentro;
-                AppState.gpsActive = false;
-                if (gpsStatus) {
-                    gpsStatus.innerText = "📍 Ref: Plaza San Martín (Centro)";
-                    gpsStatus.className = "gps-pill fallback";
-                }
-                mostrarToast("📍 Usando Centro de Puerto Iguazú como referencia");
-                if (onSuccess) onSuccess();
+            error => {
+                console.info("Ubicación GPS no disponible.", error?.message || "");
+                aplicarUbicacionTrasErrorGps(error);
+                completar(false, error);
             },
-            { timeout: 10000, enableHighAccuracy: true, maximumAge: 30000 }
+            { timeout: 10000, enableHighAccuracy: true, maximumAge: 0 }
         );
-    } else {
-        AppState.userCoords = CONFIG_APP.coordenadasCentro;
-        AppState.gpsActive = false;
-        if (gpsStatus) {
-            gpsStatus.innerText = "📍 Ref: Plaza San Martín (Centro)";
-            gpsStatus.className = "gps-pill fallback";
-        }
-        if (onSuccess) onSuccess();
+    } catch (error) {
+        aplicarUbicacionTrasErrorGps(error);
+        completar(false, error);
     }
 }
 
@@ -500,162 +697,523 @@ function obtenerUbicacionUsuario(onSuccess) {
 // MÓDULO CERCA MÍO (PROXIMIDAD & DISPONIBILIDAD EN TIEMPO REAL)
 // ========================================================
 
-function initCercaMio() {
-    // Filtros por botón/pill
-    const filterPills = document.querySelectorAll(".filter-pill[data-nearby-filter]");
-    filterPills.forEach(pill => {
-        pill.addEventListener("click", function() {
-            filterPills.forEach(p => p.classList.remove("active"));
-            this.classList.add("active");
-            AppState.filtroCercaMio = this.dataset.nearbyFilter;
-            renderizarCercaMio(AppState.filtroCercaMio);
-            SoundFX.play("drop");
-        });
+function obtenerBaseDeLugares() {
+    return typeof lugaresReales !== "undefined" && Array.isArray(lugaresReales)
+        ? lugaresReales.filter(Boolean)
+        : [];
+}
+
+function obtenerFechaHoraSegura() {
+    if (typeof obtenerFechaHoraArgentina === "function") {
+        try {
+            const result = obtenerFechaHoraArgentina();
+            if (result && Number.isFinite(Number(result.horaNumero))) return result;
+        } catch (error) {
+            console.warn("No se pudo obtener la hora de Argentina.", error);
+        }
+    }
+
+    const parts = new Intl.DateTimeFormat("es-AR", {
+        timeZone: "America/Argentina/Buenos_Aires",
+        hour: "numeric",
+        hour12: false,
+        weekday: "long"
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return { horaNumero: Number(values.hour), diaSemana: values.weekday };
+}
+
+function obtenerDisponibilidadSegura(lugar, horaActual, diaActual) {
+    try {
+        if (typeof obtenerEstadoDisponibilidad === "function") {
+            const result = obtenerEstadoDisponibilidad(lugar, horaActual, diaActual);
+            if (result && typeof result === "object") {
+                return {
+                    abierto: result.abierto === true ? true : result.abierto === false ? false : null,
+                    badgeHtml: ""
+                };
+            }
+        }
+        if (typeof estaAbiertoEnHorario === "function") {
+            return { abierto: Boolean(estaAbiertoEnHorario(lugar, horaActual, diaActual)), badgeHtml: "" };
+        }
+    } catch (error) {
+        console.warn("No se pudo calcular la disponibilidad de un lugar.", error);
+    }
+    return { abierto: null, badgeHtml: "" };
+}
+
+function textoSeguro(valor, fallback = "") {
+    const text = String(valor ?? "").trim();
+    return text || fallback;
+}
+
+function textoNormalizado(valor) {
+    return textoSeguro(valor).toLocaleLowerCase("es-AR");
+}
+
+function listaDeTextos(valor) {
+    if (Array.isArray(valor)) return valor.map(textoNormalizado).filter(Boolean);
+    return textoSeguro(valor) ? [textoNormalizado(valor)] : [];
+}
+
+function lugarCoincideConFiltro(lugar, categoriaFiltro) {
+    const filtro = textoNormalizado(categoriaFiltro);
+    if (filtro === "todos") return true;
+
+    const intereses = listaDeTextos(lugar.intereses);
+    const etiquetas = listaDeTextos(lugar.etiquetas);
+    const categoria = textoNormalizado(lugar.categoria);
+    const tipo = textoNormalizado(lugar.tipo);
+    const precio = textoNormalizado(lugar.precio);
+
+    if (filtro === "ferias_compras") {
+        return categoria === "compras" || intereses.includes("compras") ||
+            tipo.includes("feria") || etiquetas.some(tag => tag.includes("feria") || tag.includes("compras"));
+    }
+
+    if (filtro === "gratuitos") {
+        return lugar.gratuito === true || /gratuito|gratis|libre/.test(precio);
+    }
+
+    return categoria === filtro ||
+        intereses.includes(filtro) ||
+        etiquetas.some(tag => tag.includes(filtro)) ||
+        tipo.includes(filtro);
+}
+
+function crearPill(texto, className = "meta-pill") {
+    const pill = document.createElement("span");
+    pill.className = className;
+    pill.textContent = texto;
+    return pill;
+}
+
+function crearBadgeDisponibilidad(disponibilidad) {
+    if (disponibilidad?.abierto === true) {
+        return crearPill("🟢 Abierto ahora", "meta-pill status-open");
+    }
+    if (disponibilidad?.abierto === false) {
+        return crearPill("🔴 Cerrado ahora", "meta-pill status-closed");
+    }
+    return crearPill("🕒 Consultar horario", "meta-pill hours-pill");
+}
+
+function crearBadgeGasto(lugar) {
+    if (lugar.gratuito === true) return crearPill("🎁 Gratuito", "meta-pill cost-pill");
+
+    if (lugar.rangoPrecio) {
+        const rango = textoSeguro(lugar.rangoPrecio).trim().toLowerCase();
+        if (rango === "$") return crearPill("💰 Económico ($)", "meta-pill cost-pill");
+        if (rango === "$$") return crearPill("💵 Medio ($$)", "meta-pill cost-pill");
+        if (rango === "$$$") return crearPill("💎 Alto ($$$)", "meta-pill cost-pill");
+        if (rango === "consultar") return crearPill("Consultar tarifa", "meta-pill cost-pill");
+        return crearPill(lugar.rangoPrecio, "meta-pill cost-pill");
+    }
+
+    const nivel = textoNormalizado(lugar.nivelGasto);
+    if (nivel === "economico") return crearPill("💰 Económico", "meta-pill cost-pill");
+    if (nivel === "medio") return crearPill("💵 Medio", "meta-pill cost-pill");
+    if (nivel === "alto") return crearPill("💎 Alto", "meta-pill cost-pill");
+    return crearPill(textoSeguro(lugar.precio, "Consultar tarifa"), "meta-pill cost-pill");
+}
+
+function obtenerUrlImagenSegura(url) {
+    const candidate = textoSeguro(url, APP_CONSTANTS.FALLBACK_IMAGE);
+    if (/^javascript:/i.test(candidate) || /^data:/i.test(candidate)) {
+        return APP_CONSTANTS.FALLBACK_IMAGE;
+    }
+    return candidate;
+}
+
+function obtenerImagenLugar(lugar) {
+    const imagenPropia = textoSeguro(lugar?.imagen);
+    if (imagenPropia) return obtenerUrlImagenSegura(imagenPropia);
+
+    const nombre = textoNormalizado(lugar?.nombre);
+    const categoria = textoNormalizado(lugar?.categoria);
+    const intereses = listaDeTextos(lugar?.intereses);
+
+    if (nombre.includes("costanera") || nombre.includes("mirador")) return "img_mirador.jpg";
+    if (nombre.includes("hito tres fronteras")) return "img_hito.jpg";
+    if (intereses.includes("fauna") || nombre.includes("colibr") || nombre.includes("guira")) return "tuki-branch.jpg";
+    return APP_CONSTANTS.CATEGORY_IMAGES[categoria] || APP_CONSTANTS.FALLBACK_IMAGE;
+}
+
+function actualizarContadorFavoritos() {
+    const count = AppState.favoriteIds.size;
+    const label = document.querySelector("#profile-favorite-count");
+    if (label) label.textContent = count ? `${count} ${count === 1 ? "lugar guardado" : "lugares guardados"} en este dispositivo.` : "Todavía no guardaste lugares.";
+}
+
+function cargarFavoritos() {
+    try {
+        const stored = JSON.parse(localStorage.getItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY) || "[]");
+        AppState.favoriteIds = new Set(Array.isArray(stored) ? stored.map(String) : []);
+    } catch (error) {
+        AppState.favoriteIds = new Set();
+        console.info("No se pudieron cargar los favoritos guardados.", error);
+    }
+    actualizarContadorFavoritos();
+}
+
+function guardarFavoritos() {
+    try {
+        localStorage.setItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY, JSON.stringify([...AppState.favoriteIds]));
+    } catch (error) {
+        console.info("No se pudieron guardar los favoritos.", error);
+    }
+}
+
+function esLugarFavorito(lugar) {
+    return lugar?.id != null && AppState.favoriteIds.has(String(lugar.id));
+}
+
+function actualizarBotonFavorito(button, lugar) {
+    if (!button || !lugar) return;
+    const active = esLugarFavorito(lugar);
+    button.classList.toggle("is-favorite", active);
+    button.textContent = active ? "★ Guardado" : "☆ Guardar";
+    button.setAttribute("aria-pressed", String(active));
+    button.setAttribute("aria-label", active ? `Quitar ${textoSeguro(lugar.nombre)} de favoritos` : `Guardar ${textoSeguro(lugar.nombre)} en favoritos`);
+}
+
+function alternarFavorito(lugar) {
+    if (!lugar?.id) return;
+    const id = String(lugar.id);
+    const wasFavorite = AppState.favoriteIds.has(id);
+    if (wasFavorite) AppState.favoriteIds.delete(id);
+    else AppState.favoriteIds.add(id);
+    guardarFavoritos();
+    actualizarContadorFavoritos();
+    mostrarToast(wasFavorite ? "☆ Lugar quitado de favoritos" : "★ Lugar guardado en favoritos");
+    document.querySelectorAll('[data-action="favorite"]').forEach(button => {
+        if (String(button.dataset.placeId) === id) actualizarBotonFavorito(button, lugar);
+    });
+    if (AppState.detailPlace?.id != null && String(AppState.detailPlace.id) === id) {
+        actualizarBotonFavorito(document.querySelector("#detail-favorite-btn"), lugar);
+    }
+}
+
+function construirUrlMaps(lugar) {
+    const query = lugar.coordenadas && esCoordenadaValida(lugar.coordenadas.lat, lugar.coordenadas.lng)
+        ? `${Number(lugar.coordenadas.lat)},${Number(lugar.coordenadas.lng)}`
+        : `${textoSeguro(lugar.nombre)}, ${textoSeguro(lugar.direccion || lugar.ubicacion)}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function obtenerMomentosLegibles(lugar) {
+    const momentos = Array.isArray(lugar?.momentos) ? lugar.momentos : [];
+    const etiquetas = {
+        mañana: "Mañana",
+        mediodía: "Mediodía",
+        tarde: "Tarde",
+        atardecer: "Atardecer",
+        noche: "Noche"
+    };
+    return momentos.map(momento => etiquetas[momento] || momento).filter(Boolean).slice(0, 3).join(" · ");
+}
+
+function requiereCoordinacionLugar(lugar) {
+    const texto = [lugar?.horario, lugar?.precio, lugar?.promocion, lugar?.tipo, ...(Array.isArray(lugar?.etiquetas) ? lugar.etiquetas : [])]
+        .map(valor => textoNormalizado(valor)).join(" ");
+    return /reserva|reservas|coordina|autorizaci|gu[ií]a|turno|anticip/.test(texto);
+}
+
+function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = {}) {
+    const article = document.createElement("article");
+    article.className = "place-feed-card";
+    article.dataset.placeName = textoSeguro(lugar.nombre);
+
+    const thumbWrap = document.createElement("div");
+    thumbWrap.className = "place-card-thumb-wrap";
+    const image = document.createElement("img");
+    image.className = "place-card-thumb-img";
+    image.src = obtenerImagenLugar(lugar);
+    image.alt = textoSeguro(lugar.nombre, "Lugar de Iguazú");
+    image.loading = "lazy";
+    image.addEventListener("error", () => {
+        if (image.dataset.fallbackApplied) return;
+        image.dataset.fallbackApplied = "true";
+        image.src = APP_CONSTANTS.FALLBACK_IMAGE;
+    });
+    const imageBadge = document.createElement("span");
+    imageBadge.className = "place-card-thumb-badge";
+    imageBadge.textContent = textoSeguro(lugar.icono, "🌿");
+    imageBadge.setAttribute("aria-hidden", "true");
+    thumbWrap.append(image, imageBadge);
+
+    const main = document.createElement("div");
+    main.className = "place-card-main-info";
+    const titleRow = document.createElement("div");
+    titleRow.className = "place-card-title-row";
+    const title = document.createElement("h3");
+    title.className = "place-card-title";
+    title.textContent = textoSeguro(lugar.nombre, "Lugar sin nombre");
+    titleRow.appendChild(title);
+    if (esImperdibleSiempreVisible(lugar)) {
+        titleRow.appendChild(crearPill("⭐ Imperdible destacado", "badge-featured-gold"));
+    } else if (lugar.destacado) {
+        titleRow.appendChild(crearPill("⭐ Destacado", "badge-featured-gold"));
+    }
+    if (lugar.promocion) titleRow.appendChild(crearPill(`🏷️ ${textoSeguro(lugar.promocion)}`, "meta-pill promo-pill"));
+
+    const description = document.createElement("p");
+    description.className = "place-card-description";
+    description.textContent = textoSeguro(lugar.descripcion, "Información no disponible.");
+
+    const metaLine = document.createElement("div");
+    metaLine.className = "place-card-meta-line";
+    if (Number.isFinite(distancia)) {
+        metaLine.appendChild(crearPill(`📍 ${formatearDistancia(distancia)}`, "meta-pill dist-pill"));
+        const traslado = calcularEstimacionTraslado(distancia);
+        if (traslado) metaLine.appendChild(crearPill(traslado, distancia <= APP_CONSTANTS.WALKING_LIMIT_KM ? "tag-badge walk-badge" : "tag-badge car-badge"));
+        metaLine.appendChild(crearBadgeDisponibilidad(disponibilidad));
+    } else {
+        metaLine.appendChild(crearPill(`📍 ${textoSeguro(lugar.ubicacion || lugar.direccion, "Ubicación no disponible")}`, "meta-pill loc-pill"));
+        metaLine.appendChild(crearPill(`🕒 ${textoSeguro(lugar.horario, "Consultar horarios")}`, "meta-pill hours-pill"));
+    }
+
+    const subLine = document.createElement("div");
+    subLine.className = "place-card-meta-line sub-line";
+    subLine.appendChild(crearBadgeGasto(lugar));
+    const duracion = Number(lugar.duracionHoras);
+    if (Number.isFinite(duracion) && duracion > 0) {
+        subLine.appendChild(crearPill(`⏱️ ~${duracion} h`, "meta-pill"));
+    }
+    const momentos = obtenerMomentosLegibles(lugar);
+    if (momentos) subLine.appendChild(crearPill(`🕐 ${momentos}`, "meta-pill"));
+    if (lugar.alAireLibre === false) {
+        subLine.appendChild(crearPill("🌧️ Techado", "meta-pill weather-pill"));
+    } else if (lugar.alAireLibre === true) {
+        subLine.appendChild(crearPill("🌿 Exterior", "meta-pill weather-pill"));
+    }
+    if (requiereCoordinacionLugar(lugar)) {
+        subLine.appendChild(crearPill("📅 Requiere coordinación", "meta-pill coordination-pill"));
+    }
+    if (Number.isFinite(distancia)) subLine.appendChild(crearPill(`🕒 ${textoSeguro(lugar.horario, "Consultar horarios")}`, "meta-pill hours-pill"));
+
+    main.append(titleRow, description, metaLine);
+    if (subLine.childElementCount) main.appendChild(subLine);
+
+    const actions = document.createElement("div");
+    actions.className = "place-card-actions-col";
+    const detailButton = document.createElement("button");
+    detailButton.type = "button";
+    detailButton.className = "btn-action-detail";
+    detailButton.dataset.action = "detail";
+    detailButton.dataset.placeName = textoSeguro(lugar.nombre);
+    detailButton.setAttribute("aria-label", `Ver detalle de ${textoSeguro(lugar.nombre)}`);
+    detailButton.innerHTML = '<span class="action-icon">☆</span><span>Ver detalle</span>';
+
+    const favoriteButton = document.createElement("button");
+    favoriteButton.type = "button";
+    favoriteButton.className = "btn-action-favorite";
+    favoriteButton.dataset.action = "favorite";
+    favoriteButton.dataset.placeId = String(lugar.id ?? "");
+    favoriteButton.setAttribute("aria-pressed", String(esLugarFavorito(lugar)));
+    favoriteButton.setAttribute("aria-label", `${esLugarFavorito(lugar) ? "Quitar" : "Guardar"} ${textoSeguro(lugar.nombre)} ${esLugarFavorito(lugar) ? "de" : "en"} favoritos`);
+    favoriteButton.innerHTML = esLugarFavorito(lugar) ? "★ Guardado" : "☆ Guardar";
+
+    const directions = document.createElement("a");
+    directions.className = "btn-action-directions";
+    directions.href = construirUrlMaps(lugar);
+    directions.target = "_blank";
+    directions.rel = "noopener noreferrer";
+    directions.innerHTML = '<span class="action-icon">📍</span><span>Cómo llegar</span>';
+    actions.append(detailButton, favoriteButton, directions);
+
+    article.append(thumbWrap, main, actions);
+    return article;
+}
+
+function mostrarEstadoListaVacia(lista, mensaje = "No hay opciones para este filtro.") {
+    const empty = document.createElement("div");
+    empty.className = "place-card-item place-empty-state";
+    empty.setAttribute("role", "status");
+    empty.innerHTML = "<div aria-hidden=\"true\">🔍</div>";
+    const heading = document.createElement("h4");
+    heading.textContent = mensaje;
+    const detail = document.createElement("p");
+    detail.textContent = "Probá seleccionando otra opción o ampliando el criterio de búsqueda.";
+    empty.append(heading, detail);
+    lista.replaceChildren(empty);
+}
+
+function obtenerSelectoresFiltroCercaMio() {
+    return document.querySelectorAll(".filter-chip[data-nearby-filter], .filter-pill[data-nearby-filter]");
+}
+
+function aplicarFiltroCercaMio(filtroOrigen) {
+    const valor = textoNormalizado(
+        filtroOrigen instanceof Element ? filtroOrigen.dataset.nearbyFilter : filtroOrigen
+    ) || "todos";
+
+    obtenerSelectoresFiltroCercaMio().forEach(item => {
+        const activo = textoNormalizado(item.dataset.nearbyFilter) === valor;
+        item.classList.toggle("active", activo);
+        item.setAttribute("aria-pressed", String(activo));
     });
 
-    // Botón para refrescar la posición GPS
+    AppState.filtroCercaMio = valor;
+    renderizarCercaMio(valor);
+}
+
+function initCercaMio() {
+    obtenerSelectoresFiltroCercaMio().forEach(chip => {
+        chip.setAttribute("aria-pressed", String(chip.classList.contains("active")));
+    });
+
+    const destino = document.querySelector(".filter-chips-container") || document;
+    destino.addEventListener("click", event => {
+        const chip = event.target instanceof Element
+            ? event.target.closest(".filter-chip[data-nearby-filter], .filter-pill[data-nearby-filter]")
+            : null;
+        if (!chip) return;
+
+        event.preventDefault();
+        aplicarFiltroCercaMio(chip);
+        const container = chip.closest(".filter-chips-container");
+        if (container) {
+            const chipRect = chip.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const chipStart = container.scrollLeft + chipRect.left - containerRect.left;
+            const chipEnd = chipStart + chipRect.width;
+            const visibleStart = container.scrollLeft;
+            const visibleEnd = visibleStart + container.clientWidth;
+            if (chipStart < visibleStart || chipEnd > visibleEnd) {
+                const targetLeft = chipEnd > visibleEnd ? chipEnd - container.clientWidth : chipStart;
+                container.scrollTo({ left: Math.max(0, targetLeft), behavior: "smooth" });
+            }
+        }
+        SoundFX.play("drop");
+    });
+
     const btnRefreshGps = document.querySelector("#btn-refresh-gps");
-    if (btnRefreshGps) {
-        btnRefreshGps.addEventListener("click", () => {
-            SoundFX.play("cambio");
-            obtenerUbicacionUsuario(() => {
-                renderizarCercaMio(AppState.filtroCercaMio || "todos");
-            });
-        });
-    }
+    btnRefreshGps?.addEventListener("click", () => {
+        SoundFX.play("cambio");
+        obtenerUbicacionUsuario(refrescarFeedCercano);
+    });
+
+    const searchInput = document.querySelector("#nearby-search");
+    const searchClear = document.querySelector("#nearby-search-clear");
+    searchInput?.addEventListener("input", event => {
+        AppState.searchTerm = textoSeguro(event.target?.value);
+        renderizarCercaMio(AppState.filtroCercaMio || "todos");
+    });
+    searchClear?.addEventListener("click", () => {
+        if (!searchInput) return;
+        searchInput.value = "";
+        AppState.searchTerm = "";
+        renderizarCercaMio(AppState.filtroCercaMio || "todos");
+        searchInput.focus();
+    });
 }
 
 function abrirCercaMio() {
     mostrarSeccion("nearby");
     if (!AppState.userCoords) {
-        obtenerUbicacionUsuario(() => {
-            renderizarCercaMio(AppState.filtroCercaMio || "todos");
-        });
+        obtenerUbicacionUsuario(() => renderizarCercaMio(AppState.filtroCercaMio || "todos"));
     } else {
         renderizarCercaMio(AppState.filtroCercaMio || "todos");
     }
+}
+
+function obtenerCatalogoCompletoConDistancia() {
+    const places = obtenerBaseDeLugares();
+    const coords = AppState.userCoords && esCoordenadaValida(AppState.userCoords.lat, AppState.userCoords.lng)
+        ? AppState.userCoords
+        : obtenerCentroDeReferencia();
+    const { horaNumero: horaActual, diaSemana: diaActual } = obtenerFechaHoraSegura();
+
+    return places
+        .map(lugar => {
+            const tieneCoordenadas = esCoordenadaValida(lugar.coordenadas?.lat, lugar.coordenadas?.lng);
+            return {
+                lugar,
+                distancia: tieneCoordenadas
+                    ? calcularDistanciaKm(coords.lat, coords.lng, lugar.coordenadas.lat, lugar.coordenadas.lng)
+                    : null,
+                disponibilidad: obtenerDisponibilidadSegura(lugar, horaActual, diaActual)
+            };
+        })
+        .filter(item => item.distancia === null || Number.isFinite(item.distancia))
+        .sort((a, b) => {
+            if (a.distancia === null && b.distancia === null) return 0;
+            if (a.distancia === null) return 1;
+            if (b.distancia === null) return -1;
+            return a.distancia - b.distancia;
+        });
+}
+
+function itemCoincideConFiltroCercaMio(item, filtro) {
+    if (filtro === "todos") return true;
+    if (filtro === "favoritos") return esLugarFavorito(item.lugar);
+    if (filtro === "abiertos") return item.disponibilidad.abierto === true;
+    if (filtro === "caminando") return item.distancia <= APP_CONSTANTS.WALKING_LIMIT_KM;
+    return lugarCoincideConFiltro(item.lugar, filtro);
+}
+
+function lugarCoincideConBusqueda(lugar, termino) {
+    const query = textoNormalizado(termino);
+    if (!query) return true;
+    const haystack = [
+        lugar?.nombre,
+        lugar?.descripcion,
+        lugar?.categoria,
+        lugar?.tipo,
+        lugar?.ubicacion,
+        lugar?.direccion,
+        ...(Array.isArray(lugar?.intereses) ? lugar.intereses : []),
+        ...(Array.isArray(lugar?.etiquetas) ? lugar.etiquetas : [])
+    ].map(textoNormalizado).join(" ");
+    return haystack.includes(query);
+}
+
+function actualizarContadorCerca(total, totalCatalogo) {
+    const counter = document.querySelector("#nearby-count");
+    if (!counter) return;
+    const search = textoSeguro(AppState.searchTerm);
+    const suffix = search ? ` para “${search}”` : "";
+    counter.textContent = `${total} ${total === 1 ? "opción" : "opciones"}${suffix}`;
+    counter.dataset.totalCatalogo = String(totalCatalogo ?? total);
 }
 
 function renderizarCercaMio(categoriaFiltro = "todos") {
     const lista = document.querySelector("#nearby-list");
     if (!lista) return;
 
-    const coords = AppState.userCoords || CONFIG_APP.coordenadasCentro;
-    const now = new Date();
-    const horaActual = now.getHours() + (now.getMinutes() / 60);
-    const diaActual = now.getDay();
-
-    // 1. Calcular distancias y disponibilidad SOLO para lugares con coordenadas y a ≤10 km
-    //    Los lugares de más de 10 km siguen en la base de datos y son accesibles
-    //    desde categorías, planificador e itinerarios, pero NO aparecen en Cerca Tuyo.
-    const LIMITE_CERCA_KM = 10;
-    const lugaresConDistancia = lugaresReales
-        .filter(l => l.coordenadas && typeof l.coordenadas.lat === "number")
-        .map(lugar => {
-            const distancia = calcularDistanciaKm(coords.lat, coords.lng, lugar.coordenadas.lat, lugar.coordenadas.lng);
-            const disponibilidad = typeof obtenerEstadoDisponibilidad === "function"
-                ? obtenerEstadoDisponibilidad(lugar, horaActual, diaActual)
-                : { abierto: estaAbiertoEnHorario(lugar, horaActual, diaActual), badgeHtml: "" };
-            return { lugar, distancia, disponibilidad };
-        })
-        .filter(item => item.distancia <= LIMITE_CERCA_KM); // Excluir lugares lejanos
-
-    // 2. Ordenar de menor a mayor distancia (desde el más cercano)
-    lugaresConDistancia.sort((a, b) => a.distancia - b.distancia);
-
-    // 3. Aplicar filtro dinámico
-    let filtrados = lugaresConDistancia;
-    if (categoriaFiltro === "abiertos") {
-        filtrados = lugaresConDistancia.filter(item => item.disponibilidad.abierto === true);
-    } else if (categoriaFiltro === "caminando") {
-        filtrados = lugaresConDistancia.filter(item => item.distancia <= 1.5);
-    } else if (categoriaFiltro === "ferias_compras") {
-        filtrados = lugaresConDistancia.filter(item => 
-            item.lugar.categoria === "compras" ||
-            (item.lugar.intereses && item.lugar.intereses.includes("compras")) ||
-            (item.lugar.tipo && item.lugar.tipo.toLowerCase().includes("feria")) ||
-            (item.lugar.etiquetas && item.lugar.etiquetas.some(e => e.toLowerCase().includes("feria") || e.toLowerCase().includes("compras")))
-        );
-    } else if (categoriaFiltro === "gratuitos") {
-        filtrados = lugaresConDistancia.filter(item => 
-            item.lugar.gratuito === true ||
-            (item.lugar.precio && (
-                item.lugar.precio.toLowerCase().includes("gratuito") ||
-                item.lugar.precio.toLowerCase().includes("gratis") ||
-                item.lugar.precio.toLowerCase().includes("libre")
-            ))
-        );
-    } else if (categoriaFiltro !== "todos") {
-        filtrados = lugaresConDistancia.filter(item => 
-            item.lugar.categoria === categoriaFiltro ||
-            (item.lugar.intereses && item.lugar.intereses.includes(categoriaFiltro))
-        );
-    }
-
-    lista.innerHTML = "";
-
-    if (filtrados.length === 0) {
-        lista.innerHTML = `
-            <div class="place-card-item" style="text-align:center; padding: 32px 20px;">
-                <div style="font-size: 36px; margin-bottom: 8px;">🔍</div>
-                <h4 style="color:var(--color-primary-dark); margin-bottom: 6px;">No hay opciones para este filtro</h4>
-                <p style="font-size:13.5px; color:var(--color-text-muted);">Probá seleccionando "✨ Todos" o ampliando el criterio de búsqueda.</p>
-            </div>
-        `;
+    const catalogo = obtenerCatalogoCompletoConDistancia();
+    if (!catalogo.length) {
+        mostrarEstadoListaVacia(lista, "Todavía no hay lugares cargados.");
         return;
     }
 
-    filtrados.forEach(({ lugar, distancia, disponibilidad }) => {
-        const badgeDistancia = `<span class="distance-badge">📍 ${formatearDistancia(distancia)}</span>`;
-        const badgeTraslado = calcularEstimacionTraslado(distancia);
-        const badgeAbierto = disponibilidad.badgeHtml || (disponibilidad.abierto
-            ? `<span class="open-badge open">🟢 Abierto ahora</span>`
-            : `<span class="open-badge closed">🔴 Cerrado</span>`);
-        
-        let badgeGasto = "";
-        if (lugar.gratuito) {
-            badgeGasto = `<span class="tag-badge free-badge">🆓 Gratuito</span>`;
-        } else if (lugar.nivelGasto === "economico") {
-            badgeGasto = `<span class="tag-badge">💰 Económico</span>`;
-        } else if (lugar.nivelGasto === "medio") {
-            badgeGasto = `<span class="tag-badge">💵 Medio</span>`;
-        } else {
-            badgeGasto = `<span class="tag-badge">💎 Alto</span>`;
-        }
+    const filtro = textoNormalizado(categoriaFiltro) || "todos";
+    const radioKm = obtenerRadioCercaniaKm();
+    const esFiltroDeCercania = filtro === "todos" || filtro === "abiertos" || filtro === "caminando";
+    const base = esFiltroDeCercania
+        ? catalogo.filter(item =>
+            (filtro === "todos" && item.distancia === null) ||
+            item.distancia <= radioKm ||
+            esImperdibleSiempreVisible(item.lugar)
+        )
+        : catalogo;
 
-        const badgeDestacado = lugar.destacado ? `<span class="badge-featured">⭐ Destacado</span>` : "";
-        const queryMaps = encodeURIComponent(`${lugar.nombre}, ${lugar.direccion || lugar.ubicacion}`);
+    const filtrados = base.filter(item =>
+        itemCoincideConFiltroCercaMio(item, filtro) && lugarCoincideConBusqueda(item.lugar, AppState.searchTerm)
+    );
+    actualizarContadorCerca(filtrados.length, base.length);
+    if (!filtrados.length) {
+        mostrarEstadoListaVacia(lista, AppState.searchTerm
+            ? `No encontramos opciones para “${AppState.searchTerm}”.`
+            : undefined);
+        return;
+    }
 
-        lista.innerHTML += `
-            <article class="place-card-item">
-                <div class="place-card-item-icon">
-                    ${lugar.icono}
-                </div>
-                <div class="place-card-item-info">
-                    <h3>
-                        ${escapar(lugar.nombre)}
-                        ${badgeDestacado}
-                    </h3>
-                    <p>${escapar(lugar.descripcion)}</p>
-                    <div class="tags-row" style="margin-bottom: 10px;">
-                        ${badgeDistancia}
-                        ${badgeTraslado}
-                        ${badgeAbierto}
-                        ${badgeGasto}
-                        <span class="tag-badge">🕐 ${escapar(lugar.horario)}</span>
-                    </div>
-                    <div class="plan-card-actions">
-                        <button class="btn-card-action primary" onclick="mostrarDetalle('${escaparAttr(lugar.nombre)}')">
-                            ⭐ Ver detalle
-                        </button>
-                        <a class="btn-card-action" href="https://www.google.com/maps/search/?api=1&query=${queryMaps}" target="_blank" rel="noopener noreferrer">
-                            📍 Cómo llegar
-                        </a>
-                    </div>
-                </div>
-            </article>
-        `;
-    });
+    const fragment = document.createDocumentFragment();
+    filtrados.forEach(item => fragment.appendChild(crearTarjetaLugar(item.lugar, item)));
+    lista.replaceChildren(fragment);
 }
 
 // ========================================================
@@ -666,11 +1224,50 @@ function initSorprendeme() {
     // Inicialización de vista
 }
 
+function initFichaClima() {
+    const badge = document.querySelector("#weather-badge");
+    const sheet = document.querySelector("#weather-sheet");
+    if (!badge || !sheet) return;
+
+    const abrir = () => abrirFichaClima();
+    badge.addEventListener("click", abrir);
+    badge.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            abrir();
+        }
+    });
+
+    sheet.addEventListener("click", event => {
+        if (event.target === sheet) cerrarFichaClima();
+    });
+}
+
 function abrirSorprendeme() {
     mostrarSeccion("surprise");
     if (typeof window.generarSorpresa === "function") {
         window.generarSorpresa();
     }
+}
+
+function initAccionesDelegadas() {
+    document.addEventListener("click", event => {
+        const target = event.target instanceof Element ? event.target.closest("[data-action]") : null;
+        if (!target) return;
+
+        if (target.dataset.action === "detail") {
+            event.preventDefault();
+            const nombre = target.dataset.placeName;
+            if (nombre) mostrarDetalle(nombre);
+            return;
+        }
+
+        if (target.dataset.action === "favorite") {
+            event.preventDefault();
+            const lugar = obtenerBaseDeLugares().find(item => String(item.id) === String(target.dataset.placeId));
+            if (lugar) alternarFavorito(lugar);
+        }
+    });
 }
 
 // ========================================================
@@ -680,77 +1277,64 @@ function abrirSorprendeme() {
 const CATEGORIAS_CONFIG = {
     naturaleza: { icono: "🌿", titulo: "Naturaleza", desc: "Cataratas, selva virgen, cascadas y refugios de fauna." },
     comida: { icono: "🍽️", titulo: "Dónde Comer", desc: "Pescados de río, parrillas argentinas y cocina regional." },
+    compras: { icono: "🛍️", titulo: "Compras", desc: "Artesanías, ferias, recuerdos y centros comerciales." },
     movilidad: { icono: "🚗", titulo: "Movilidad & Traslados", desc: "Colectivos al Parque, taxis oficiales y traslados al Aeropuerto." },
     actividades: { icono: "🎭", titulo: "Qué Hacer", desc: "Hito Tres Fronteras, paseos culturales, compras y excursiones." },
     alojamiento: { icono: "🏨", titulo: "Alojamiento", desc: "Hoteles céntricos, resorts de selva y lodges con spa." },
-    noche: { icono: "🌙", titulo: "De Noche", desc: "Paseos de luna llena, shows de agua y bares temáticos." }
+    noche: { icono: "🌙", titulo: "De Noche", desc: "Boliches, espectáculos y bares temáticos." }
 };
 
+function obtenerLugaresDeCategoriaSeguro(catKey) {
+    if (typeof obtenerLugaresPorCategoria === "function") {
+        try {
+            const result = obtenerLugaresPorCategoria(catKey);
+            return Array.isArray(result) ? result.filter(Boolean) : [];
+        } catch (error) {
+            console.warn("No se pudo cargar la categoría solicitada.", error);
+        }
+    }
+
+    return obtenerBaseDeLugares().filter(lugar => lugarCoincideConFiltro(lugar, catKey));
+}
+
 function initCategorias() {
-    const categoryCards = document.querySelectorAll(".category-card");
-
-    categoryCards.forEach(card => {
+    document.querySelectorAll(".category-card").forEach(card => {
         card.addEventListener("click", () => {
-            const catKey = card.dataset.category;
-            const config = CATEGORIAS_CONFIG[catKey] || { icono: "🌴", titulo: "Explorar", desc: "Lugares de Iguazú" };
-            const lugares = obtenerLugaresPorCategoria(catKey);
-
-            mostrarResultadosCategoria(config.icono, config.titulo, config.desc, lugares);
+            const catKey = card.dataset.category || "";
+            const config = CATEGORIAS_CONFIG[catKey] || {
+                icono: "🌴",
+                titulo: "Explorar",
+                desc: "Lugares de Iguazú"
+            };
+            mostrarResultadosCategoria(
+                config.icono,
+                config.titulo,
+                config.desc,
+                obtenerLugaresDeCategoriaSeguro(catKey)
+            );
             SoundFX.play("drop");
         });
     });
 }
 
-function mostrarResultadosCategoria(icono, titulo, descripcion, lugares) {
-    document.querySelector("#results-icon").innerText = icono;
-    document.querySelector("#results-title").innerText = titulo;
-    document.querySelector("#results-description").innerText = descripcion;
-
+function mostrarResultadosCategoria(icono, titulo, descripcion, lugares = []) {
+    const icon = document.querySelector("#results-icon");
+    const heading = document.querySelector("#results-title");
+    const description = document.querySelector("#results-description");
     const lista = document.querySelector("#results-list");
-    lista.innerHTML = "";
+    if (!lista) return;
 
-    if (!lugares || lugares.length === 0) {
-        lista.innerHTML = `
-            <div class="place-card-item" style="text-align:center; padding: 30px;">
-                <p>No se encontraron lugares en esta categoría por el momento.</p>
-            </div>
-        `;
+    if (icon) icon.textContent = textoSeguro(icono);
+    if (heading) heading.textContent = textoSeguro(titulo, "Explorar");
+    if (description) description.textContent = textoSeguro(descripcion);
+
+    const validPlaces = Array.isArray(lugares) ? lugares.filter(Boolean) : [];
+    if (!validPlaces.length) {
+        mostrarEstadoListaVacia(lista, "No se encontraron lugares en esta categoría.");
     } else {
-        lugares.forEach(lugar => {
-            const badgeDestacado = lugar.destacado ? `<span class="badge-featured">⭐ Destacado</span>` : "";
-            const badgePromo = lugar.promocion ? `<span class="badge-promo">🏷️ ${escapar(lugar.promocion)}</span>` : "";
-            const tagsHtml = (lugar.etiquetas || []).slice(0, 3).map(tag => `<span class="tag-badge">${escapar(tag)}</span>`).join("");
-            const queryMaps = encodeURIComponent(`${lugar.nombre}, ${lugar.direccion || lugar.ubicacion}`);
-
-            lista.innerHTML += `
-                <article class="place-card-item">
-                    <div class="place-card-item-icon">
-                        ${lugar.icono}
-                    </div>
-                    <div class="place-card-item-info">
-                        <h3>
-                            ${escapar(lugar.nombre)}
-                            ${badgeDestacado}
-                            ${badgePromo}
-                        </h3>
-                        <p>${escapar(lugar.descripcion)}</p>
-                        <div class="tags-row" style="margin-bottom: 10px;">
-                            <span class="tag-badge">📍 ${escapar(lugar.ubicacion)}</span>
-                            <span class="tag-badge">🕐 ${escapar(lugar.horario)}</span>
-                            ${tagsHtml}
-                        </div>
-                        <div class="plan-card-actions">
-                            <button class="btn-card-action primary" onclick="mostrarDetalle('${escaparAttr(lugar.nombre)}')">
-                                ⭐ Ver detalle
-                            </button>
-                            <a class="btn-card-action" href="https://www.google.com/maps/search/?api=1&query=${queryMaps}" target="_blank" rel="noopener noreferrer">
-                                📍 Cómo llegar
-                            </a>
-                        </div>
-                    </div>
-                </article>
-            `;
-        });
+        const fragment = document.createDocumentFragment();
+        validPlaces.forEach(lugar => fragment.appendChild(crearTarjetaLugar(lugar)));
+        lista.replaceChildren(fragment);
     }
 
     mostrarSeccion("results");
@@ -761,121 +1345,211 @@ function mostrarResultadosCategoria(icono, titulo, descripcion, lugares) {
 // ========================================================
 
 function initPlanificadorOpciones() {
-    // Intereses (8 opciones)
-    document.querySelectorAll(".planner-option").forEach(btn => {
-        btn.addEventListener("click", function() {
-            document.querySelectorAll(".planner-option").forEach(b => b.classList.remove("selected"));
-            this.classList.add("selected");
-            AppState.interes = this.dataset.interest;
-            SoundFX.play("drop");
-        });
-    });
+    const vincularOpciones = (selector, dataKey, stateKey) => {
+        const options = [...document.querySelectorAll(selector)];
+        const multiple = false;
+        options.forEach(option => {
+            if (option.tagName !== "BUTTON" && option.tagName !== "INPUT") {
+                option.setAttribute("role", "button");
+                if (!option.hasAttribute("tabindex")) option.tabIndex = 0;
+            }
 
-    // Tiempo (5 opciones)
-    document.querySelectorAll(".time-option").forEach(btn => {
-        btn.addEventListener("click", function() {
-            document.querySelectorAll(".time-option").forEach(b => b.classList.remove("selected"));
-            this.classList.add("selected");
-            AppState.tiempo = this.dataset.time;
-            SoundFX.play("drop");
-        });
-    });
+            option.setAttribute("aria-pressed", String(option.classList.contains("selected")));
+            const seleccionar = () => {
+                if (multiple) {
+                    const isSelected = option.classList.toggle("selected");
+                    option.setAttribute("aria-pressed", String(isSelected));
+                    const selected = options.filter(item => item.classList.contains("selected"));
+                    AppState[stateKey] = selected[0]?.dataset[dataKey] || AppState[stateKey] || "naturaleza";
+                } else {
+                    options.forEach(item => {
+                        const isSelected = item === option;
+                        item.classList.toggle("selected", isSelected);
+                        item.setAttribute("aria-pressed", String(isSelected));
+                    });
+                    AppState[stateKey] = option.dataset[dataKey] || AppState[stateKey];
+                }
+                SoundFX.play("drop");
+            };
 
-    // Compañía (5 opciones)
-    document.querySelectorAll(".traveler-option").forEach(btn => {
-        btn.addEventListener("click", function() {
-            document.querySelectorAll(".traveler-option").forEach(b => b.classList.remove("selected"));
-            this.classList.add("selected");
-            AppState.compania = this.dataset.traveler;
-            SoundFX.play("drop");
+            option.addEventListener("click", seleccionar);
+            option.addEventListener("keydown", event => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    seleccionar();
+                }
+            });
         });
-    });
+    };
 
-    // Presupuesto (3 opciones: Económico, Medio, Alto)
-    document.querySelectorAll(".budget-option").forEach(btn => {
-        btn.addEventListener("click", function() {
-            document.querySelectorAll(".budget-option").forEach(b => b.classList.remove("selected"));
-            this.classList.add("selected");
-            AppState.presupuesto = this.dataset.budget;
-            SoundFX.play("drop");
-        });
-    });
+    vincularOpciones(".planner-option", "interest", "interes");
+    window.obtenerInteresesPlan = () => {
+        const selected = [...document.querySelectorAll(".planner-option.selected")]
+            .map(option => option.dataset.interest)
+            .filter(Boolean);
+        return selected.length ? selected : [AppState.interes || "naturaleza"];
+    };
+    vincularOpciones(".time-option", "time", "tiempo");
+    vincularOpciones(".traveler-option", "traveler", "compania");
+    vincularOpciones(".budget-option", "budget", "presupuesto");
 }
 
 // ========================================================
 // FICHA DE DETALLE DE LUGAR
 // ========================================================
 
-function mostrarDetalle(nombreOLugar) {
-    let lugar = null;
-    if (typeof nombreOLugar === "string") {
-        lugar = obtenerLugarPorIdentificador(nombreOLugar);
-    } else {
-        lugar = nombreOLugar;
-    }
+function establecerTexto(selector, value, fallback = "") {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = textoSeguro(value, fallback);
+    return element;
+}
 
-    if (!lugar) return;
+function buscarLugarSeguro(nombreOLugar) {
+    if (nombreOLugar && typeof nombreOLugar === "object") return nombreOLugar;
+    if (typeof nombreOLugar !== "string") return null;
 
-    SoundFX.play("drop");
-
-    document.querySelector("#detail-icon").innerText = lugar.icono;
-    document.querySelector("#detail-title").innerText = lugar.nombre;
-    document.querySelector("#detail-description").innerText = lugar.descripcion;
-    document.querySelector("#detail-location").innerText = lugar.direccion || lugar.ubicacion;
-    document.querySelector("#detail-hours").innerText = lugar.horario || "Consultar horarios";
-    document.querySelector("#detail-price").innerText = lugar.precio || "Consultar tarifa";
-
-    // Badges
-    const badgesContainer = document.querySelector("#detail-badges");
-    let badgesHtml = "";
-    if (lugar.destacado) badgesHtml += `<span class="badge-featured">⭐ Destacado</span>`;
-    if (lugar.promocion) badgesHtml += `<span class="badge-promo">🏷️ ${escapar(lugar.promocion)}</span>`;
-    if (lugar.alAireLibre) {
-        badgesHtml += `<span class="tag-badge">🌿 Al aire libre</span>`;
-    } else {
-        badgesHtml += `<span class="tag-badge">🏛️ Techado (Ideal Lluvia)</span>`;
-    }
-    badgesContainer.innerHTML = badgesHtml;
-
-    // Botón de Google Maps
-    const mapBtn = document.querySelector("#detail-map-btn");
-    mapBtn.onclick = () => {
-        let query = encodeURIComponent(`${lugar.nombre}, ${lugar.direccion || lugar.ubicacion}`);
-        if (lugar.coordenadas && typeof lugar.coordenadas.lat === "number") {
-            query = `${lugar.coordenadas.lat},${lugar.coordenadas.lng}`;
+    if (typeof obtenerLugarPorIdentificador === "function") {
+        try {
+            const result = obtenerLugarPorIdentificador(nombreOLugar);
+            if (result) return result;
+        } catch (error) {
+            console.warn("No se pudo buscar el lugar por identificador.", error);
         }
-        window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank");
+    }
+
+    return obtenerBaseDeLugares().find(lugar =>
+        textoSeguro(lugar.nombre) === nombreOLugar || textoSeguro(lugar.id) === nombreOLugar
+    ) || null;
+}
+
+function obtenerUrlExternaSegura(value, protocols = ["http:", "https:"]) {
+    const raw = textoSeguro(value);
+    if (!raw || /^consultar$/i.test(raw) || /^javascript:|^data:|^vbscript:/i.test(raw)) return null;
+
+    try {
+        const url = new URL(raw, window.location.href);
+        return protocols.includes(url.protocol) ? url.href : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function crearBotonContacto(texto, className, href, { nuevaPestana = false } = {}) {
+    const link = document.createElement("a");
+    link.className = `contact-btn ${className}`;
+    link.href = href;
+    link.textContent = texto;
+    if (nuevaPestana) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+    }
+    return link;
+}
+
+async function compartirLugar(lugar) {
+    if (!lugar) return;
+    const shareUrl = `${window.location.origin}${window.location.pathname}#detail/${encodeURIComponent(lugar.id)}`;
+    const shareData = {
+        title: `${textoSeguro(lugar.nombre)} · Iguazú Assist`,
+        text: textoSeguro(lugar.descripcion, "Descubrí este lugar en Puerto Iguazú."),
+        url: shareUrl
     };
 
-    // Botones de Contacto (WhatsApp, Llamar, Web)
+    try {
+        if (navigator.share) {
+            await navigator.share(shareData);
+            return;
+        }
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(shareUrl);
+            mostrarToast("Enlace copiado para compartir");
+            return;
+        }
+    } catch (error) {
+        if (error?.name === "AbortError") return;
+        console.info("No se pudo compartir el lugar.", error);
+    }
+    mostrarToast("Copiá el enlace desde la barra del navegador");
+}
+
+function mostrarDetalle(nombreOLugar) {
+    const lugar = buscarLugarSeguro(nombreOLugar);
+    if (!lugar) {
+        mostrarToast("No se encontró la información de este lugar.");
+        return;
+    }
+
+    AppState.detailPlace = lugar;
+    SoundFX.play("drop");
+
+    const detailImg = document.querySelector("#detail-image");
+    if (detailImg) {
+        detailImg.src = obtenerImagenLugar(lugar);
+        detailImg.alt = textoSeguro(lugar.nombre, "Lugar de Iguazú");
+        detailImg.dataset.fallbackApplied = "";
+        detailImg.onerror = () => {
+            if (detailImg.dataset.fallbackApplied) return;
+            detailImg.dataset.fallbackApplied = "true";
+            detailImg.src = APP_CONSTANTS.FALLBACK_IMAGE;
+        };
+    }
+
+    establecerTexto("#detail-icon", lugar.icono, "📍");
+    establecerTexto("#detail-title", lugar.nombre, "Lugar de Iguazú");
+    establecerTexto("#detail-description", lugar.descripcion, "Información no disponible.");
+    establecerTexto("#detail-location", lugar.direccion || lugar.ubicacion, "Consultar ubicación");
+    establecerTexto("#detail-hours", lugar.horario, "Consultar horarios");
+    establecerTexto("#detail-price", lugar.precio, "Consultar tarifa");
+
+    const badgesContainer = document.querySelector("#detail-badges");
+    if (badgesContainer) {
+        const badges = document.createDocumentFragment();
+        if (lugar.destacado) badges.appendChild(crearPill("⭐ Destacado", "badge-featured-gold"));
+        if (lugar.promocion) badges.appendChild(crearPill(`🏷️ ${textoSeguro(lugar.promocion)}`, "meta-pill promo-pill"));
+        badges.appendChild(crearPill(
+            lugar.alAireLibre === false ? "🏛️ Techado (mejor con lluvia)" : "🌿 Al aire libre",
+            "meta-pill"
+        ));
+        const duracion = Number(lugar.duracionHoras);
+        if (Number.isFinite(duracion) && duracion > 0) badges.appendChild(crearPill(`⏱️ ~${duracion} h`, "meta-pill"));
+        const momentos = obtenerMomentosLegibles(lugar);
+        if (momentos) badges.appendChild(crearPill(`🕐 ${momentos}`, "meta-pill"));
+        if (requiereCoordinacionLugar(lugar)) badges.appendChild(crearPill("📅 Requiere coordinación", "meta-pill coordination-pill"));
+        badgesContainer.replaceChildren(badges);
+    }
+
+    const mapBtn = document.querySelector("#detail-map-btn");
+    if (mapBtn) {
+        mapBtn.type = "button";
+        mapBtn.onclick = () => window.open(construirUrlMaps(lugar), "_blank", "noopener,noreferrer");
+    }
+
+    const shareButton = document.querySelector("#detail-share-btn");
+    if (shareButton) shareButton.onclick = () => compartirLugar(lugar);
+    const detailFavoriteButton = document.querySelector("#detail-favorite-btn");
+    if (detailFavoriteButton) detailFavoriteButton.onclick = () => alternarFavorito(lugar);
+    actualizarBotonFavorito(detailFavoriteButton, lugar);
+
     const contactContainer = document.querySelector("#contact-buttons");
-    let contactHtml = "";
+    if (contactContainer) {
+        const contacts = document.createDocumentFragment();
+        const whatsapp = textoSeguro(lugar.whatsapp).replace(/[^0-9]/g, "");
+        if (whatsapp && whatsapp.length >= 8) {
+            contacts.appendChild(crearBotonContacto(
+                "💬 WhatsApp",
+                "whatsapp",
+                `https://wa.me/${whatsapp}?text=${encodeURIComponent("Hola, los contacto desde Iguazú Assist.")}`,
+                { nuevaPestana: true }
+            ));
+        }
 
-    if (lugar.whatsapp && lugar.whatsapp !== "Consultar") {
-        contactHtml += `
-            <a class="contact-btn whatsapp" href="https://wa.me/${lugar.whatsapp}?text=${encodeURIComponent('Hola, los contacto desde Iguazú Assist.')}" target="_blank">
-                💬 WhatsApp
-            </a>
-        `;
+        const phone = textoSeguro(lugar.telefono).replace(/[^0-9+*#;,()-]/g, "");
+        if (phone) contacts.appendChild(crearBotonContacto("📞 Llamar", "call", `tel:${phone}`));
+
+        const web = obtenerUrlExternaSegura(lugar.web);
+        if (web) contacts.appendChild(crearBotonContacto("🌐 Sitio Web", "web", web, { nuevaPestana: true }));
+        contactContainer.replaceChildren(contacts);
     }
-
-    if (lugar.telefono && lugar.telefono !== "Consultar") {
-        contactHtml += `
-            <a class="contact-btn call" href="tel:${lugar.telefono}">
-                📞 Llamar
-            </a>
-        `;
-    }
-
-    if (lugar.web && lugar.web !== "Consultar") {
-        contactHtml += `
-            <a class="contact-btn web" href="${lugar.web}" target="_blank" rel="noopener noreferrer">
-                🌐 Sitio Web
-            </a>
-        `;
-    }
-
-    contactContainer.innerHTML = contactHtml;
 
     mostrarSeccion("detail");
 }
@@ -888,31 +1562,27 @@ function initControlSonido() {
     const audioBtn = document.querySelector("#audio-toggle");
     if (!audioBtn) return;
 
-    const actualizarBoton = () => {
-        audioBtn.innerText = AppState.audioActivo ? "🔊" : "🔇";
-        audioBtn.classList.toggle("active", AppState.audioActivo);
-        audioBtn.title = AppState.audioActivo
-            ? "Ambiente y efectos activados (clic para silenciar)"
+    const actualizarControl = () => {
+        const activo = AppState.audioActivo;
+        audioBtn.textContent = activo ? "🔊" : "🔇";
+        audioBtn.classList.toggle("active", activo);
+        audioBtn.setAttribute("aria-pressed", String(activo));
+        audioBtn.setAttribute("aria-label", activo ? "Silenciar efectos de sonido" : "Activar efectos de sonido");
+        audioBtn.title = activo
+            ? "Efectos de sonido activados (clic para silenciar)"
             : "Sonido silenciado (clic para activar)";
-        audioBtn.setAttribute("aria-pressed", String(AppState.audioActivo));
     };
 
-    actualizarBoton();
-
+    actualizarControl();
     audioBtn.addEventListener("click", () => {
-        if (!AppState.audioActivo) {
-            AppState.audioActivo = true;
-            guardarPreferenciaLocal(CLAVE_AUDIO_ACTIVO, true);
-            actualizarBoton();
-            SoundFX.startAmbient();
+        AppState.audioActivo = !AppState.audioActivo;
+        if (AppState.audioActivo) {
+            actualizarControl();
+            mostrarToast("🔊 Efectos de sonido activados");
             SoundFX.play("wood");
-            mostrarToast("🔊 Ambiente de Misiones activado");
         } else {
-            AppState.audioActivo = false;
-            guardarPreferenciaLocal(CLAVE_AUDIO_ACTIVO, false);
             SoundFX.stopAll();
-            SoundFX.stopAmbient();
-            actualizarBoton();
+            actualizarControl();
             mostrarToast("🔇 Sonido desactivado");
         }
     });
@@ -923,16 +1593,250 @@ function initControlSonido() {
 // ========================================================
 
 function escapar(texto) {
-    if (!texto) return "";
-    return String(texto)
+    return String(texto ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 function escaparAttr(texto) {
-    if (!texto) return "";
-    return String(texto)
+    return String(texto ?? "")
+        .replace(/\\/g, "\\\\")
         .replace(/'/g, "\\'")
-        .replace(/"/g, "&quot;");
+        .replace(/"/g, "&quot;")
+        .replace(/\r?\n/g, " ");
 }
+
+
+// ========================================================
+// ARRANQUE CONTROLADO DE LA APLICACIÓN
+// ========================================================
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", inicializarAplicacion, { once: true });
+} else {
+    inicializarAplicacion();
+}
+
+
+// ========================================================
+// MIS PLANES — SNAPSHOTS PERSISTENTES DEL ITINERARIO
+// ========================================================
+const SAVED_PLANS_STORAGE_KEY = "iguazu-assist-saved-plans";
+const SAVED_PLANS_LIMIT = 20;
+
+function clonarPlanSeguro(valor) {
+    try {
+        return JSON.parse(JSON.stringify(valor ?? null));
+    } catch (error) {
+        console.info("No se pudo clonar el plan.", error);
+        return null;
+    }
+}
+
+function obtenerPlanesGuardados() {
+    try {
+        const raw = localStorage.getItem(SAVED_PLANS_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(plan => plan && plan.id) : [];
+    } catch (error) {
+        console.info("Storage de planes inválido; se inicia vacío.", error);
+        return [];
+    }
+}
+
+function guardarColeccionPlanes(planes) {
+    try {
+        localStorage.setItem(SAVED_PLANS_STORAGE_KEY, JSON.stringify(Array.isArray(planes) ? planes : []));
+        return true;
+    } catch (error) {
+        console.info("No se pudo guardar la colección de planes.", error);
+        mostrarToast("⚠️ No se pudo guardar el plan en este dispositivo");
+        return false;
+    }
+}
+
+function obtenerPlanPorId(id) {
+    return obtenerPlanesGuardados().find(plan => String(plan.id) === String(id)) || null;
+}
+
+function generarIdPlan() {
+    return `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function crearSnapshotPlanActual() {
+    if (typeof itinerarioActual === "undefined" || !Array.isArray(itinerarioActual) || !itinerarioActual.length) return null;
+    const contexto = clonarPlanSeguro(typeof itinerarioContexto !== "undefined" ? itinerarioContexto : {});
+    const actividades = clonarPlanSeguro(itinerarioActual);
+    if (!contexto || !actividades) return null;
+    const ahora = new Date().toISOString();
+    const existente = AppState.currentPlanId ? obtenerPlanPorId(AppState.currentPlanId) : null;
+    const intereses = contexto.intereses || (contexto.interes ? [contexto.interes] : []);
+    const tituloBase = intereses.map(item => String(item).replace(/_/g, " ")).join(" + ") || "Itinerario personalizado";
+    return {
+        id: existente?.id || generarIdPlan(),
+        createdAt: existente?.createdAt || ahora,
+        updatedAt: ahora,
+        titulo: existente?.titulo || `Iguazú · ${tituloBase}`,
+        duracion: contexto.tiempo || "Medio día",
+        presupuesto: contexto.presupuesto || "medio",
+        preferencias: clonarPlanSeguro({ intereses, compania: contexto.compania, tiempo: contexto.tiempo, presupuesto: contexto.presupuesto }),
+        contexto: contexto,
+        actividades: actividades,
+        actividadIds: actividades.map(item => item?.id).filter(id => id != null),
+        horarios: clonarPlanSeguro(contexto.optimizacionRuta?.trazado || []),
+        origenCoords: clonarPlanSeguro(contexto.origenCoords || contexto.contextoPlan?.origenCoords || null),
+        clima: clonarPlanSeguro(contexto.contextoPlan?.clima || contexto.contextoAhora?.clima || null)
+    };
+}
+
+function guardarPlan(plan) {
+    if (!plan?.id) return false;
+    const planes = obtenerPlanesGuardados();
+    const index = planes.findIndex(item => String(item.id) === String(plan.id));
+    if (index < 0 && planes.length >= SAVED_PLANS_LIMIT) {
+        mostrarToast(`⚠️ Llegaste al límite de ${SAVED_PLANS_LIMIT} planes. Eliminá uno para guardar otro.`);
+        return false;
+    }
+    if (index >= 0) planes[index] = plan;
+    else planes.unshift(plan);
+    if (!guardarColeccionPlanes(planes)) return false;
+    AppState.currentPlanId = plan.id;
+    renderizarPlanesGuardados();
+    return true;
+}
+
+function actualizarPlan(plan) {
+    if (!plan?.id) return false;
+    const planes = obtenerPlanesGuardados();
+    const index = planes.findIndex(item => String(item.id) === String(plan.id));
+    if (index < 0) return guardarPlan(plan);
+    planes[index] = plan;
+    if (!guardarColeccionPlanes(planes)) return false;
+    renderizarPlanesGuardados();
+    return true;
+}
+
+function eliminarPlan(id) {
+    const plan = obtenerPlanPorId(id);
+    if (!plan) return;
+    if (!window.confirm(`¿Eliminar “${plan.titulo || "este plan"}”?`)) return;
+    const restantes = obtenerPlanesGuardados().filter(item => String(item.id) !== String(id));
+    if (guardarColeccionPlanes(restantes)) {
+        if (String(AppState.currentPlanId) === String(id)) AppState.currentPlanId = null;
+        renderizarPlanesGuardados();
+        mostrarToast("🗑️ Plan eliminado");
+    }
+}
+
+function formatearFechaPlan(iso) {
+    const fecha = new Date(iso);
+    if (!Number.isFinite(fecha.getTime())) return "Fecha no disponible";
+    return fecha.toLocaleDateString("es-AR", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function renderizarPlanesGuardados() {
+    const lista = document.querySelector("#saved-plans-list");
+    const contador = document.querySelector("#saved-plans-count");
+    if (!lista) return;
+    const planes = obtenerPlanesGuardados();
+    if (contador) contador.textContent = `${planes.length} ${planes.length === 1 ? "plan" : "planes"}`;
+    if (!planes.length) {
+        lista.innerHTML = `<div class="saved-plans-empty">Todavía no guardaste itinerarios. Generá un plan y elegí <strong>Guardar plan</strong>.</div>`;
+        return;
+    }
+    lista.innerHTML = planes.map(plan => {
+        const cantidad = Array.isArray(plan.actividades) ? plan.actividades.length : 0;
+        const presupuesto = plan.presupuesto || plan.preferencias?.presupuesto || "—";
+        return `<article class="saved-plan-card">
+            <div class="saved-plan-main">
+                <span class="saved-plan-title">🌴 ${escapar(plan.titulo || "Plan en Iguazú")}</span>
+                <span class="saved-plan-meta">${cantidad} ${cantidad === 1 ? "actividad" : "actividades"} · ${escapar(plan.duracion || "Duración no indicada")} · ${escapar(presupuesto)} · Creado ${formatearFechaPlan(plan.createdAt)}</span>
+                ${plan.updatedAt && plan.updatedAt !== plan.createdAt ? `<span class="saved-plan-meta">Actualizado ${formatearFechaPlan(plan.updatedAt)}</span>` : ""}
+            </div>
+            <div class="saved-plan-actions">
+                <button class="btn-card-action primary" type="button" onclick="abrirPlanGuardado('${escaparAttr(plan.id)}')">Abrir plan</button>
+                <button class="btn-card-action" type="button" onclick="eliminarPlan('${escaparAttr(plan.id)}')">Eliminar</button>
+            </div>
+        </article>`;
+    }).join("");
+}
+
+function guardarPlanActual() {
+    const snapshot = crearSnapshotPlanActual();
+    if (!snapshot) {
+        mostrarToast("⚠️ Primero generá un itinerario válido");
+        return;
+    }
+    const actualizado = Boolean(AppState.currentPlanId && obtenerPlanPorId(AppState.currentPlanId));
+    const ok = actualizado ? actualizarPlan(snapshot) : guardarPlan(snapshot);
+    if (ok) {
+        if (typeof SoundFX !== "undefined") SoundFX.play("plan");
+        mostrarToast(actualizado ? "✅ Cambios guardados en Mis planes" : "✅ Plan guardado en Mis planes");
+        if (typeof renderizarItinerario === "function") {
+            const contextoPlan = itinerarioContexto.contextoPlan || itinerarioContexto.ahora || {};
+            const paraManana = Number.isFinite(Number(itinerarioContexto.ahora?.diaSemana)) && Number.isFinite(Number(contextoPlan.diaSemana)) && Number(itinerarioContexto.ahora.diaSemana) !== Number(contextoPlan.diaSemana);
+            renderizarItinerario(itinerarioActual, itinerarioActual.length, paraManana);
+        }
+    }
+}
+
+function abrirPlanGuardado(id) {
+    const plan = obtenerPlanPorId(id);
+    if (!plan || !Array.isArray(plan.actividades) || !plan.actividades.length) {
+        mostrarToast("⚠️ Este plan no tiene actividades recuperables");
+        return;
+    }
+    const contexto = clonarPlanSeguro(plan.contexto || {});
+    const actividades = clonarPlanSeguro(plan.actividades);
+    if (!contexto || !actividades) return;
+    itinerarioContexto = contexto;
+    itinerarioActual = actividades;
+    AppState.currentPlanId = plan.id;
+    AppState.interes = contexto.interes || contexto.intereses?.[0] || "naturaleza";
+    AppState.tiempo = contexto.tiempo || "medio día";
+    AppState.compania = contexto.compania || "solo";
+    AppState.presupuesto = contexto.presupuesto || "medio";
+    if (contexto.origenCoords) AppState.userCoords = clonarPlanSeguro(contexto.origenCoords);
+    if (contexto.contextoPlan?.clima && typeof climaActual !== "undefined") climaActual = clonarPlanSeguro(contexto.contextoPlan.clima);
+    if (typeof sincronizarOpcionesPlanificador === "function") sincronizarOpcionesPlanificador(contexto);
+    mostrarSeccion("planner");
+    renderizarItinerario(itinerarioActual, itinerarioActual.length, false);
+    renderizarPlanesGuardados();
+    mostrarToast("📅 Plan recuperado");
+}
+
+window.obtenerPlanesGuardados = obtenerPlanesGuardados;
+window.guardarPlan = guardarPlan;
+window.actualizarPlan = actualizarPlan;
+window.eliminarPlan = eliminarPlan;
+window.obtenerPlanPorId = obtenerPlanPorId;
+window.renderizarPlanesGuardados = renderizarPlanesGuardados;
+window.guardarPlanActual = guardarPlanActual;
+window.abrirPlanGuardado = abrirPlanGuardado;
+
+
+function sincronizarOpcionesPlanificador(contexto = {}) {
+    const intereses = Array.isArray(contexto.intereses) && contexto.intereses.length
+        ? contexto.intereses
+        : [contexto.interes || AppState.interes || "naturaleza"];
+    document.querySelectorAll(".planner-option").forEach(option => {
+        const selected = intereses.includes(option.dataset.interest);
+        option.classList.toggle("selected", selected);
+        option.setAttribute("aria-pressed", String(selected));
+    });
+    [[".time-option", "time", contexto.tiempo], [".traveler-option", "traveler", contexto.compania], [".budget-option", "budget", contexto.presupuesto]].forEach(([selector, key, value]) => {
+        document.querySelectorAll(selector).forEach(option => {
+            const selected = String(option.dataset[key]) === String(value);
+            option.classList.toggle("selected", selected);
+            option.setAttribute("aria-pressed", String(selected));
+        });
+    });
+}
+window.sincronizarOpcionesPlanificador = sincronizarOpcionesPlanificador;
+
+
+if (document.readyState !== "loading") renderizarPlanesGuardados();
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", renderizarPlanesGuardados, { once: true });

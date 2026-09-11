@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <!-- Degradados Selva de Misiones Profunda -->
+    <linearGradient id="heroDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#042313" stop-opacity="0.96"/>
+      <stop offset="45%" stop-color="#0a3d24" stop-opacity="0.92"/>
+      <stop offset="85%" stop-color="#0f5132" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#146c43" stop-opacity="0.82"/>
+    </linearGradient>
+
+    <linearGradient id="waterMist" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#0284c7" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#052e16" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="sunGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fondo verde selva profundo -->
+  <rect width="1200" height="600" fill="#062816"/>
+
+  <!-- Halo de luz solar filtrada entre el dosel arbóreo -->
+  <circle cx="1050" cy="120" r="320" fill="url(#sunGlow)"/>
+
+  <!-- Siluetas de vegetación de selva misionera (monocotiledóneas, helechos arborescentes y palmeras pindó) -->
+  <g fill="#041f11" opacity="0.65">
+    <!-- Palmeras pindó en la derecha -->
+    <path d="M1120 600 Q1100 350 1080 160 Q1040 180 980 210 Q1060 170 1080 160 Q1120 120 1150 70 Q1110 130 1080 160 Q1140 170 1200 200 Q1120 180 1080 160 Q1150 220 1190 280 Z"/>
+    <path d="M1040 600 Q1030 400 1010 240 Q970 260 920 280 Q990 250 1010 240 Q1030 200 1050 150 Q1030 210 1010 240 Q1070 240 1120 260 Z"/>
+    <!-- Hojas gigantes de filodendro / monstera en el lateral izquierdo -->
+    <path d="M-40 600 Q60 420 140 380 Q100 440 80 520 Q120 440 200 420 Q160 480 140 570 Q220 480 280 490 Q220 540 180 600 Z"/>
+  </g>
+
+  <!-- Cataratas del Iguazú / Bruma de agua estilizada -->
+  <g opacity="0.35">
+    <path d="M750 420 Q880 370 1020 390 T1200 400 L1200 600 L700 600 Z" fill="url(#waterMist)"/>
+    <!-- Líneas de caída de agua majestuosas -->
+    <line x1="820" y1="410" x2="820" y2="580" stroke="#7dd3fc" stroke-width="3" stroke-dasharray="8 6" opacity="0.7"/>
+    <line x1="860" y1="395" x2="860" y2="590" stroke="#bae6fd" stroke-width="4" stroke-dasharray="12 8" opacity="0.8"/>
+    <line x1="910" y1="385" x2="910" y2="600" stroke="#e0f2fe" stroke-width="5" stroke-dasharray="14 6" opacity="0.9"/>
+    <line x1="960" y1="390" x2="960" y2="590" stroke="#7dd3fc" stroke-width="4" stroke-dasharray="10 8" opacity="0.75"/>
+    <line x1="1020" y1="395" x2="1020" y2="585" stroke="#bae6fd" stroke-width="3" stroke-dasharray="8 6" opacity="0.7"/>
+  </g>
+
+  <!-- Silueta elegante y majestuosa del Yaguareté de la Selva Paranaense -->
+  <g fill="#02140a" opacity="0.55" transform="translate(680, 240) scale(0.65)">
+    <!-- Cuerpo estilizado de Yaguareté descansando sobre una rama de timbó -->
+    <path d="M120 180 C150 140 210 130 260 145 C310 160 360 150 400 170 C430 185 450 220 460 260 C440 250 420 255 400 270 C380 255 360 250 340 255 C290 265 240 270 190 260 C150 255 125 220 120 180 Z"/>
+    <!-- Cabeza y orejas del Yaguareté -->
+    <path d="M130 185 C120 160 100 145 80 150 C70 140 60 150 65 160 C50 165 40 180 45 200 C50 220 75 235 105 230 C125 225 135 205 130 185 Z"/>
+    <!-- Orejas -->
+    <path d="M85 142 C92 132 105 138 102 150 Z"/>
+    <path d="M68 152 C62 144 52 148 56 158 Z"/>
+    <!-- Cola larga descansando -->
+    <path d="M450 240 C490 260 520 300 530 350 C520 355 510 345 505 320 C495 285 470 265 445 250 Z"/>
+    <!-- Rama del árbol -->
+    <path d="M-80 270 Q250 240 600 275 L600 320 Q250 290 -80 320 Z" fill="#010d06"/>
+  </g>
+
+  <!-- Capa Overlay Degradado para 100% de Contraste y Legibilidad Superior -->
+  <rect width="1200" height="600" fill="url(#heroDark)"/>
+</svg>
