@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v22";
+const CACHE_NAME = "iguazu-assist-v23";
 
 const ARCHIVOS_CACHE = [
   "./",
@@ -31,42 +31,92 @@ self.addEventListener("install", event => {
   );
 });
 
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(llaves =>
-      Promise.all(
-        llaves
-          .filter(llave => llave !== CACHE_NAME)
-          .map(llave => caches.delete(llave))
-      )
-    )
-  );
-});
-
 self.addEventListener("fetch", event => {
-  // Solo cachear peticiones locales de la app
+  // Solo manejar peticiones locales de la app
   if (!event.request.url.startsWith(self.location.origin)) {
     return;
   }
 
-  // Todas las respuestas locales salen del mismo cache versionado. La red
-  // sólo completa recursos no incluidos en el precache y nunca reemplaza
-  // silenciosamente una versión ya instalada del conjunto crítico.
+  const url = new URL(event.request.url);
+
+  const ARCHIVOS_CRITICOS = [
+    "./",
+    "./index.html",
+    "./style.css",
+    "./data.js",
+    "./app.js",
+    "./planificador-inteligente.js",
+    "./tuki-asistente.js"
+  ];
+
+  const esCritico = ARCHIVOS_CRITICOS.some(archivo => {
+    return url.pathname.endsWith(archivo.replace("./", ""));
+  });
+
+  // ========================================================
+  // ARCHIVOS CRÍTICOS: NETWORK FIRST
+  // ========================================================
+  if (esCritico) {
+    event.respondWith(
+      fetch(event.request)
+        .then(networkResponse => {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            networkResponse.type === "basic"
+          ) {
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, networkResponse.clone());
+            });
+          }
+
+          return networkResponse;
+        })
+        .catch(() =>
+          caches.match(event.request).then(cachedResponse => {
+            if (cachedResponse) return cachedResponse;
+
+            if (event.request.mode === "navigate") {
+              return caches.match("./index.html");
+            }
+
+            return undefined;
+          })
+        )
+    );
+
+    return;
+  }
+
+  // ========================================================
+  // RESTO DE RECURSOS: CACHE FIRST
+  // ========================================================
   event.respondWith(
     caches.open(CACHE_NAME).then(cache =>
       cache.match(event.request).then(cachedResponse => {
-        if (cachedResponse) return cachedResponse;
+        if (cachedResponse) {
+          return cachedResponse;
+        }
 
         return fetch(event.request).then(networkResponse => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === "basic") {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            networkResponse.type === "basic"
+          ) {
             cache.put(event.request, networkResponse.clone());
           }
+
           return networkResponse;
         }).catch(() => {
-          if (event.request.mode === "navigate") return cache.match("./index.html");
+          if (event.request.mode === "navigate") {
+            return cache.match("./index.html");
+          }
+
           return undefined;
         });
       })
     )
   );
 });
+  
