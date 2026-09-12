@@ -364,6 +364,10 @@ function actualizarContextoVisualTuki() {
 }
 
 function actualizarControlSonidoTuki() {
+    if (typeof actualizarControlesAudio === "function") {
+        actualizarControlesAudio();
+        return;
+    }
     const boton = document.querySelector("#tuki-sound-toggle");
     const volumen = document.querySelector("#tuki-volume");
     if (boton) {

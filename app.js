@@ -15,8 +15,8 @@ const AppState = {
     detailPlace: null,
     userCoords: null,
     gpsActive: false,
-    audioActivo: false, // Apagado por defecto; respeta la decisión del usuario.
-    volumenAmbiente: 50,
+    audioActivo: true, // Activo por defecto; el navegador puede esperar la primera interacción.
+    volumenAmbiente: 58,
     filtroCercaMio: "todos",
     searchTerm: "",
     favoriteIds: new Set(),
@@ -50,6 +50,8 @@ const APP_CONSTANTS = Object.freeze({
         profile: "bnav-profile"
     }),
     FAVORITES_STORAGE_KEY: "iguazu-assist-favorites",
+    AUDIO_ENABLED_STORAGE_KEY: "iguazu-assist-audio-enabled",
+    AUDIO_VOLUME_STORAGE_KEY: "iguazu-assist-audio-volume",
     CATEGORY_IMAGES: Object.freeze({
         naturaleza: "img_cataratas.jpg",
         comida: "img_aqva.jpg",
@@ -70,28 +72,35 @@ let lastGpsWatchUpdate = 0;
 // ========================================================
 const SoundFX = {
     audioCtx: null,
+    resumePromise: null,
+    suspendPromise: null,
     activeOscillators: [],
     ambientNodes: [],
     ambientGain: null,
     ambientBirdTimer: null,
+    ambientBirdPlaying: false,
+    ambientStartPending: false,
     ambientActive: false,
 
     init() {
-        if (!this.audioCtx && (window.AudioContext || window.webkitAudioContext)) {
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            this.audioCtx = new AudioContext();
-        }
-        if (this.audioCtx && this.audioCtx.state === "suspended") {
-            const resumePromise = this.audioCtx.resume();
-            if (resumePromise && typeof resumePromise.catch === "function") {
-                resumePromise.catch(() => { });
+        try {
+            if (!this.audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.audioCtx = new AudioContext();
             }
+            if (this.audioCtx?.state === "suspended" && !this.resumePromise) {
+                this.resumePromise = this.audioCtx.resume()
+                    .catch(() => false)
+                    .finally(() => { this.resumePromise = null; });
+            }
+        } catch (error) {
+            console.info("Audio ambiental temporalmente bloqueado por el navegador.");
         }
+        return this.audioCtx;
     },
 
-
     getAmbientGainValue() {
-        return (AppState.volumenAmbiente / 100) * 0.055;
+        return (AppState.volumenAmbiente / 100) * 0.16;
     },
 
     setAmbientVolume(valor) {
@@ -99,61 +108,153 @@ const SoundFX = {
         if (this.ambientGain && this.audioCtx) {
             this.ambientGain.gain.setTargetAtTime(this.getAmbientGainValue(), this.audioCtx.currentTime, 0.08);
         }
+        guardarPreferenciasAudio();
     },
 
     startAmbient() {
-        if (this.ambientActive) return;
-        this.init();
-        if (!this.audioCtx) return;
+        if (this.ambientActive || !AppState.audioActivo || document.hidden) return;
+        if (this.suspendPromise) {
+            if (!this.ambientStartPending) {
+                this.ambientStartPending = true;
+                this.suspendPromise.finally(() => {
+                    this.ambientStartPending = false;
+                    this.suspendPromise = null;
+                    this.startAmbient();
+                });
+            }
+            return;
+        }
+        const ctx = this.init();
+        if (!ctx) return;
+        if (ctx.state !== "running") {
+            try {
+                const resume = ctx.resume();
+                Promise.resolve(resume).then(() => {
+                    if (ctx.state === "running" && AppState.audioActivo && !document.hidden) this.startAmbient();
+                }).catch(() => { });
+            } catch (error) { }
+            if (!this.ambientStartPending) {
+                this.ambientStartPending = true;
+                Promise.resolve(this.resumePromise).finally(() => {
+                    this.ambientStartPending = false;
+                    if (AppState.audioActivo && !document.hidden && this.audioCtx?.state === "running") {
+                        this.startAmbient();
+                    }
+                });
+            }
+            return;
+        }
         try {
-            const ctx = this.audioCtx;
-            const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+            const buffer = ctx.createBuffer(1, ctx.sampleRate * 10, ctx.sampleRate);
             const data = buffer.getChannelData(0);
             let previous = 0;
+            let current = 0;
             for (let i = 0; i < data.length; i += 1) {
-                previous = previous * 0.985 + (Math.random() * 2 - 1) * 0.015;
-                data[i] = previous;
+                const random = Math.random() * 2 - 1;
+                previous = previous * 0.985 + random * 0.015;
+                current = current * 0.998 + random * 0.002;
+                const ripple = Math.sin((i / ctx.sampleRate) * Math.PI * 1.15) * 0.035;
+                data[i] = Math.max(-1, Math.min(1, previous * 1.65 + current * 0.9 + ripple));
             }
             const source = ctx.createBufferSource();
             const waterFilter = ctx.createBiquadFilter();
             const forestFilter = ctx.createBiquadFilter();
             const waterGain = ctx.createGain();
             const forestGain = ctx.createGain();
+            const waterLfo = ctx.createOscillator();
+            const waterLfoGain = ctx.createGain();
+            const forestLfo = ctx.createOscillator();
+            const forestLfoGain = ctx.createGain();
             this.ambientGain = ctx.createGain();
             source.buffer = buffer; source.loop = true;
-            waterFilter.type = "lowpass"; waterFilter.frequency.value = 950;
-            forestFilter.type = "bandpass"; forestFilter.frequency.value = 260; forestFilter.Q.value = 0.7;
-            waterGain.gain.value = 0.72; forestGain.gain.value = 0.28;
+            waterFilter.type = "lowpass"; waterFilter.frequency.value = 1100; waterFilter.Q.value = 0.45;
+            forestFilter.type = "bandpass"; forestFilter.frequency.value = 340; forestFilter.Q.value = 0.55;
+            waterGain.gain.value = 0.78; forestGain.gain.value = 0.16;
+            waterLfo.frequency.value = 0.08; waterLfoGain.gain.value = 0.11;
+            forestLfo.frequency.value = 0.035; forestLfoGain.gain.value = 0.035;
             this.ambientGain.gain.value = this.getAmbientGainValue();
             source.connect(waterFilter); waterFilter.connect(waterGain); waterGain.connect(this.ambientGain);
             source.connect(forestFilter); forestFilter.connect(forestGain); forestGain.connect(this.ambientGain);
-            this.ambientGain.connect(ctx.destination); source.start();
-            this.ambientNodes = [source, waterFilter, forestFilter, waterGain, forestGain, this.ambientGain];
+            waterLfo.connect(waterLfoGain); waterLfoGain.connect(waterGain.gain);
+            forestLfo.connect(forestLfoGain); forestLfoGain.connect(forestGain.gain);
+            this.ambientGain.connect(ctx.destination);
+            source.start(); waterLfo.start(); forestLfo.start();
+            this.ambientNodes = [source, waterFilter, forestFilter, waterGain, forestGain, waterLfo, waterLfoGain, forestLfo, forestLfoGain, this.ambientGain];
             this.ambientActive = true;
-            this.ambientBirdTimer = setInterval(() => this.playAmbientBird(), 18000);
+            this.scheduleAmbientBird();
         } catch (error) { this.stopAmbient(); }
     },
 
+    scheduleAmbientBird() {
+        if (this.ambientBirdTimer) clearTimeout(this.ambientBirdTimer);
+        this.ambientBirdTimer = null;
+        if (!this.ambientActive || !AppState.audioActivo || document.hidden) return;
+        const delay = 22000 + Math.random() * 26000;
+        this.ambientBirdTimer = setTimeout(() => {
+            this.ambientBirdTimer = null;
+            this.playAmbientBird();
+            this.scheduleAmbientBird();
+        }, delay);
+    },
+
     stopAmbient() {
-        if (this.ambientBirdTimer) clearInterval(this.ambientBirdTimer);
+        if (this.ambientBirdTimer) clearTimeout(this.ambientBirdTimer);
         this.ambientBirdTimer = null;
         this.ambientNodes.forEach(node => {
             try { if (typeof node.stop === "function") node.stop(); node.disconnect(); } catch (error) {}
         });
-        this.ambientNodes = []; this.ambientGain = null; this.ambientActive = false;
+        this.ambientNodes = []; this.ambientGain = null; this.ambientActive = false; this.ambientBirdPlaying = false;
+    },
+
+    suspend() {
+        if (this.audioCtx?.state === "running") {
+            const suspendPromise = this.audioCtx.suspend();
+            if (suspendPromise && typeof suspendPromise.finally === "function") {
+                this.suspendPromise = suspendPromise.catch(() => { }).finally(() => {
+                    this.suspendPromise = null;
+                });
+            }
+        }
     },
 
     playAmbientBird() {
-        if (!AppState.audioActivo || !this.ambientActive || !this.audioCtx) return;
-        const ctx = this.audioCtx; const now = ctx.currentTime;
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.type = "sine"; osc.frequency.setValueAtTime(1680, now);
-        osc.frequency.exponentialRampToValueAtTime(2450, now + 0.1);
-        osc.frequency.exponentialRampToValueAtTime(1850, now + 0.24);
-        gain.gain.setValueAtTime(0, now); gain.gain.linearRampToValueAtTime(0.035, now + 0.03);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-        osc.connect(gain); gain.connect(ctx.destination); osc.start(now); osc.stop(now + 0.36);
-        this.trackOscillator(osc);
+        if (!AppState.audioActivo || !this.ambientActive || !this.audioCtx || document.hidden || this.ambientBirdPlaying || this.activeOscillators.length) return;
+        this.playBirdCall(true);
+    },
+
+    playBirdCall(ambient = false) {
+        const ctx = this.audioCtx;
+        if (!ctx || ctx.state !== "running") return;
+        if (ambient) this.ambientBirdPlaying = true;
+        const now = ctx.currentTime;
+        const destination = ambient && this.ambientGain ? this.ambientGain : ctx.destination;
+        const base = 920 + Math.random() * 160;
+        const notes = [
+            { start: 0, from: base, to: base * 1.32, duration: 0.18 },
+            { start: 0.2, from: base * 1.08, to: base * 1.48, duration: 0.16 },
+            { start: 0.39, from: base * 0.94, to: base * 1.24, duration: 0.2 }
+        ];
+        let pendientes = notes.length;
+        notes.forEach(note => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "triangle";
+            osc.detune.value = (Math.random() - 0.5) * 18;
+            osc.frequency.setValueAtTime(note.from, now + note.start);
+            osc.frequency.exponentialRampToValueAtTime(note.to, now + note.start + note.duration * 0.62);
+            osc.frequency.exponentialRampToValueAtTime(note.from * 0.98, now + note.start + note.duration);
+            const peak = ambient ? 0.17 : 0.03;
+            gain.gain.setValueAtTime(0.0001, now + note.start);
+            gain.gain.exponentialRampToValueAtTime(peak, now + note.start + 0.025);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + note.start + note.duration);
+            osc.connect(gain); gain.connect(destination);
+            osc.start(now + note.start); osc.stop(now + note.start + note.duration + 0.02);
+            this.trackOscillator(osc, () => {
+                try { gain.disconnect(); } catch (error) {}
+                pendientes -= 1;
+                if (ambient && pendientes === 0) this.ambientBirdPlaying = false;
+            });
+        });
     },
 
     stopAll() {
@@ -164,10 +265,11 @@ const SoundFX = {
         });
     },
 
-    trackOscillator(osc) {
+    trackOscillator(osc, onEnded) {
         this.activeOscillators.push(osc);
         osc.onended = () => {
             this.activeOscillators = this.activeOscillators.filter(item => item !== osc);
+            if (typeof onEnded === "function") onEnded();
         };
     },
 
@@ -185,21 +287,8 @@ const SoundFX = {
             const now = ctx.currentTime;
 
             if (effectName === "bird" || effectName === "cerca") {
-                // Canto breve y sutil de pájaro (dos trinos suaves, ~0.35s)
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(1760, now);
-                osc.frequency.exponentialRampToValueAtTime(2640, now + 0.12);
-                osc.frequency.exponentialRampToValueAtTime(1975, now + 0.28);
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.035, now + 0.03);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.36);
-                this.trackOscillator(osc);
+                // Llamada breve, grave y variable para evitar el silbido electrónico repetitivo.
+                this.playBirdCall(false);
 
             } else if (effectName === "shimmer" || effectName === "sorpresa") {
                 // Arpegio armónico selvático suave (~0.7s)
@@ -1556,45 +1645,106 @@ function mostrarDetalle(nombreOLugar) {
 }
 
 // ========================================================
-// CONTROL DE SONIDO (MUTED BY DEFAULT & EFECTOS CORTOS)
+// CONTROL DE SONIDO (ACTIVO POR DEFECTO, PERSISTENTE Y RESPETUOSO DEL NAVEGADOR)
 // ========================================================
 
-function initControlSonido() {
-    const audioBtn = document.querySelector("#audio-toggle");
-    if (!audioBtn) return;
+function cargarPreferenciasAudio() {
+    try {
+        const audioGuardado = localStorage.getItem(APP_CONSTANTS.AUDIO_ENABLED_STORAGE_KEY);
+        const volumenRaw = localStorage.getItem(APP_CONSTANTS.AUDIO_VOLUME_STORAGE_KEY);
+        const volumenGuardado = volumenRaw == null ? NaN : Number(volumenRaw);
+        if (audioGuardado === "true" || audioGuardado === "false") {
+            AppState.audioActivo = audioGuardado === "true";
+        }
+        if (Number.isFinite(volumenGuardado) && volumenGuardado >= 0 && volumenGuardado <= 100) {
+            AppState.volumenAmbiente = volumenGuardado;
+        }
+    } catch (error) {
+        console.info("No se pudieron leer las preferencias de audio guardadas.");
+    }
+}
 
-    const actualizarControl = () => {
-        const activo = AppState.audioActivo;
+function guardarPreferenciasAudio() {
+    try {
+        localStorage.setItem(APP_CONSTANTS.AUDIO_ENABLED_STORAGE_KEY, String(AppState.audioActivo));
+        localStorage.setItem(APP_CONSTANTS.AUDIO_VOLUME_STORAGE_KEY, String(AppState.volumenAmbiente));
+    } catch (error) {
+        console.info("No se pudieron guardar las preferencias de audio.");
+    }
+}
+
+function actualizarControlesAudio() {
+    const audioBtn = document.querySelector("#audio-toggle");
+    const profileBtn = document.querySelector("#profile-audio-toggle");
+    const tukiBtn = document.querySelector("#tuki-sound-toggle");
+    const tukiVolume = document.querySelector("#tuki-volume");
+    const activo = AppState.audioActivo;
+
+    if (audioBtn) {
         audioBtn.textContent = activo ? "🔊" : "🔇";
         audioBtn.classList.toggle("active", activo);
         audioBtn.setAttribute("aria-pressed", String(activo));
         audioBtn.setAttribute("aria-label", activo ? "Silenciar efectos de sonido" : "Activar efectos de sonido");
         audioBtn.title = activo
-            ? "Efectos de sonido activados (clic para silenciar)"
+            ? "Sonido y ambiente activados (clic para silenciar)"
             : "Sonido silenciado (clic para activar)";
-    };
+    }
+    if (profileBtn) profileBtn.textContent = activo ? "Activado 🔊" : "Silenciado 🔇";
+    if (tukiBtn) {
+        tukiBtn.textContent = activo ? "Sonido activo" : "Activar sonido";
+        tukiBtn.classList.toggle("active", activo);
+        tukiBtn.setAttribute("aria-pressed", String(activo));
+    }
+    if (tukiVolume) tukiVolume.value = String(AppState.volumenAmbiente);
+}
 
-    actualizarControl();
+function iniciarAudioHabilitado() {
+    if (!AppState.audioActivo || document.hidden) return;
+    SoundFX.startAmbient();
+}
+
+function initControlSonido() {
+    const audioBtn = document.querySelector("#audio-toggle");
+    if (!audioBtn) return;
+
+    cargarPreferenciasAudio();
+    actualizarControlesAudio();
     audioBtn.addEventListener("click", () => {
         AppState.audioActivo = !AppState.audioActivo;
+        guardarPreferenciasAudio();
+        actualizarControlesAudio();
         if (AppState.audioActivo) {
-            actualizarControl();
-
             mostrarToast("🔊 Sonido y ambiente de selva activados");
-
+            iniciarAudioHabilitado();
             SoundFX.play("wood");
-            if (window.MisionesAudio && typeof window.MisionesAudio.activarAmbiental === "function") {
-                window.MisionesAudio.activarAmbiental();
-            }
-                } else {
+        } else {
+            SoundFX.stopAmbient();
             SoundFX.stopAll();
-            if (window.MisionesAudio && typeof window.MisionesAudio.desactivarAmbiental === "function") {
-                window.MisionesAudio.desactivarAmbiental();
-            }
-            actualizarControl();
+            SoundFX.suspend();
             mostrarToast("🔇 Sonido silenciado");
         }
     });
+
+    const reintentarTrasInteraccion = () => iniciarAudioHabilitado();
+    document.addEventListener("pointerdown", reintentarTrasInteraccion, { passive: true });
+    document.addEventListener("keydown", reintentarTrasInteraccion);
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            SoundFX.stopAmbient();
+            SoundFX.stopAll();
+            SoundFX.suspend();
+            return;
+        }
+        iniciarAudioHabilitado();
+    });
+    window.addEventListener("pagehide", () => {
+        SoundFX.stopAmbient();
+        SoundFX.stopAll();
+        SoundFX.suspend();
+    });
+    window.addEventListener("pageshow", iniciarAudioHabilitado);
+
+    iniciarAudioHabilitado();
 }
 
 // ========================================================

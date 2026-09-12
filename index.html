@@ -50,8 +50,8 @@
                 </div>
 
                 <!-- Botón Sonido Ambiental -->
-                <button id="audio-toggle" class="audio-circle-btn" title="Activar/desactivar efectos de sonido" aria-label="Sonido ambiental">
-                    🔇
+                <button id="audio-toggle" class="audio-circle-btn" title="Sonido y ambiente activados (clic para silenciar)" aria-label="Silenciar efectos de sonido" aria-pressed="true">
+                    🔊
                 </button>
             </div>
         </div>
@@ -598,12 +598,8 @@
 </div>
 
 <!-- ASISTENTE TURÍSTICO LOCAL TUKI -->
-<button id="tuki-fab" class="tuki-fab" type="button" aria-controls="tuki-panel" aria-expanded="false">
-    <span class="tuki-fab-avatar" aria-hidden="true">🦜</span>
-    <span class="tuki-fab-label">
-        <strong>Preguntale a Tuki</strong>
-        <small>Tu guía local</small>
-    </span>
+<button id="tuki-fab" class="tuki-fab" type="button" aria-label="Abrir asistente Tuki" title="Abrir asistente Tuki" aria-controls="tuki-panel" aria-expanded="false">
+    <span class="tuki-fab-avatar" aria-hidden="true"><img src="tuki-avatar.jpg" alt=""></span>
 </button>
 
 <div id="tuki-backdrop" class="tuki-backdrop hidden" aria-hidden="true"></div>
@@ -650,8 +646,8 @@
 
     <footer class="tuki-panel-footer">
         <label for="tuki-volume">Ambiente</label>
-        <input id="tuki-volume" type="range" min="0" max="100" step="1" value="24" aria-label="Volumen del ambiente de Misiones">
-        <button id="tuki-sound-toggle" type="button">Activar sonido</button>
+        <input id="tuki-volume" type="range" min="0" max="100" step="1" value="58" aria-label="Volumen del ambiente de Misiones">
+        <button id="tuki-sound-toggle" type="button" aria-pressed="true">Sonido activo</button>
     </footer>
 </aside>
 
