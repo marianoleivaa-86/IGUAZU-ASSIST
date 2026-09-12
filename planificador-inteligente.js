@@ -1772,11 +1772,11 @@ function generarPlan() {
             compania,
             presupuesto,
             limiteHoras,
-            ahora
+            ahora: inicio.contexto
         });
         if (respaldo.lugares.length > 0) {
             resultado = { seleccionados: respaldo.lugares, horasAcumuladas: respaldo.horasAcumuladas };
-            planificarParaManana = respaldo.planificarParaManana;
+            planificarParaManana = inicio.planificarParaManana || respaldo.planificarParaManana;
             itinerarioContexto.contextoPlan = crearSnapshotContextoPlan(contextoAhora, {
                 ...contextoPlan,
                 ...respaldo.contextoPlan,
@@ -1863,13 +1863,13 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
             compania: itinerarioContexto.compania || "solo",
             presupuesto: itinerarioContexto.presupuesto || "medio",
             limiteHoras: itinerarioContexto.limiteHoras || 5,
-            ahora
+            ahora: itinerarioContexto.contextoPlan || ahora
         });
 
         if (respaldo.lugares.length > 0) {
             lugares = respaldo.lugares;
             cantidadPrincipales = respaldo.cantidadPrincipales;
-            planificarParaManana = respaldo.planificarParaManana;
+            planificarParaManana = Boolean(planificarParaManana || respaldo.planificarParaManana);
             itinerarioActual = respaldo.lugares;
             itinerarioContexto.contextoPlan = respaldo.contextoPlan;
             itinerarioContexto.adaptacion = respaldo.adaptacion;
