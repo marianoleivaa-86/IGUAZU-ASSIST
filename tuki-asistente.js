@@ -8,7 +8,8 @@
 const TukiUIState = {
     abierto: false,
     ultimoFoco: null,
-    esperandoUbicacion: false
+    esperandoUbicacion: false,
+    burbujaTimer: null
 };
 
 const TUKI_CATEGORIAS_TURISTICAS = ["naturaleza", "actividades", "noche", "comida"];
@@ -379,24 +380,23 @@ function actualizarControlSonidoTuki() {
 }
 
 function abrirTuki() {
-    const panel = document.querySelector("#tuki-panel");
-    const backdrop = document.querySelector("#tuki-backdrop");
     const fab = document.querySelector("#tuki-fab");
-    const input = document.querySelector("#tuki-input");
-    if (!panel || !backdrop || !fab) return;
-
-    TukiUIState.ultimoFoco = document.activeElement;
-    TukiUIState.abierto = true;
-    panel.classList.add("open");
-    panel.setAttribute("aria-hidden", "false");
-    backdrop.classList.remove("hidden");
-    backdrop.setAttribute("aria-hidden", "false");
-    fab.setAttribute("aria-expanded", "true");
-    document.body.classList.add("tuki-open");
-    actualizarContextoVisualTuki();
-    actualizarControlSonidoTuki();
-    SoundFX.play("bird");
-    setTimeout(() => input && input.focus(), 80);
+    if (!fab) return;
+    const anterior = document.querySelector("#tuki-fab-bubble");
+    if (anterior) anterior.remove();
+    if (TukiUIState.burbujaTimer) clearTimeout(TukiUIState.burbujaTimer);
+    const burbuja = document.createElement("div");
+    burbuja.id = "tuki-fab-bubble";
+    burbuja.className = "tuki-fab-bubble";
+    burbuja.setAttribute("role", "status");
+    burbuja.setAttribute("aria-live", "polite");
+    burbuja.textContent = "¡Hola! Soy Tuki. Estoy acá para ayudarte a descubrir Iguazú.";
+    document.body.appendChild(burbuja);
+    fab.setAttribute("aria-expanded", "false");
+    TukiUIState.burbujaTimer = setTimeout(() => {
+        burbuja.remove();
+        TukiUIState.burbujaTimer = null;
+    }, 5000);
 }
 
 function cerrarTuki() {
@@ -433,7 +433,6 @@ function responderConsultaTuki(consulta) {
         };
     }
     agregarRespuestaTuki(respuesta);
-    SoundFX.play("wood");
     return respuesta;
 }
 

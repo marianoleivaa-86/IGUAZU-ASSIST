@@ -72,6 +72,7 @@ let lastGpsWatchUpdate = 0;
 // ========================================================
 const SoundFX = {
     audioCtx: null,
+    ambientAudio: null,
     resumePromise: null,
     suspendPromise: null,
     activeOscillators: [],
@@ -105,6 +106,7 @@ const SoundFX = {
 
     setAmbientVolume(valor) {
         AppState.volumenAmbiente = Math.min(100, Math.max(0, Number(valor) || 0));
+        if (this.ambientAudio) this.ambientAudio.volume = this.getAmbientGainValue();
         if (this.ambientGain && this.audioCtx) {
             this.ambientGain.gain.setTargetAtTime(this.getAmbientGainValue(), this.audioCtx.currentTime, 0.08);
         }
@@ -113,100 +115,34 @@ const SoundFX = {
 
     startAmbient() {
         if (this.ambientActive || !AppState.audioActivo || document.hidden) return;
-        if (this.suspendPromise) {
-            if (!this.ambientStartPending) {
-                this.ambientStartPending = true;
-                this.suspendPromise.finally(() => {
-                    this.ambientStartPending = false;
-                    this.suspendPromise = null;
-                    this.startAmbient();
-                });
-            }
-            return;
-        }
-        const ctx = this.init();
-        if (!ctx) return;
-        if (ctx.state !== "running") {
-            try {
-                const resume = ctx.resume();
-                Promise.resolve(resume).then(() => {
-                    if (ctx.state === "running" && AppState.audioActivo && !document.hidden) this.startAmbient();
-                }).catch(() => { });
-            } catch (error) { }
-            if (!this.ambientStartPending) {
-                this.ambientStartPending = true;
-                Promise.resolve(this.resumePromise).finally(() => {
-                    this.ambientStartPending = false;
-                    if (AppState.audioActivo && !document.hidden && this.audioCtx?.state === "running") {
-                        this.startAmbient();
-                    }
-                });
-            }
-            return;
-        }
         try {
-            const buffer = ctx.createBuffer(1, ctx.sampleRate * 10, ctx.sampleRate);
-            const data = buffer.getChannelData(0);
-            let previous = 0;
-            let current = 0;
-            for (let i = 0; i < data.length; i += 1) {
-                const random = Math.random() * 2 - 1;
-                previous = previous * 0.985 + random * 0.015;
-                current = current * 0.998 + random * 0.002;
-                const ripple = Math.sin((i / ctx.sampleRate) * Math.PI * 1.15) * 0.035;
-                data[i] = Math.max(-1, Math.min(1, previous * 1.65 + current * 0.9 + ripple));
+            if (!this.ambientAudio) {
+                this.ambientAudio = new Audio("audio/iguazu-ambiente.mp3");
+                this.ambientAudio.loop = true;
+                this.ambientAudio.preload = "auto";
+                this.ambientAudio.setAttribute("aria-hidden", "true");
             }
-            const source = ctx.createBufferSource();
-            const waterFilter = ctx.createBiquadFilter();
-            const forestFilter = ctx.createBiquadFilter();
-            const waterGain = ctx.createGain();
-            const forestGain = ctx.createGain();
-            const waterLfo = ctx.createOscillator();
-            const waterLfoGain = ctx.createGain();
-            const forestLfo = ctx.createOscillator();
-            const forestLfoGain = ctx.createGain();
-            this.ambientGain = ctx.createGain();
-            source.buffer = buffer; source.loop = true;
-            waterFilter.type = "lowpass"; waterFilter.frequency.value = 1100; waterFilter.Q.value = 0.45;
-            forestFilter.type = "bandpass"; forestFilter.frequency.value = 340; forestFilter.Q.value = 0.55;
-            waterGain.gain.value = 0.78; forestGain.gain.value = 0.16;
-            waterLfo.frequency.value = 0.08; waterLfoGain.gain.value = 0.11;
-            forestLfo.frequency.value = 0.035; forestLfoGain.gain.value = 0.035;
-            this.ambientGain.gain.value = this.getAmbientGainValue();
-            source.connect(waterFilter); waterFilter.connect(waterGain); waterGain.connect(this.ambientGain);
-            source.connect(forestFilter); forestFilter.connect(forestGain); forestGain.connect(this.ambientGain);
-            waterLfo.connect(waterLfoGain); waterLfoGain.connect(waterGain.gain);
-            forestLfo.connect(forestLfoGain); forestLfoGain.connect(forestGain.gain);
-            this.ambientGain.connect(ctx.destination);
-            source.start(); waterLfo.start(); forestLfo.start();
-            this.ambientNodes = [source, waterFilter, forestFilter, waterGain, forestGain, waterLfo, waterLfoGain, forestLfo, forestLfoGain, this.ambientGain];
-            this.ambientActive = true;
-            this.scheduleAmbientBird();
-        } catch (error) { this.stopAmbient(); }
-    },
-
-    scheduleAmbientBird() {
-        if (this.ambientBirdTimer) clearTimeout(this.ambientBirdTimer);
-        this.ambientBirdTimer = null;
-        if (!this.ambientActive || !AppState.audioActivo || document.hidden) return;
-        const delay = 22000 + Math.random() * 26000;
-        this.ambientBirdTimer = setTimeout(() => {
-            this.ambientBirdTimer = null;
-            this.playAmbientBird();
-            this.scheduleAmbientBird();
-        }, delay);
+            this.ambientAudio.volume = this.getAmbientGainValue();
+            const reproduccion = this.ambientAudio.play();
+            Promise.resolve(reproduccion).then(() => {
+                this.ambientActive = true;
+            }).catch(() => {
+                this.ambientActive = false;
+            });
+        } catch (error) {
+            this.ambientActive = false;
+        }
     },
 
     stopAmbient() {
         if (this.ambientBirdTimer) clearTimeout(this.ambientBirdTimer);
         this.ambientBirdTimer = null;
-        this.ambientNodes.forEach(node => {
-            try { if (typeof node.stop === "function") node.stop(); node.disconnect(); } catch (error) {}
-        });
+        if (this.ambientAudio) this.ambientAudio.pause();
         this.ambientNodes = []; this.ambientGain = null; this.ambientActive = false; this.ambientBirdPlaying = false;
     },
 
     suspend() {
+        if (this.ambientAudio) this.ambientAudio.pause();
         if (this.audioCtx?.state === "running") {
             const suspendPromise = this.audioCtx.suspend();
             if (suspendPromise && typeof suspendPromise.finally === "function") {
@@ -217,136 +153,11 @@ const SoundFX = {
         }
     },
 
-    playAmbientBird() {
-        if (!AppState.audioActivo || !this.ambientActive || !this.audioCtx || document.hidden || this.ambientBirdPlaying || this.activeOscillators.length) return;
-        this.playBirdCall(true);
-    },
-
-    playBirdCall(ambient = false) {
-        const ctx = this.audioCtx;
-        if (!ctx || ctx.state !== "running") return;
-        if (ambient) this.ambientBirdPlaying = true;
-        const now = ctx.currentTime;
-        const destination = ambient && this.ambientGain ? this.ambientGain : ctx.destination;
-        const base = 920 + Math.random() * 160;
-        const notes = [
-            { start: 0, from: base, to: base * 1.32, duration: 0.18 },
-            { start: 0.2, from: base * 1.08, to: base * 1.48, duration: 0.16 },
-            { start: 0.39, from: base * 0.94, to: base * 1.24, duration: 0.2 }
-        ];
-        let pendientes = notes.length;
-        notes.forEach(note => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = "triangle";
-            osc.detune.value = (Math.random() - 0.5) * 18;
-            osc.frequency.setValueAtTime(note.from, now + note.start);
-            osc.frequency.exponentialRampToValueAtTime(note.to, now + note.start + note.duration * 0.62);
-            osc.frequency.exponentialRampToValueAtTime(note.from * 0.98, now + note.start + note.duration);
-            const peak = ambient ? 0.17 : 0.03;
-            gain.gain.setValueAtTime(0.0001, now + note.start);
-            gain.gain.exponentialRampToValueAtTime(peak, now + note.start + 0.025);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + note.start + note.duration);
-            osc.connect(gain); gain.connect(destination);
-            osc.start(now + note.start); osc.stop(now + note.start + note.duration + 0.02);
-            this.trackOscillator(osc, () => {
-                try { gain.disconnect(); } catch (error) {}
-                pendientes -= 1;
-                if (ambient && pendientes === 0) this.ambientBirdPlaying = false;
-            });
-        });
-    },
-
-    stopAll() {
-        const oscillators = this.activeOscillators.splice(0);
-        oscillators.forEach(osc => {
-            try { osc.stop(); } catch (e) { /* Ya finalizado. */ }
-            try { osc.disconnect(); } catch (e) { /* Ya desconectado. */ }
-        });
-    },
-
-    trackOscillator(osc, onEnded) {
-        this.activeOscillators.push(osc);
-        osc.onended = () => {
-            this.activeOscillators = this.activeOscillators.filter(item => item !== osc);
-            if (typeof onEnded === "function") onEnded();
-        };
-    },
-
     play(effectName) {
-        // Si el usuario tiene el sonido desactivado, no reproducir nada
-        if (!AppState.audioActivo) return;
+        // La app usa una única grabación real de ambiente; no se generan efectos sintéticos.
+        if (AppState.audioActivo && !this.ambientActive) this.startAmbient();
+    },
 
-        try {
-            this.init();
-            if (!this.audioCtx) return;
-            if (!this.ambientActive) this.startAmbient();
-            this.stopAll();
-
-            const ctx = this.audioCtx;
-            const now = ctx.currentTime;
-
-            if (effectName === "bird" || effectName === "cerca") {
-                // Llamada breve, grave y variable para evitar el silbido electrónico repetitivo.
-                this.playBirdCall(false);
-
-            } else if (effectName === "shimmer" || effectName === "sorpresa") {
-                // Arpegio armónico selvático suave (~0.7s)
-                const freqs = [1046.5, 1318.5, 1567.98, 1975.5];
-                freqs.forEach((f, idx) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = "sine";
-                    osc.frequency.setValueAtTime(f, now + idx * 0.07);
-                    gain.gain.setValueAtTime(0, now + idx * 0.07);
-                    gain.gain.linearRampToValueAtTime(0.025, now + idx * 0.07 + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.0005, now + idx * 0.07 + 0.55);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(now + idx * 0.07);
-                    osc.stop(now + idx * 0.07 + 0.6);
-                    this.trackOscillator(osc);
-                });
-
-            } else if (effectName === "plan" || effectName === "wood") {
-                // Acorde cálido de marimba/madera natural (~0.5s)
-                const freqs = [523.25, 659.25, 783.99];
-                freqs.forEach((f, idx) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = "triangle";
-                    osc.frequency.setValueAtTime(f, now + idx * 0.05);
-                    gain.gain.setValueAtTime(0, now + idx * 0.05);
-                    gain.gain.linearRampToValueAtTime(0.03, now + idx * 0.05 + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.4);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start(now + idx * 0.05);
-                    osc.stop(now + idx * 0.05 + 0.45);
-                    this.trackOscillator(osc);
-                });
-
-            } else if (effectName === "drop" || effectName === "cambio") {
-                // Gota de agua sutil para cambio o selección (~0.2s)
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = "sine";
-                osc.frequency.setValueAtTime(800, now);
-                osc.frequency.exponentialRampToValueAtTime(1600, now + 0.06);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.18);
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.035, now + 0.02);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.22);
-                this.trackOscillator(osc);
-            }
-        } catch (e) {
-            console.log("Audio FX no disponible:", e);
-        }
-    }
 };
 
 // ========================================================

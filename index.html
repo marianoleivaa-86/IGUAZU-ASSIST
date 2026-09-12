@@ -598,7 +598,7 @@
 </div>
 
 <!-- ASISTENTE TURÍSTICO LOCAL TUKI -->
-<button id="tuki-fab" class="tuki-fab" type="button" aria-label="Abrir asistente Tuki" title="Abrir asistente Tuki" aria-controls="tuki-panel" aria-expanded="false">
+<button id="tuki-fab" class="tuki-fab" type="button" aria-label="Mostrar mensaje de Tuki" title="Mostrar mensaje de Tuki" aria-controls="tuki-panel" aria-expanded="false">
     <span class="tuki-fab-avatar" aria-hidden="true"><img src="tuki-avatar.jpg" alt=""></span>
 </button>
 
@@ -666,7 +666,7 @@
         </button>
 
         <!-- 3. Tuki Botón Central Flotante -->
-        <button class="bottom-nav-center-btn" id="bnav-tuki" onclick="mostrarSeccion('planner'); setActiveNav('bnav-plans')" aria-label="Abrir asistente Tuki">
+        <button class="bottom-nav-center-btn" id="bnav-tuki" onclick="mostrarSeccion('planner'); setTimeout(() => document.querySelector('#planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); setActiveNav('bnav-plans')" aria-label="Abrir planificador general">
             <div class="tuki-circle-glow">
                 <img src="tuki-avatar.jpg" alt="Tuki" class="tuki-nav-avatar">
             </div>
