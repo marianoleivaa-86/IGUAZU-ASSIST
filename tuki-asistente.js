@@ -257,6 +257,17 @@ function resolverConsultaTuki(consulta) {
         ahora: contexto
     }));
 
+    if (!Array.isArray(resultado?.lugares) || resultado.lugares.length === 0) {
+        return {
+            texto: "No encontré una actividad turística planificable y disponible para esas condiciones. Probá con otro horario o una duración diferente.",
+            lugares: [],
+            contexto: resultado?.contextoPlan || contexto,
+            intencion,
+            fuenteUbicacion: null,
+            exacta: false
+        };
+    }
+
     let textoRespuesta = "Encontré estas propuestas en el catálogo de Iguazú.";
     if (intencion.lluvia) {
         textoRespuesta = "Si llueve, conviene priorizar opciones cubiertas. Estas son las alternativas válidas que encontré:";
@@ -403,7 +414,20 @@ function cerrarTuki() {
 }
 
 function responderConsultaTuki(consulta) {
-    const respuesta = resolverConsultaTuki(consulta);
+    let respuesta;
+    try {
+        respuesta = resolverConsultaTuki(consulta);
+    } catch (error) {
+        console.error("Tuki no pudo resolver la consulta.", error);
+        respuesta = {
+            texto: "No pude completar la recomendación en este momento. Probá nuevamente o elegí otro horario.",
+            lugares: [],
+            contexto: null,
+            intencion: null,
+            fuenteUbicacion: null,
+            exacta: false
+        };
+    }
     agregarRespuestaTuki(respuesta);
     SoundFX.play("wood");
     return respuesta;
