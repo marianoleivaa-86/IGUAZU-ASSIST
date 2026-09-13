@@ -129,7 +129,7 @@ function respuestaConversacionalTuki(textoNormalizado) {
     const respuesta = (mensaje, lugares = []) => ({
         texto: mensaje,
         lugares,
-        contexto: contextoDeAhora(),
+        contexto: null,
         intencion: null,
         fuenteUbicacion: null,
         exacta: true,
@@ -537,8 +537,10 @@ function responderConsultaTuki(consulta) {
     try {
         respuesta = resolverConsultaTuki(consulta);
     } catch (error) {
-        console.error("Tuki no pudo resolver la consulta.", error);
-        respuesta = {
+    console.error("Tuki no pudo resolver la consulta.", error);
+    console.error("ERROR REAL DE TUKI:", error?.message, error?.stack);
+
+    respuesta = {
             texto: "No pude completar la recomendación en este momento. Probá nuevamente o elegí otro horario.",
             lugares: [],
             contexto: null,

@@ -106,7 +106,14 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  if (sameOrigin) {
+ // El audio MP3 usa solicitudes Range (206 Partial Content).
+// No debe pasar por Cache API.
+if (sameOrigin && url.pathname === "/audio/iguazu-ambiente.mp3") {
+    event.respondWith(fetch(request));
+    return;
+}
+
+if (sameOrigin) {
     event.respondWith(cacheFirst(request));
-  }
+}
 });

@@ -2764,3 +2764,6 @@ window.generarRecomendacionesAhora = generarRecomendacionesAhora;
 window.abrirComparadorOpciones = abrirComparadorOpciones;
 window.abrirQueHagoAhora = abrirQueHagoAhora;
 window.generarPlanReal = generarPlan;
+window.estaDisponibleDurantePlan = estaDisponibleDurantePlan;
+window.calcularPuntaje = calcularPuntaje;
+window.contextoDeAhora = contextoDeAhora;

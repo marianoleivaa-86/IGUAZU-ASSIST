@@ -276,10 +276,11 @@ const SoundFX = {
         }
     },
 
-    play(effectName) {
-        // La app usa una única grabación real de ambiente; no se generan efectos sintéticos.
-        if (AppState.audioActivo && !this.ambientActive) this.startAmbient();
-    },
+  play(effectName) {
+    // Los efectos cortos quedan reservados para futuras mejoras.
+    // No deben iniciar ni reactivar el ambiente selvático.
+    return;
+},
 
 };
 
@@ -1758,7 +1759,6 @@ function initControlSonido() {
         if (AppState.audioActivo) {
             mostrarToast("🔊 Sonido y ambiente de selva activados");
             iniciarAudioHabilitado();
-            SoundFX.play("wood");
         } else {
             SoundFX.stopAmbient();
             SoundFX.stopAll();
