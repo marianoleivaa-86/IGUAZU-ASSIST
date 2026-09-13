@@ -126,8 +126,10 @@ const SoundFX = {
             const reproduccion = this.ambientAudio.play();
             Promise.resolve(reproduccion).then(() => {
                 this.ambientActive = true;
+                actualizarControlesAudio();
             }).catch(() => {
                 this.ambientActive = false;
+                actualizarControlesAudio();
             });
         } catch (error) {
             this.ambientActive = false;
@@ -139,6 +141,7 @@ const SoundFX = {
         this.ambientBirdTimer = null;
         if (this.ambientAudio) this.ambientAudio.pause();
         this.ambientNodes = []; this.ambientGain = null; this.ambientActive = false; this.ambientBirdPlaying = false;
+        actualizarControlesAudio();
     },
 
     suspend() {
