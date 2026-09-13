@@ -126,7 +126,7 @@ const lugaresReales = [
         horario: "08:00 a 18:00 (ingreso hasta las 16:30)",
         rangoHorario: { apertura: 8, cierre: 18 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precioTexto: "Entrada oficial según residencia",
+        precioTexto: "Entrada oficial: residentes nacionales AR$ 25.000 · residentes de Misiones AR$ 8.000 · estudiantes argentinos AR$ 15.000 · visitantes internacionales AR$ 60.000 · incluye Tren Ecológico de la Selva",
         gratuito: false,
         nivelGasto: "medio",
         duracionHoras: 5,
@@ -144,7 +144,26 @@ const lugaresReales = [
         web: "https://iguazuargentina.com/",
         etiquetas: ["Imperdible", "Cataratas", "Patrimonio UNESCO", "Selva", "Fauna"],
         planificable: true,
-        precio: { tipo: "variable", monto: null, moneda: null, unidad: null, estado: "pendiente", fuente: null, actualizado: null, texto: "Entrada oficial según residencia", toString() { return this.texto || ""; } },
+        precio: {
+            tipo: "variable",
+            monto: null,
+            moneda: "ARS",
+            unidad: "entrada",
+            estado: "confirmado",
+            fuente: "https://iguazuargentina.com/planifica-tu-visita/tarifas/",
+            actualizado: "2026-09-13",
+            verificar_fuente_oficial: false,
+            incluyeTrenEcologico: true,
+            tarifas: {
+                residentesNacionales: 25000,
+                residentesMisiones: 8000,
+                estudiantesArgentinos: 15000,
+                visitantesInternacionales: 60000,
+                mercosur: null
+            },
+            texto: "Entrada oficial: residentes nacionales AR$ 25.000 · residentes de Misiones AR$ 8.000 · estudiantes argentinos AR$ 15.000 · visitantes internacionales AR$ 60.000 · incluye Tren Ecológico de la Selva",
+            toString() { return this.texto || ""; }
+        },
         operacion: { disponibilidad: "desconocida", reserva: "no_requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "desconocida", coordinacion: "desconocida" } },
     },
 
@@ -858,7 +877,7 @@ const lugaresReales = [
         horario: "Solo noches de plenilunio (turnos 19:45, 20:30, 21:15)",
         rangoHorario: { apertura: 19.5, cierre: 23 },
         diasApertura: [0, 1, 2, 3, 4, 5, 6],
-        precioTexto: "Reserva previa requerida",
+        precioTexto: "Paseo de Luna Llena: adultos AR$ 95.000 · niños de 6 a 12 años AR$ 47.500 · hasta 5 años sin cargo",
         gratuito: false,
         nivelGasto: "alto",
         duracionHoras: 3,
@@ -876,7 +895,24 @@ const lugaresReales = [
         web: "https://iguazuargentina.com/paseo-luna-llena/",
         etiquetas: ["Exclusivo", "Luna Llena", "Romántico", "Imperdible", "Noche"],
         planificable: true,
-        precio: { tipo: "desconocido", monto: null, moneda: null, unidad: null, estado: "desconocido", fuente: null, actualizado: null, texto: "Reserva previa requerida", toString() { return this.texto || ""; } },
+        precio: {
+            tipo: "variable",
+            monto: null,
+            moneda: "ARS",
+            unidad: "paseo",
+            estado: "confirmado",
+            fuente: "https://iguazuargentina.com/planifica-tu-visita/tarifas/",
+            actualizado: "2026-09-13",
+            verificar_fuente_oficial: false,
+            incluyeTrenEcologico: true,
+            tarifas: {
+                adultos: 95000,
+                ninosDe6A12: 47500,
+                hasta5Anos: 0
+            },
+            texto: "Paseo de Luna Llena: adultos AR$ 95.000 · niños de 6 a 12 años AR$ 47.500 · hasta 5 años sin cargo",
+            toString() { return this.texto || ""; }
+        },
         operacion: { disponibilidad: "desconocida", reserva: "requerida", coordinacion: "no_requerida", confiabilidad: { horario: "desconocida", disponibilidad: "desconocida", reserva: "pendiente", coordinacion: "desconocida" } },
     },
 

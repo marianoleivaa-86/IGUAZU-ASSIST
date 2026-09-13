@@ -169,7 +169,10 @@ function esActividadTuristicaTuki(lugar) {
 }
 
 function precioTukiEstaConfirmado(lugar) {
-    return lugar?.precio?.estado === "confirmado" && Number.isFinite(Number(lugar.precio.monto));
+    return lugar?.precio?.estado === "confirmado" && (
+        Number.isFinite(Number(lugar.precio.monto)) ||
+        (lugar.precio.tarifas && typeof lugar.precio.tarifas === "object")
+    );
 }
 
 function construirAvisoPrecioNoConfirmadoTuki(lugar) {
@@ -251,12 +254,21 @@ function resolverConsultaTuki(consulta) {
     if (conversacional) return conversacional;
 
     const contexto = construirContextoTuki(intencion);
-    const lugarMencionado = buscarLugarMencionadoTuki(intencion.texto);
+    const consultaEntradaCataratas = intencion.consultaPrecio &&
+        consultaTukiIncluye(intencion.texto, ["cataratas"]) &&
+        consultaTukiIncluye(intencion.texto, ["entrar", "entrada", "ingreso"]);
+    const lugarMencionado = consultaEntradaCataratas
+        ? lugaresReales.find(lugar => lugar.nombre === "Parque Nacional Iguazú")
+        : buscarLugarMencionadoTuki(intencion.texto) || (
+            intencion.consultaPrecio && consultaTukiIncluye(intencion.texto, ["cataratas", "tren ecologico", "tren ecológico"])
+                ? lugaresReales.find(lugar => lugar.nombre === "Parque Nacional Iguazú")
+                : null
+        );
 
     if (lugarMencionado) {
         const disponibilidad = obtenerEstadoDisponibilidad(lugarMencionado, contexto.horaNumero, contexto.diaSemana);
         const horario = lugarMencionado.horario || "No tengo un horario confirmado";
-        const precio = lugarMencionado.precio || "No tengo un precio confirmado";
+        const precio = lugarMencionado.precio?.texto || lugarMencionado.precioTexto || "No tengo un precio confirmado";
         if (intencion.consultaPrecio && !precioTukiEstaConfirmado(lugarMencionado)) {
             return {
                 texto: construirAvisoPrecioNoConfirmadoTuki(lugarMencionado),
@@ -268,7 +280,7 @@ function resolverConsultaTuki(consulta) {
             };
         }
         const datoPrincipal = intencion.consultaPrecio
-            ? `El precio informado es: ${precio}.`
+            ? `El precio informado es: ${precio}. Fuente oficial: ${lugarMencionado.precio.fuente || "consultar sitio oficial"}.`
             : intencion.consultaHorario
                 ? `El horario informado es: ${horario}. ${disponibilidad.texto}.`
                 : `${lugarMencionado.descripcion}`;
