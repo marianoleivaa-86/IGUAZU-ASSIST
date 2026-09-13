@@ -21,7 +21,9 @@ const AppState = {
     searchTerm: "",
     favoriteIds: new Set(),
     currentPlanId: null,
-    savedPlans: null
+    savedPlans: null,
+    nearbyItems: [],
+    nearbyVisibleCount: 12
 };
 
 const APP_CONSTANTS = Object.freeze({
@@ -155,6 +157,22 @@ let gpsRequestId = 0;
 let gpsWatchId = null;
 let lastGpsWatchUpdate = 0;
 let deferredInstallPrompt = null;
+let planificadorLoadPromise = null;
+
+function cargarPlanificador() {
+    if (planificadorLoadPromise) return planificadorLoadPromise;
+    planificadorLoadPromise = import("./planificador-inteligente.js").catch(error => {
+        planificadorLoadPromise = null;
+        console.error("No se pudo cargar el planificador.", error);
+        mostrarToast("No se pudo cargar el planificador. Revisá tu conexión e intentá de nuevo.");
+        throw error;
+    });
+    return planificadorLoadPromise;
+}
+
+window.generarPlan = () => cargarPlanificador().then(() => window.generarPlanReal?.());
+window.generarSorpresa = () => cargarPlanificador().then(() => window.generarSorpresa?.());
+window.abrirQueHagoAhora = () => cargarPlanificador().then(() => window.abrirQueHagoAhora?.());
 
 // ========================================================
 // SISTEMA DE EFECTOS DE SONIDO CORTOS (WEB AUDIO API)
@@ -471,6 +489,8 @@ function mostrarSeccion(seccionId, { updateHash = true } = {}) {
     });
     target.classList.remove("hidden");
     AppState.currentView = requestedId === "hero-section" ? "home" : requestedId;
+
+    if (targetId === "planner") cargarPlanificador();
 
     if (updateHash) actualizarHash(requestedId === "nearby" ? "nearby" : targetId);
     actualizarNavegacionActiva(targetId);
@@ -888,6 +908,21 @@ function obtenerImagenLugar(lugar) {
     return APP_CONSTANTS.CATEGORY_IMAGES[categoria] || APP_CONSTANTS.FALLBACK_IMAGE;
 }
 
+function obtenerImagenResponsive(url, width = 640) {
+    const safeUrl = textoSeguro(url, APP_CONSTANTS.FALLBACK_IMAGE);
+    const base = safeUrl.replace(/\.webp(?:\?.*)?$/i, "");
+    const candidate = `${base}-${width}.webp`;
+    const knownResponsive = /(?:img_(?:aqva|casanova|cataratas|hito|mirador|saintgeorge)|tuki-(?:branch|branch-transparent|avatar))-${width}\.webp$/i;
+    return knownResponsive.test(candidate) ? candidate : safeUrl;
+}
+
+function obtenerSrcsetImagen(url) {
+    const small = obtenerImagenResponsive(url, 160);
+    const large = obtenerImagenResponsive(url, 640);
+    if (small === url && large === url) return "";
+    return `${small} 160w, ${large} 640w`;
+}
+
 function actualizarContadorFavoritos() {
     const count = AppState.favoriteIds.size;
     const label = document.querySelector("#profile-favorite-count");
@@ -985,7 +1020,15 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     thumbWrap.className = "place-card-thumb-wrap";
     const image = document.createElement("img");
     image.className = "place-card-thumb-img";
-    image.src = obtenerImagenLugar(lugar);
+    image.width = 95;
+    image.height = 95;
+    const imageUrl = obtenerImagenLugar(lugar);
+    image.src = obtenerImagenResponsive(imageUrl, 160);
+    const srcset = obtenerSrcsetImagen(imageUrl);
+    if (srcset) {
+        image.srcset = srcset;
+        image.sizes = "(max-width: 480px) 76px, 95px";
+    }
     image.alt = textoSeguro(lugar.nombre, "Lugar de Iguazú");
     image.loading = "lazy";
     image.addEventListener("error", () => {
@@ -1272,8 +1315,28 @@ function renderizarCercaMio(categoriaFiltro = "todos") {
         return;
     }
 
+    AppState.nearbyItems = filtrados;
+    AppState.nearbyVisibleCount = Math.min(12, filtrados.length);
+    renderizarBloqueCercaMio(lista);
+}
+
+function renderizarBloqueCercaMio(lista) {
+    const filtrados = Array.isArray(AppState.nearbyItems) ? AppState.nearbyItems : [];
     const fragment = document.createDocumentFragment();
-    filtrados.forEach(item => fragment.appendChild(crearTarjetaLugar(item.lugar, item)));
+    filtrados.slice(0, AppState.nearbyVisibleCount).forEach(item => {
+        fragment.appendChild(crearTarjetaLugar(item.lugar, item));
+    });
+    if (AppState.nearbyVisibleCount < filtrados.length) {
+        const loadMore = document.createElement("button");
+        loadMore.type = "button";
+        loadMore.className = "nearby-load-more";
+        loadMore.textContent = `Cargar más opciones (${filtrados.length - AppState.nearbyVisibleCount})`;
+        loadMore.addEventListener("click", () => {
+            AppState.nearbyVisibleCount = Math.min(AppState.nearbyVisibleCount + 12, filtrados.length);
+            renderizarBloqueCercaMio(lista);
+        }, { once: true });
+        fragment.appendChild(loadMore);
+    }
     lista.replaceChildren(fragment);
 }
 
@@ -1545,7 +1608,15 @@ function mostrarDetalle(nombreOLugar) {
 
     const detailImg = document.querySelector("#detail-image");
     if (detailImg) {
-        detailImg.src = obtenerImagenLugar(lugar);
+        detailImg.width = 648;
+        detailImg.height = 220;
+        const detailImageUrl = obtenerImagenLugar(lugar);
+        detailImg.src = obtenerImagenResponsive(detailImageUrl, 640);
+        const detailSrcset = obtenerSrcsetImagen(detailImageUrl);
+        if (detailSrcset) {
+            detailImg.srcset = detailSrcset;
+            detailImg.sizes = "(max-width: 680px) 100vw, 648px";
+        }
         detailImg.alt = textoSeguro(lugar.nombre, "Lugar de Iguazú");
         detailImg.dataset.fallbackApplied = "";
         detailImg.onerror = () => {

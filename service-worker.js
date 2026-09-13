@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v25";
+const CACHE_NAME = "iguazu-assist-v26";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -18,15 +18,24 @@ const APP_SHELL = [
   "./circuitos-estado.json",
   "./audio/iguazu-ambiente.mp3",
   "./hero-bg.webp",
-  "./tuki-avatar.webp",
-  "./tuki-branch.webp",
-  "./tuki-branch-transparent.webp",
-  "./img_aqva.webp",
-  "./img_casanova.webp",
-  "./img_cataratas.webp",
-  "./img_hito.webp",
-  "./img_mirador.webp",
-  "./img_saintgeorge.webp"
+  "./hero-bg-640.webp",
+  "./tuki-avatar-160.webp",
+  "./tuki-branch-160.webp",
+  "./tuki-branch-640.webp",
+  "./tuki-branch-transparent-160.webp",
+  "./tuki-branch-transparent-640.webp",
+  "./img_aqva-160.webp",
+  "./img_aqva-640.webp",
+  "./img_casanova-160.webp",
+  "./img_casanova-640.webp",
+  "./img_cataratas-160.webp",
+  "./img_cataratas-640.webp",
+  "./img_hito-160.webp",
+  "./img_hito-640.webp",
+  "./img_mirador-160.webp",
+  "./img_mirador-640.webp",
+  "./img_saintgeorge-160.webp",
+  "./img_saintgeorge-640.webp"
 ];
 const NETWORK_FIRST_DATA = new Set(["/circuitos-estado.json"]);
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";

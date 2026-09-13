@@ -16,11 +16,14 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+    <link rel="preload" as="image" href="hero-bg.webp" media="(min-width: 481px)" fetchpriority="high">
+    <link rel="preload" as="image" href="hero-bg-640.webp" media="(max-width: 480px)" fetchpriority="high">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet"></noscript>
 
     <!-- Estilos -->
     <link rel="stylesheet" href="style.css">
@@ -60,7 +63,7 @@
         <!-- Branding Central Hero con Tuki y Tipografía de Impacto -->
         <div class="hero-brand-container">
             <div class="tuki-hero-perched">
-                <img src="tuki-branch-transparent.webp" alt="Tuki el Tucán Asistente" class="tuki-branch-img">
+                <img src="tuki-branch-transparent-160.webp" alt="Tuki el Tucán Asistente" class="tuki-branch-img" width="160" height="160">
             </div>
 
             <div class="hero-brand-text">
@@ -297,7 +300,7 @@
             <!-- Header del planificador con Tuki -->
             <div class="planner-header-card">
                 <div class="planner-avatar-wrap">
-                    <img src="tuki-avatar.webp" alt="Tuki Asistente" class="tuki-planner-avatar" loading="lazy">
+                    <img src="tuki-avatar-160.webp" alt="Tuki Asistente" class="tuki-planner-avatar" loading="lazy" width="160" height="160">
                 </div>
                 <div>
                     <h2>Armemos tu experiencia en Iguazú</h2>
@@ -704,7 +707,6 @@
      ============================================================ -->
 <script src="data.js"></script>
 <script src="app.js"></script>
-<script src="planificador-inteligente.js"></script>
 <script src="tuki-asistente.js"></script>
 
 <script>

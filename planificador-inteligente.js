@@ -2763,3 +2763,4 @@ function abrirQueHagoAhora() {
 window.generarRecomendacionesAhora = generarRecomendacionesAhora;
 window.abrirComparadorOpciones = abrirComparadorOpciones;
 window.abrirQueHagoAhora = abrirQueHagoAhora;
+window.generarPlanReal = generarPlan;

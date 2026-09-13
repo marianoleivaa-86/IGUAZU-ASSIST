@@ -3,8 +3,6 @@
    Dark Rainforest Glassmorphism UI
    ======================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:ital,wght@0,600;0,700;0,800;0,900;1,700;1,800;1,900&display=swap');
-
 /* ========================================================
    VARIABLES DE COLOR Y TOKENS
    ======================================================== */
@@ -485,6 +483,7 @@ img {
     color: #f4ffe9;
     font-size: 12px;
     line-height: 1.35;
+    min-height: 48px;
 }
 .gps-fallback-retry,
 .offline-readiness-dismiss {
@@ -515,7 +514,13 @@ img {
 }
 .gps-fallback-help.hidden,
 .offline-readiness-banner.hidden,
-.install-app-btn.hidden { display: none; }
+.install-app-btn.hidden {
+    display: flex;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+.install-app-btn.hidden { display: inline-flex; }
 .place-card-meta-line .reference-distance-pill { border-color: #e9c46a; color: #ffe7a3; }
 
 /* Barra de Filtros en Pastillas */
@@ -596,6 +601,17 @@ img {
 .place-feed-card:hover {
     border-color: var(--border-lime);
     transform: translateY(-2px);
+}
+.nearby-load-more {
+    width: 100%;
+    margin: 4px 0 12px;
+    padding: 11px 14px;
+    border: 1px solid var(--border-lime);
+    border-radius: 12px;
+    background: rgba(8, 28, 14, 0.9);
+    color: var(--color-lime);
+    font-weight: 700;
+    cursor: pointer;
 }
 
 .place-card-thumb-wrap {
@@ -3403,4 +3419,13 @@ body.tuki-modal-active {
         bottom: 150px;
         width: min(280px, calc(100vw - 28px));
     }
+}
+
+/* Estabiliza la altura inicial del hero móvil para evitar CLS al montar el feed. */
+@media (max-width: 480px) {
+    .hero-header { min-height: 361px; }
+}
+
+@media (max-width: 480px) {
+    .hero-header { background-image: url('hero-bg-640.webp'); }
 }
