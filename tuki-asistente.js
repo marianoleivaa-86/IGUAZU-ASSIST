@@ -124,6 +124,37 @@ function construirContextoTuki(intencion) {
     return { ...contexto, desplazamientoDia: 0 };
 }
 
+function respuestaConversacionalTuki(textoNormalizado) {
+    const texto = String(textoNormalizado || "").trim();
+    const respuesta = (mensaje, lugares = []) => ({
+        texto: mensaje,
+        lugares,
+        contexto: contextoDeAhora(),
+        intencion: null,
+        fuenteUbicacion: null,
+        exacta: true,
+        conversacional: true
+    });
+
+    if (/^(hola( tuki)?|buen dia|buenas( tardes| noches)?|hey|que tal)$/.test(texto)) {
+        return respuesta("¡Hola! 👋 Soy Tuki, tu asistente para descubrir Puerto Iguazú. ¿Querés que te recomiende qué hacer, dónde comer o qué visitar?");
+    }
+
+    if (/^(gracias|muchas gracias|genial|perfecto|excelente)$/.test(texto)) {
+        return respuesta("¡De nada! 😊 Cuando quieras, puedo ayudarte a descubrir otro lugar o armar un plan en Iguazú.");
+    }
+
+    if (/(quien sos|que sos|que haces|para que servis|sos un chatbot)/.test(texto)) {
+        return respuesta("Soy Tuki, el asistente turístico de Iguazú Ahora. Puedo ayudarte a encontrar lugares, actividades, comida, información del clima y armar planes para Puerto Iguazú.");
+    }
+
+    if (/^(ayuda|que puedo preguntar|que podes hacer|como te uso)$/.test(texto)) {
+        return respuesta("Podés preguntarme qué hacer, dónde comer, qué visitar, qué hay cerca, qué opciones hay con lluvia o pedirme una recomendación para algunas horas.");
+    }
+
+    return null;
+}
+
 function buscarLugarMencionadoTuki(textoNormalizado) {
     return lugaresReales.find(lugar => {
         const nombre = normalizarConsultaTuki(lugar.nombre);
@@ -194,6 +225,9 @@ function obtenerRecomendacionesCercanasTuki(intencion, contexto) {
 
 function resolverConsultaTuki(consulta) {
     const intencion = interpretarConsultaTuki(consulta);
+    const conversacional = respuestaConversacionalTuki(intencion.texto);
+    if (conversacional) return conversacional;
+
     const contexto = construirContextoTuki(intencion);
     const lugarMencionado = buscarLugarMencionadoTuki(intencion.texto);
 
@@ -259,6 +293,25 @@ function resolverConsultaTuki(consulta) {
     }));
 
     if (!Array.isArray(resultado?.lugares) || resultado.lugares.length === 0) {
+        // Último respaldo: usar únicamente experiencias reales y planificables del
+        // catálogo, aunque no cumplan todos los filtros de horario/clima. Así Tuki
+        // siempre entrega una salida útil sin inventar recomendaciones.
+        const respaldoCatalogo = lugaresReales
+            .filter(esActividadTuristicaTuki)
+            .sort((a, b) => Number(b.prioridad || 0) - Number(a.prioridad || 0))
+            .slice(0, 1);
+
+        if (respaldoCatalogo.length > 0) {
+            return {
+                texto: "No encontré una coincidencia exacta para todos tus criterios. Te dejo una experiencia real del catálogo para que puedas revisar sus horarios y condiciones:",
+                lugares: respaldoCatalogo,
+                contexto: resultado?.contextoPlan || contexto,
+                intencion,
+                fuenteUbicacion: null,
+                exacta: false
+            };
+        }
+
         return {
             texto: "No encontré una actividad turística planificable y disponible para esas condiciones. Probá con otro horario o una duración diferente.",
             lugares: [],
