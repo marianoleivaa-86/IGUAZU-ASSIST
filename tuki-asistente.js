@@ -380,23 +380,25 @@ function actualizarControlSonidoTuki() {
 }
 
 function abrirTuki() {
+    const panel = document.querySelector("#tuki-panel");
+    const backdrop = document.querySelector("#tuki-backdrop");
     const fab = document.querySelector("#tuki-fab");
-    if (!fab) return;
+    const input = document.querySelector("#tuki-input");
+    if (!fab || !panel || !backdrop) return;
     const anterior = document.querySelector("#tuki-fab-bubble");
     if (anterior) anterior.remove();
     if (TukiUIState.burbujaTimer) clearTimeout(TukiUIState.burbujaTimer);
-    const burbuja = document.createElement("div");
-    burbuja.id = "tuki-fab-bubble";
-    burbuja.className = "tuki-fab-bubble";
-    burbuja.setAttribute("role", "status");
-    burbuja.setAttribute("aria-live", "polite");
-    burbuja.textContent = "¡Hola! Soy Tuki. Estoy acá para ayudarte a descubrir Iguazú.";
-    document.body.appendChild(burbuja);
-    fab.setAttribute("aria-expanded", "false");
-    TukiUIState.burbujaTimer = setTimeout(() => {
-        burbuja.remove();
-        TukiUIState.burbujaTimer = null;
-    }, 5000);
+    TukiUIState.ultimoFoco = document.activeElement;
+    TukiUIState.abierto = true;
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+    backdrop.classList.remove("hidden");
+    backdrop.setAttribute("aria-hidden", "false");
+    fab.setAttribute("aria-expanded", "true");
+    document.body.classList.add("tuki-open");
+    actualizarContextoVisualTuki();
+    actualizarControlSonidoTuki();
+    window.setTimeout(() => input?.focus(), 180);
 }
 
 function cerrarTuki() {
@@ -438,25 +440,39 @@ function responderConsultaTuki(consulta) {
 
 function enviarConsultaTuki(consulta) {
     const texto = String(consulta || "").trim();
-    if (!texto) return null;
+    if (!texto || TukiUIState.esperandoUbicacion) return null;
 
-    agregarMensajeUsuarioTuki(texto);
-    const intencion = interpretarConsultaTuki(texto);
+    try {
+        agregarMensajeUsuarioTuki(texto);
+        const intencion = interpretarConsultaTuki(texto);
 
-    if (intencion.cerca && !AppState.userCoords && !TukiUIState.esperandoUbicacion) {
-        TukiUIState.esperandoUbicacion = true;
-        agregarRespuestaTuki({
-            texto: "Estoy buscando tu ubicación. Si el GPS no está disponible, usaré la Plaza San Martín como referencia segura.",
-            lugares: []
-        });
-        obtenerUbicacionUsuario(() => {
-            TukiUIState.esperandoUbicacion = false;
-            responderConsultaTuki(texto);
-        });
-        return null;
+        if (intencion.cerca && !AppState.userCoords && !TukiUIState.esperandoUbicacion) {
+            TukiUIState.esperandoUbicacion = true;
+            agregarRespuestaTuki({
+                texto: "Estoy buscando tu ubicación. Si el GPS no está disponible, usaré la Plaza San Martín como referencia segura.",
+                lugares: []
+            });
+            obtenerUbicacionUsuario(() => {
+                TukiUIState.esperandoUbicacion = false;
+                responderConsultaTuki(texto);
+            });
+            return null;
+        }
+
+        return responderConsultaTuki(texto);
+    } catch (error) {
+        console.error("Tuki no pudo procesar la consulta.", error);
+        const respuestaFallback = {
+            texto: "Tuki sigue disponible, pero no pudo procesar esa consulta. Probá preguntarme por actividades, comida, clima o lugares cercanos.",
+            lugares: [],
+            contexto: null,
+            intencion: null,
+            fuenteUbicacion: null,
+            exacta: false
+        };
+        agregarRespuestaTuki(respuestaFallback);
+        return respuestaFallback;
     }
-
-    return responderConsultaTuki(texto);
 }
 
 function initTukiAsistente() {

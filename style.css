@@ -73,7 +73,7 @@ img {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    padding-bottom: 85px; /* Espacio para bottom nav fija */
+    padding-bottom: calc(85px + env(safe-area-inset-bottom)); /* Espacio para bottom nav fija + área segura */
     max-width: 680px;
     margin: 0 auto;
     background-color: var(--bg-main);
@@ -114,6 +114,20 @@ img {
 .hero-leaves-right {
     right: 0;
     background: radial-gradient(circle at 100% 50%, rgba(46, 125, 50, 0.35), transparent 70%);
+}
+
+.hero-jaguar-art {
+    position: absolute;
+    z-index: 1;
+    left: -18%;
+    bottom: -11%;
+    width: 92%;
+    height: 84%;
+    opacity: 0.38;
+    pointer-events: none;
+    background: url('hero-art.svg') center / cover no-repeat;
+    filter: saturate(0.72) contrast(1.08);
+    transform: translateX(-4%);
 }
 
 /* Barra superior en Hero */
@@ -1352,8 +1366,9 @@ img {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--border-forest);
-    height: 70px;
+    height: calc(70px + env(safe-area-inset-bottom));
     padding: 0 12px;
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .bottom-nav-inner {
@@ -2374,7 +2389,7 @@ body.tuki-open {
     background: #102d1b;
     color: #f0fdf4;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
-    font-size: 13.5px;
+    font-size: 14px;
     line-height: 1.48;
 }
 
@@ -3275,7 +3290,17 @@ body.tuki-modal-active {
     justify-content: center;
     border-radius: 50%;
     overflow: hidden;
+    cursor: pointer;
+    transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms ease;
 }
+
+.tuki-fab:hover,
+.tuki-fab:focus-visible {
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 0 0 4px rgba(126, 229, 41, 0.2), 0 12px 26px rgba(0, 0, 0, 0.4);
+}
+
+.tuki-fab:active { transform: scale(0.96); }
 
 .tuki-fab-avatar {
     width: 100%;
@@ -3320,6 +3345,13 @@ body.tuki-modal-active {
 }
 
 @media (max-width: 768px) {
+    .hero-jaguar-art {
+        left: -34%;
+        bottom: -7%;
+        width: 118%;
+        height: 72%;
+        opacity: 0.28;
+    }
     .tuki-fab-bubble {
         right: 14px;
         bottom: 150px;

@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v23";
+const CACHE_NAME = "iguazu-assist-v24";
 
 const ARCHIVOS_CACHE = [
   "./",
@@ -15,6 +15,7 @@ const ARCHIVOS_CACHE = [
   "./tuki-branch.jpg",
   "./tuki-branch-transparent.png",
   "./tuki-avatar.jpg",
+  "./audio/iguazu-ambiente.mp3",
   "./hero-bg.jpg",
   "./img_aqva.jpg",
   "./img_casanova.jpg",
@@ -119,4 +120,3 @@ self.addEventListener("fetch", event => {
     )
   );
 });
-  
