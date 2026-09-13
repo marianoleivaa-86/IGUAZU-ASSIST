@@ -144,7 +144,7 @@ function respuestaConversacionalTuki(textoNormalizado) {
         return respuesta("¡De nada! 😊 Cuando quieras, puedo ayudarte a descubrir otro lugar o armar un plan en Iguazú.");
     }
 
-    if (/(quien sos|que sos|que haces|para que servis|sos un chatbot)/.test(texto)) {
+    if (/^(quien sos|que sos|que haces|para que servis|sos un chatbot)$/.test(texto)) {
         return respuesta("Soy Tuki, el asistente turístico de Iguazú Ahora. Puedo ayudarte a encontrar lugares, actividades, comida, información del clima y armar planes para Puerto Iguazú.");
     }
 

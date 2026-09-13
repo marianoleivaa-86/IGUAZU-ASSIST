@@ -20,11 +20,12 @@ const AppState = {
     filtroCercaMio: "todos",
     searchTerm: "",
     favoriteIds: new Set(),
-    currentPlanId: null
+    currentPlanId: null,
+    savedPlans: null
 };
 
 const APP_CONSTANTS = Object.freeze({
-    FALLBACK_IMAGE: "hero-bg.jpg",
+    FALLBACK_IMAGE: "hero-bg.webp",
     NEARBY_LIMIT_KM: 25,
     WALKING_LIMIT_KM: 1.5,
     GPS_STORAGE_KEY: "iguazu-assist-last-coords",
@@ -53,14 +54,100 @@ const APP_CONSTANTS = Object.freeze({
     AUDIO_ENABLED_STORAGE_KEY: "iguazu-assist-audio-enabled",
     AUDIO_VOLUME_STORAGE_KEY: "iguazu-assist-audio-volume",
     CATEGORY_IMAGES: Object.freeze({
-        naturaleza: "img_cataratas.jpg",
-        comida: "img_aqva.jpg",
-        noche: "img_casanova.jpg",
-        actividades: "img_hito.jpg",
-        alojamiento: "img_saintgeorge.jpg",
-        movilidad: "img_mirador.jpg"
+        naturaleza: "img_cataratas.webp",
+        comida: "img_aqva.webp",
+        noche: "img_casanova.webp",
+        actividades: "img_hito.webp",
+        alojamiento: "img_saintgeorge.webp",
+        movilidad: "img_mirador.webp"
     })
 });
+
+const PERSISTENCE_DB_NAME = "iguazu-assist-db";
+const PERSISTENCE_DB_VERSION = 1;
+const PERSISTENCE_STORE = "kv";
+let persistenceDbPromise = null;
+let persistenceIndexedDBActive = false;
+
+function abrirPersistenciaIndexedDB() {
+    if (persistenceDbPromise) return persistenceDbPromise;
+    if (!window.indexedDB) return Promise.reject(new Error("IndexedDB no disponible"));
+    persistenceDbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(PERSISTENCE_DB_NAME, PERSISTENCE_DB_VERSION);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(PERSISTENCE_STORE)) {
+                request.result.createObjectStore(PERSISTENCE_STORE);
+            }
+        };
+        request.onsuccess = () => {
+            persistenceIndexedDBActive = true;
+            resolve(request.result);
+        };
+        request.onerror = () => reject(request.error || new Error("No se pudo abrir IndexedDB"));
+    });
+    return persistenceDbPromise;
+}
+
+function leerPersistenciaIndexedDB(clave) {
+    return abrirPersistenciaIndexedDB().then(db => new Promise((resolve, reject) => {
+        const request = db.transaction(PERSISTENCE_STORE, "readonly").objectStore(PERSISTENCE_STORE).get(clave);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    }));
+}
+
+function guardarPersistenciaIndexedDB(clave, valor) {
+    return abrirPersistenciaIndexedDB().then(db => new Promise((resolve, reject) => {
+        const transaction = db.transaction(PERSISTENCE_STORE, "readwrite");
+        transaction.objectStore(PERSISTENCE_STORE).put(valor, clave);
+        transaction.oncomplete = () => resolve(true);
+        transaction.onerror = () => reject(transaction.error);
+    }));
+}
+
+async function inicializarPersistenciaIndexedDB() {
+    try {
+        await abrirPersistenciaIndexedDB();
+        const favoritosIDB = await leerPersistenciaIndexedDB("favorites");
+        let favoritosLegacy = [];
+        try {
+            const rawFavoritos = localStorage.getItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY);
+            const parsedFavoritos = rawFavoritos ? JSON.parse(rawFavoritos) : [];
+            if (Array.isArray(parsedFavoritos)) favoritosLegacy = parsedFavoritos.map(String);
+        } catch (error) {
+            console.info("No se pudieron leer los favoritos legacy.", error);
+        }
+        if (Array.isArray(favoritosIDB) && (favoritosIDB.length || !favoritosLegacy.length)) {
+            AppState.favoriteIds = new Set(favoritosIDB.map(String));
+        } else {
+            AppState.favoriteIds = new Set(favoritosLegacy.length ? favoritosLegacy : [...AppState.favoriteIds]);
+            await guardarPersistenciaIndexedDB("favorites", [...AppState.favoriteIds]);
+        }
+        const planesIDB = await leerPersistenciaIndexedDB("plans");
+        let planesLegacy = [];
+        try {
+            const rawPlanes = localStorage.getItem(SAVED_PLANS_STORAGE_KEY);
+            const parsedPlanes = rawPlanes ? JSON.parse(rawPlanes) : [];
+            if (Array.isArray(parsedPlanes)) planesLegacy = parsedPlanes.filter(plan => plan && plan.id);
+        } catch (error) {
+            console.info("No se pudieron leer los planes legacy.", error);
+        }
+        if (Array.isArray(planesIDB) && (planesIDB.length || !planesLegacy.length)) {
+            AppState.savedPlans = planesIDB;
+        } else {
+            AppState.savedPlans = planesLegacy.length ? planesLegacy : (Array.isArray(AppState.savedPlans) ? AppState.savedPlans : []);
+            await guardarPersistenciaIndexedDB("plans", AppState.savedPlans);
+        }
+        localStorage.removeItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY);
+        localStorage.removeItem(SAVED_PLANS_STORAGE_KEY);
+        actualizarContadorFavoritos();
+        renderizarCercaMio(AppState.filtroCercaMio || "todos");
+        if (typeof renderizarPlanesGuardados === "function") renderizarPlanesGuardados();
+    } catch (error) {
+        persistenceIndexedDBActive = false;
+        console.info("Se mantiene la persistencia local de respaldo.", error);
+    }
+}
 
 let appInitialized = false;
 let gpsRequestId = 0;
@@ -144,6 +231,19 @@ const SoundFX = {
         actualizarControlesAudio();
     },
 
+    stopAll() {
+        // Mantener una única ruta segura para detener cualquier audio de la app.
+        // El ambiente real se controla desde stopAmbient; no se generan efectos sintéticos.
+        this.stopAmbient();
+        this.activeOscillators.forEach(oscillator => {
+            try { oscillator.stop(); } catch (error) { /* Ya detenido. */ }
+            try { oscillator.disconnect(); } catch (error) { /* Ya desconectado. */ }
+        });
+        this.activeOscillators = [];
+        this.ambientNodes = [];
+        this.ambientBirdPlaying = false;
+    },
+
     suspend() {
         if (this.ambientAudio) this.ambientAudio.pause();
         if (this.audioCtx?.state === "running") {
@@ -201,6 +301,7 @@ function inicializarAplicacion() {
     initControlSonido();
     initAccionesDelegadas();
     cargarFavoritos();
+    inicializarPersistenciaIndexedDB();
 
     // GPS al cargar: getCurrentPosition automático, feed por distancia, fallback Plaza San Martín.
     initGeolocalizacion();
@@ -738,9 +839,9 @@ function obtenerImagenLugar(lugar) {
     const categoria = textoNormalizado(lugar?.categoria);
     const intereses = listaDeTextos(lugar?.intereses);
 
-    if (nombre.includes("costanera") || nombre.includes("mirador")) return "img_mirador.jpg";
-    if (nombre.includes("hito tres fronteras")) return "img_hito.jpg";
-    if (intereses.includes("fauna") || nombre.includes("colibr") || nombre.includes("guira")) return "tuki-branch.jpg";
+    if (nombre.includes("costanera") || nombre.includes("mirador")) return "img_mirador.webp";
+    if (nombre.includes("hito tres fronteras")) return "img_hito.webp";
+    if (intereses.includes("fauna") || nombre.includes("colibr") || nombre.includes("guira")) return "tuki-branch.webp";
     return APP_CONSTANTS.CATEGORY_IMAGES[categoria] || APP_CONSTANTS.FALLBACK_IMAGE;
 }
 
@@ -762,8 +863,16 @@ function cargarFavoritos() {
 }
 
 function guardarFavoritos() {
+    const favoritos = [...AppState.favoriteIds];
+    if (persistenceIndexedDBActive) {
+        guardarPersistenciaIndexedDB("favorites", favoritos).catch(() => {
+            persistenceIndexedDBActive = false;
+            try { localStorage.setItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY, JSON.stringify(favoritos)); } catch (error) { console.info("No se pudieron guardar los favoritos.", error); }
+        });
+        return;
+    }
     try {
-        localStorage.setItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY, JSON.stringify([...AppState.favoriteIds]));
+        localStorage.setItem(APP_CONSTANTS.FAVORITES_STORAGE_KEY, JSON.stringify(favoritos));
     } catch (error) {
         console.info("No se pudieron guardar los favoritos.", error);
     }
@@ -1609,20 +1718,35 @@ function clonarPlanSeguro(valor) {
 }
 
 function obtenerPlanesGuardados() {
+    if (Array.isArray(AppState.savedPlans)) return AppState.savedPlans;
     try {
         const raw = localStorage.getItem(SAVED_PLANS_STORAGE_KEY);
-        if (!raw) return [];
+        if (!raw) {
+            AppState.savedPlans = [];
+            return AppState.savedPlans;
+        }
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.filter(plan => plan && plan.id) : [];
+        AppState.savedPlans = Array.isArray(parsed) ? parsed.filter(plan => plan && plan.id) : [];
+        return AppState.savedPlans;
     } catch (error) {
         console.info("Storage de planes inválido; se inicia vacío.", error);
-        return [];
+        AppState.savedPlans = [];
+        return AppState.savedPlans;
     }
 }
 
 function guardarColeccionPlanes(planes) {
+    const coleccion = Array.isArray(planes) ? planes : [];
+    AppState.savedPlans = coleccion;
+    if (persistenceIndexedDBActive) {
+        guardarPersistenciaIndexedDB("plans", coleccion).catch(() => {
+            persistenceIndexedDBActive = false;
+            try { localStorage.setItem(SAVED_PLANS_STORAGE_KEY, JSON.stringify(coleccion)); } catch (error) { console.info("No se pudo guardar la colección de planes.", error); }
+        });
+        return true;
+    }
     try {
-        localStorage.setItem(SAVED_PLANS_STORAGE_KEY, JSON.stringify(Array.isArray(planes) ? planes : []));
+        localStorage.setItem(SAVED_PLANS_STORAGE_KEY, JSON.stringify(coleccion));
         return true;
     } catch (error) {
         console.info("No se pudo guardar la colección de planes.", error);

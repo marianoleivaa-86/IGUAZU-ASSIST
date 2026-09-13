@@ -1,6 +1,5 @@
-const CACHE_NAME = "iguazu-assist-v24";
-
-const ARCHIVOS_CACHE = [
+const CACHE_NAME = "iguazu-assist-v25";
+const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
@@ -9,114 +8,96 @@ const ARCHIVOS_CACHE = [
   "./planificador-inteligente.js",
   "./tuki-asistente.js",
   "./manifest.json",
-  "./circuitos-estado.json",
   "./icon.svg",
-  "./icon.jpg",
-  "./tuki-branch.jpg",
-  "./tuki-branch-transparent.png",
-  "./tuki-avatar.jpg",
+  "./icon-180.png",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-512-maskable.png",
+  "./tuki.svg",
+  "./hero-art.svg",
+  "./circuitos-estado.json",
   "./audio/iguazu-ambiente.mp3",
-  "./hero-bg.jpg",
-  "./img_aqva.jpg",
-  "./img_casanova.jpg",
-  "./img_cataratas.jpg",
-  "./img_hito.jpg",
-  "./img_mirador.jpg",
-  "./img_saintgeorge.jpg"
+  "./hero-bg.webp",
+  "./tuki-avatar.webp",
+  "./tuki-branch.webp",
+  "./tuki-branch-transparent.webp",
+  "./img_aqva.webp",
+  "./img_casanova.webp",
+  "./img_cataratas.webp",
+  "./img_hito.webp",
+  "./img_mirador.webp",
+  "./img_saintgeorge.webp"
 ];
+const NETWORK_FIRST_DATA = new Set(["/circuitos-estado.json"]);
+const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ARCHIVOS_CACHE))
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener("fetch", event => {
-  // Solo manejar peticiones locales de la app
-  if (!event.request.url.startsWith(self.location.origin)) {
-    return;
-  }
-
-  const url = new URL(event.request.url);
-
-  const ARCHIVOS_CRITICOS = [
-    "./",
-    "./index.html",
-    "./style.css",
-    "./data.js",
-    "./app.js",
-    "./planificador-inteligente.js",
-    "./tuki-asistente.js"
-  ];
-
-  const esCritico = ARCHIVOS_CRITICOS.some(archivo => {
-    return url.pathname.endsWith(archivo.replace("./", ""));
-  });
-
-  // ========================================================
-  // ARCHIVOS CRÍTICOS: NETWORK FIRST
-  // ========================================================
-  if (esCritico) {
-    event.respondWith(
-      fetch(event.request)
-        .then(networkResponse => {
-          if (
-            networkResponse &&
-            networkResponse.status === 200 &&
-            networkResponse.type === "basic"
-          ) {
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
-            });
-          }
-
-          return networkResponse;
-        })
-        .catch(() =>
-          caches.match(event.request).then(cachedResponse => {
-            if (cachedResponse) return cachedResponse;
-
-            if (event.request.mode === "navigate") {
-              return caches.match("./index.html");
-            }
-
-            return undefined;
-          })
-        )
-    );
-
-    return;
-  }
-
-  // ========================================================
-  // RESTO DE RECURSOS: CACHE FIRST
-  // ========================================================
-  event.respondWith(
-    caches.open(CACHE_NAME).then(cache =>
-      cache.match(event.request).then(cachedResponse => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        return fetch(event.request).then(networkResponse => {
-          if (
-            networkResponse &&
-            networkResponse.status === 200 &&
-            networkResponse.type === "basic"
-          ) {
-            cache.put(event.request, networkResponse.clone());
-          }
-
-          return networkResponse;
-        }).catch(() => {
-          if (event.request.mode === "navigate") {
-            return cache.match("./index.html");
-          }
-
-          return undefined;
-        });
-      })
-    )
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key.startsWith("iguazu-assist-") && key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
+});
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === "opaque")) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    if (request.mode === "navigate") {
+      return cache.match("./index.html");
+    }
+    throw error;
+  }
+}
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  try {
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === "opaque")) {
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (error) {
+    if (request.mode === "navigate") return cache.match("./index.html");
+    throw error;
+  }
+}
+
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  const url = new URL(request.url);
+  const sameOrigin = url.origin === self.location.origin;
+  const isData = sameOrigin && NETWORK_FIRST_DATA.has(url.pathname);
+  const isWeather = request.url.startsWith(NETWORK_FIRST_EXTERNAL);
+
+  // External weather data is allowed by CORS and gets a cached fallback.
+  if (isWeather || isData) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  if (sameOrigin) {
+    event.respondWith(cacheFirst(request));
+  }
 });

@@ -2445,7 +2445,7 @@ window.generarSorpresa = function () {
             <a class="btn-card-action" style="padding:14px; justify-content:center;" href="https://www.google.com/maps/search/?api=1&query=${queryMaps}" target="_blank" rel="noopener noreferrer">📍 Cómo Llegar</a>
         </div>
         ${construirAccionesRapidas(sorpresa, contexto, { compacto: true })}
-        <button class="btn-another-surprise" style="width: 100%; margin-top: 14px;" onclick="generarSorpresa()">🔄 Sorpréndeme otra vez</button>
+        <button class="hero-surprise-btn" style="width: 100%; margin-top: 14px;" onclick="generarSorpresa()">🔄 Sorpréndeme otra vez</button>
     `;
 };
 

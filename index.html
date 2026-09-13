@@ -14,8 +14,8 @@
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/jpeg" href="icon.jpg">
-    <link rel="apple-touch-icon" href="icon.jpg">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -60,7 +60,7 @@
         <!-- Branding Central Hero con Tuki y Tipografía de Impacto -->
         <div class="hero-brand-container">
             <div class="tuki-hero-perched">
-                <img src="tuki-branch-transparent.png" alt="Tuki el Tucán Asistente" class="tuki-branch-img">
+                <img src="tuki-branch-transparent.webp" alt="Tuki el Tucán Asistente" class="tuki-branch-img">
             </div>
 
             <div class="hero-brand-text">
@@ -286,7 +286,7 @@
             <!-- Header del planificador con Tuki -->
             <div class="planner-header-card">
                 <div class="planner-avatar-wrap">
-                    <img src="tuki-avatar.jpg" alt="Tuki Asistente" class="tuki-planner-avatar">
+                    <img src="tuki-avatar.webp" alt="Tuki Asistente" class="tuki-planner-avatar" loading="lazy">
                 </div>
                 <div>
                     <h2>Armemos tu experiencia en Iguazú</h2>
@@ -468,7 +468,7 @@
 
             <div class="profile-card-main">
                 <div class="profile-avatar-wrap">
-                    <img src="tuki-avatar.jpg" alt="Usuario Iguazú Assist" class="profile-avatar-img">
+                    <img src="tuki-avatar.webp" alt="Usuario Iguazú Assist" class="profile-avatar-img" loading="lazy">
                 </div>
                 <h2>Mi Perfil &amp; Preferencias</h2>
                 <p class="profile-subtitle">Personalizá tu asistente y disfrutá de Puerto Iguazú al máximo.</p>
@@ -548,7 +548,7 @@
 
             <div class="detail-card-main">
                 <div class="detail-hero-media">
-                    <img id="detail-image" src="hero-bg.jpg" alt="" class="detail-photo-img">
+                    <img id="detail-image" src="hero-bg.webp" alt="" class="detail-photo-img" loading="lazy">
                     <div class="detail-badge-pill" id="detail-icon">🌊</div>
                 </div>
 
@@ -600,7 +600,7 @@
 
 <!-- ASISTENTE TURÍSTICO LOCAL TUKI -->
 <button id="tuki-fab" class="tuki-fab" type="button" aria-label="Abrir chat con Tuki" title="Abrir chat con Tuki" aria-controls="tuki-panel" aria-expanded="false">
-    <span class="tuki-fab-avatar" aria-hidden="true"><img src="tuki-avatar.jpg" alt=""></span>
+    <span class="tuki-fab-avatar" aria-hidden="true"><img src="tuki-avatar.webp" alt="" loading="lazy"></span>
 </button>
 
 <div id="tuki-backdrop" class="tuki-backdrop hidden" aria-hidden="true"></div>
@@ -669,7 +669,7 @@
         <!-- 3. Tuki Botón Central Flotante -->
         <button class="bottom-nav-center-btn" id="bnav-tuki" onclick="mostrarSeccion('planner'); setTimeout(() => document.querySelector('#planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); setActiveNav('bnav-plans')" aria-label="Abrir planificador general">
             <div class="tuki-circle-glow">
-                <img src="tuki-avatar.jpg" alt="Tuki" class="tuki-nav-avatar">
+                <img src="tuki-avatar.webp" alt="Tuki" class="tuki-nav-avatar">
             </div>
             <span class="tuki-nav-label">Tuki</span>
         </button>
