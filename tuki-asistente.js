@@ -41,11 +41,11 @@ function interpretarConsultaTuki(consulta) {
         lluvia: consultaTukiIncluye(texto, ["llueve", "lluvia", "lloviendo", "mojar"]),
         cerca: consultaTukiIncluye(texto, ["cerca", "cercano", "cercanos", "a pie", "caminando"]),
         consultaHorario: consultaTukiIncluye(texto, ["horario", "abre", "cierra", "abierto", "abiertos"]),
-        consultaPrecio: consultaTukiIncluye(texto, ["precio", "cuesta", "tarifa", "presupuesto", "economico", "barato"]),
+        consultaPrecio: consultaTukiIncluye(texto, ["precio", "cuesta", "cuanto", "sale", "tarifa", "presupuesto", "economico", "barato"]),
         ambigua: false
     };
 
-    if (consultaTukiIncluye(texto, ["comer", "comida", "restaurant", "restaurante", "almorzar", "cenar", "gastronomia"])) {
+    if (consultaTukiIncluye(texto, ["comer", "como", "comida", "restaurant", "restaurante", "almorzar", "cenar", "gastronomia"])) {
         intencion.interes = "comida";
     } else if (consultaTukiIncluye(texto, ["tomar algo", "tragos", "bar", "cerveza", "cerveceria", "noche", "nocturno"])) {
         intencion.interes = "noche";
@@ -168,6 +168,27 @@ function esActividadTuristicaTuki(lugar) {
     return esLugarValidoParaItinerario(lugar) && TUKI_CATEGORIAS_TURISTICAS.includes(lugar.categoria);
 }
 
+function precioTukiEstaConfirmado(lugar) {
+    return lugar?.precio?.estado === "confirmado" && Number.isFinite(Number(lugar.precio.monto));
+}
+
+function construirAvisoPrecioNoConfirmadoTuki(lugar) {
+    return `No tengo un precio actualizado confirmado para ${lugar.nombre}. Te recomiendo verificar la tarifa y las condiciones en la fuente oficial antes de ir.`;
+}
+
+function obtenerOpcionesComidaTuki(intencion, contexto, soloEconomicas = false, filtrarDisponibilidad = true) {
+    return lugaresReales
+        .filter(esActividadTuristicaTuki)
+        .filter(lugar => lugar.categoria === "comida")
+        .filter(lugar => !soloEconomicas || lugar.nivelGasto === "economico" || lugar.gratuito === true)
+        .filter(lugar => !filtrarDisponibilidad || estaDisponibleDurantePlan(lugar, contexto))
+        .filter(lugar => lugar.aptoPara && lugar.aptoPara.includes(intencion.compania))
+        .map(lugar => ({ lugar, distancia: calcularDistanciaKm((AppState.userCoords || CONFIG_APP.coordenadasCentro).lat, (AppState.userCoords || CONFIG_APP.coordenadasCentro).lng, lugar.coordenadas.lat, lugar.coordenadas.lng) }))
+        .sort((a, b) => a.distancia - b.distancia)
+        .slice(0, 3)
+        .map(item => ({ ...item.lugar, distanciaTuki: item.distancia }));
+}
+
 function ejecutarConClimaTuki(lluviaForzada, callback) {
     if (!lluviaForzada || climaActual.lluvia) return callback();
 
@@ -235,6 +256,16 @@ function resolverConsultaTuki(consulta) {
         const disponibilidad = obtenerEstadoDisponibilidad(lugarMencionado, contexto.horaNumero, contexto.diaSemana);
         const horario = lugarMencionado.horario || "No tengo un horario confirmado";
         const precio = lugarMencionado.precio || "No tengo un precio confirmado";
+        if (intencion.consultaPrecio && !precioTukiEstaConfirmado(lugarMencionado)) {
+            return {
+                texto: construirAvisoPrecioNoConfirmadoTuki(lugarMencionado),
+                lugares: [lugarMencionado],
+                contexto,
+                intencion,
+                fuenteUbicacion: null,
+                exacta: false
+            };
+        }
         const datoPrincipal = intencion.consultaPrecio
             ? `El precio informado es: ${precio}.`
             : intencion.consultaHorario
@@ -248,6 +279,35 @@ function resolverConsultaTuki(consulta) {
             intencion,
             fuenteUbicacion: null,
             exacta: true
+        };
+    }
+
+    if (intencion.interes === "comida") {
+        const comida = obtenerOpcionesComidaTuki(intencion, contexto, intencion.presupuesto === "economico");
+        if (comida.length > 0) {
+            return {
+                texto: intencion.presupuesto === "economico"
+                    ? "Encontré estas opciones gastronómicas económicas o accesibles confirmadas en el catálogo:"
+                    : "Encontré estas opciones gastronómicas compatibles en el catálogo:",
+                lugares: comida,
+                contexto,
+                intencion,
+                fuenteUbicacion: null,
+                exacta: true
+            };
+        }
+
+        const alternativasComida = obtenerOpcionesComidaTuki(intencion, contexto, false, false);
+        const aviso = intencion.presupuesto === "economico"
+            ? "No encontré restaurantes con precio económico confirmado cerca. El catálogo solo tiene opciones gastronómicas de precio medio o superior; te las muestro como alternativa, no como opciones económicas."
+            : "No encontré una opción gastronómica compatible y disponible en este momento.";
+        return {
+            texto: aviso,
+            lugares: alternativasComida,
+            contexto,
+            intencion,
+            fuenteUbicacion: null,
+            exacta: false
         };
     }
 

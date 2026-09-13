@@ -78,6 +78,9 @@
                 </div>
 
                 <p class="hero-question">¿Qué querés hacer hoy?</p>
+                <button type="button" id="install-app-btn" class="install-app-btn hidden" aria-label="Instalar Iguazú Assist">
+                    📲 Instalar app
+                </button>
                 <button type="button" class="hero-now-btn" onclick="abrirQueHagoAhora()">
                     🧭 ¿Qué hago ahora?
                 </button>
@@ -131,6 +134,14 @@
                     <span class="refresh-icon">🔄</span>
                     <span>Actualizar GPS</span>
                 </button>
+            </div>
+            <div id="gps-fallback-help" class="gps-fallback-help hidden" role="status" aria-live="polite">
+                <span>📍 Usando Plaza San Martín como referencia — activá tu ubicación para distancias más precisas.</span>
+                <button type="button" id="gps-fallback-retry" class="gps-fallback-retry">Reintentar GPS</button>
+            </div>
+            <div id="offline-readiness-banner" class="offline-readiness-banner hidden" role="status" aria-live="polite">
+                <span>📶 Abrí la app una vez con conexión para dejarla lista para usar sin señal.</span>
+                <button type="button" id="offline-readiness-dismiss" class="offline-readiness-dismiss" aria-label="Cerrar aviso offline">×</button>
             </div>
 
             <!-- Barra de Filtros en Pastillas Desplazables -->

@@ -471,6 +471,52 @@ img {
     background: rgba(126, 229, 41, 0.15);
     box-shadow: 0 0 12px var(--color-lime-glow);
 }
+.gps-fallback-help,
+.offline-readiness-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: -4px 0 14px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(38, 76, 31, 0.94);
+    border: 1px solid var(--border-lime);
+    color: #f4ffe9;
+    font-size: 12px;
+    line-height: 1.35;
+}
+.gps-fallback-retry,
+.offline-readiness-dismiss {
+    flex: 0 0 auto;
+    border: 1px solid var(--border-lime);
+    border-radius: 999px;
+    background: rgba(5, 24, 12, 0.9);
+    color: var(--color-lime);
+    font-weight: 700;
+    cursor: pointer;
+}
+.gps-fallback-retry { padding: 6px 10px; }
+.offline-readiness-dismiss { width: 28px; height: 28px; font-size: 18px; line-height: 1; }
+.install-app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 0 8px;
+    padding: 9px 14px;
+    border: 1px solid var(--border-lime);
+    border-radius: 999px;
+    background: var(--color-lime);
+    color: #08210f;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 5px 16px rgba(157, 255, 67, 0.18);
+}
+.gps-fallback-help.hidden,
+.offline-readiness-banner.hidden,
+.install-app-btn.hidden { display: none; }
+.place-card-meta-line .reference-distance-pill { border-color: #e9c46a; color: #ffe7a3; }
 
 /* Barra de Filtros en Pastillas */
 .filter-chips-container {

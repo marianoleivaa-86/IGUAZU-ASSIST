@@ -29,6 +29,7 @@ const APP_CONSTANTS = Object.freeze({
     NEARBY_LIMIT_KM: 25,
     WALKING_LIMIT_KM: 1.5,
     GPS_STORAGE_KEY: "iguazu-assist-last-coords",
+    OFFLINE_READY_NOTICE_KEY: "iguazu-assist-offline-ready-notice",
     DEFAULT_CENTER: Object.freeze({ lat: -25.5979, lng: -54.5742 }),
     SECTION_IDS: Object.freeze([
         "hero-section",
@@ -153,6 +154,7 @@ let appInitialized = false;
 let gpsRequestId = 0;
 let gpsWatchId = null;
 let lastGpsWatchUpdate = 0;
+let deferredInstallPrompt = null;
 
 // ========================================================
 // SISTEMA DE EFECTOS DE SONIDO CORTOS (WEB AUDIO API)
@@ -288,6 +290,39 @@ function mostrarToast(mensaje) {
 // ========================================================
 // INICIALIZACIÓN AL CARGAR EL DOM
 // ========================================================
+function inicializarExperienciaPwa() {
+    const installButton = document.querySelector("#install-app-btn");
+    const offlineBanner = document.querySelector("#offline-readiness-banner");
+    const dismissOffline = document.querySelector("#offline-readiness-dismiss");
+
+    window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installButton?.classList.remove("hidden");
+    });
+    window.addEventListener("appinstalled", () => {
+        deferredInstallPrompt = null;
+        installButton?.classList.add("hidden");
+        mostrarToast("📲 Iguazú Assist quedó instalada en tu dispositivo");
+    });
+    installButton?.addEventListener("click", async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        const choice = await deferredInstallPrompt.userChoice;
+        if (choice?.outcome === "accepted") installButton.classList.add("hidden");
+        deferredInstallPrompt = null;
+    });
+
+    let avisoVisto = false;
+    try { avisoVisto = localStorage.getItem(APP_CONSTANTS.OFFLINE_READY_NOTICE_KEY) === "1"; } catch (error) { /* almacenamiento opcional */ }
+    if (!avisoVisto && navigator.onLine !== false) {
+        offlineBanner?.classList.remove("hidden");
+        dismissOffline?.addEventListener("click", () => {
+            offlineBanner.classList.add("hidden");
+            try { localStorage.setItem(APP_CONSTANTS.OFFLINE_READY_NOTICE_KEY, "1"); } catch (error) { /* almacenamiento opcional */ }
+        }, { once: true });
+    }
+}
 function inicializarAplicacion() {
     if (appInitialized) return;
     appInitialized = true;
@@ -300,6 +335,7 @@ function inicializarAplicacion() {
     initFichaClima();
     initControlSonido();
     initAccionesDelegadas();
+    inicializarExperienciaPwa();
     cargarFavoritos();
     inicializarPersistenciaIndexedDB();
 
@@ -548,6 +584,13 @@ function actualizarEstadoGps(texto, estado) {
     label.className = "gps-text";
     label.textContent = String(texto ?? "").replace(/^📍\s*/, "");
     gpsStatus.replaceChildren(icon, label);
+    const fallbackHelp = document.querySelector("#gps-fallback-help");
+    if (fallbackHelp) fallbackHelp.classList.toggle("hidden", !["fallback", "stored"].includes(estado));
+    const retryButton = document.querySelector("#btn-refresh-gps");
+    if (retryButton) {
+        const retryLabel = retryButton.querySelector("span:last-child");
+        if (retryLabel) retryLabel.textContent = ["fallback", "stored"].includes(estado) ? "Reintentar GPS" : "Actualizar GPS";
+    }
 }
 
 function leerCoordenadasGuardadas() {
@@ -979,6 +1022,7 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     metaLine.className = "place-card-meta-line";
     if (Number.isFinite(distancia)) {
         metaLine.appendChild(crearPill(`📍 ${formatearDistancia(distancia)}`, "meta-pill dist-pill"));
+        metaLine.appendChild(crearPill(AppState.gpsActive ? "📡 GPS real" : "📍 Ref. aproximada", `meta-pill ${AppState.gpsActive ? "gps-distance-pill" : "reference-distance-pill"}`));
         const traslado = calcularEstimacionTraslado(distancia);
         if (traslado) metaLine.appendChild(crearPill(traslado, distancia <= APP_CONSTANTS.WALKING_LIMIT_KM ? "tag-badge walk-badge" : "tag-badge car-badge"));
         metaLine.appendChild(crearBadgeDisponibilidad(disponibilidad));
@@ -1104,6 +1148,10 @@ function initCercaMio() {
 
     const btnRefreshGps = document.querySelector("#btn-refresh-gps");
     btnRefreshGps?.addEventListener("click", () => {
+        SoundFX.play("cambio");
+        obtenerUbicacionUsuario(refrescarFeedCercano);
+    });
+    document.querySelector("#gps-fallback-retry")?.addEventListener("click", () => {
         SoundFX.play("cambio");
         obtenerUbicacionUsuario(refrescarFeedCercano);
     });
