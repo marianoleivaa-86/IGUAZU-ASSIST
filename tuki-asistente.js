@@ -534,9 +534,10 @@ function cerrarTuki() {
     }
 }
 
-function responderConsultaTuki(consulta) {
+async function responderConsultaTuki(consulta) {
     let respuesta;
     try {
+        await window.cargarPlanificador();
         respuesta = resolverConsultaTuki(consulta);
     } catch (error) {
     console.error("Tuki no pudo resolver la consulta.", error);
@@ -571,12 +572,13 @@ function enviarConsultaTuki(consulta) {
             });
             obtenerUbicacionUsuario(() => {
                 TukiUIState.esperandoUbicacion = false;
-                responderConsultaTuki(texto);
+                void responderConsultaTuki(texto);
             });
             return null;
         }
 
-        return responderConsultaTuki(texto);
+        void responderConsultaTuki(texto);
+        return null;
     } catch (error) {
         console.error("Tuki no pudo procesar la consulta.", error);
         const respuestaFallback = {

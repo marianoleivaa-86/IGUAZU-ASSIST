@@ -169,6 +169,7 @@ function cargarPlanificador() {
     });
     return planificadorLoadPromise;
 }
+window.cargarPlanificador = cargarPlanificador;
 
 window.generarPlan = () => cargarPlanificador().then(() => window.generarPlanReal?.());
 window.generarSorpresa = () => cargarPlanificador().then(() => window.generarSorpresa?.());
@@ -220,8 +221,9 @@ const SoundFX = {
         guardarPreferenciasAudio();
     },
 
-    startAmbient() {
+    startAmbient({ userGesture = false } = {}) {
         if (this.ambientActive || !AppState.audioActivo || document.hidden) return;
+        if (!userGesture && !this.ambientAudio) return;
         try {
             if (!this.ambientAudio) {
                 this.ambientAudio = new Audio("audio/iguazu-ambiente.mp3");
@@ -234,12 +236,19 @@ const SoundFX = {
             Promise.resolve(reproduccion).then(() => {
                 this.ambientActive = true;
                 actualizarControlesAudio();
-            }).catch(() => {
+            }).catch(error => {
                 this.ambientActive = false;
+                const mediaError = this.ambientAudio?.error;
+                console.warn("No se pudo reproducir el ambiente selvático.", {
+                    name: error?.name || "PlayPromiseRejected",
+                    code: mediaError?.code ?? null,
+                    message: error?.message || mediaError?.message || "El navegador rechazó audio.play()."
+                });
                 actualizarControlesAudio();
             });
         } catch (error) {
             this.ambientActive = false;
+            console.warn("No se pudo iniciar el ambiente selvático.", error);
         }
     },
 
@@ -1762,7 +1771,7 @@ function initControlSonido() {
         actualizarControlesAudio();
         if (AppState.audioActivo) {
             mostrarToast("🔊 Sonido y ambiente de selva activados");
-            iniciarAudioHabilitado();
+            SoundFX.startAmbient({ userGesture: true });
         } else {
             SoundFX.stopAmbient();
             SoundFX.stopAll();
@@ -1771,7 +1780,10 @@ function initControlSonido() {
         }
     });
 
-    const reintentarTrasInteraccion = () => iniciarAudioHabilitado();
+    const reintentarTrasInteraccion = () => {
+        if (!AppState.audioActivo || document.hidden) return;
+        SoundFX.startAmbient({ userGesture: true });
+    };
     document.addEventListener("pointerdown", reintentarTrasInteraccion, { passive: true });
     document.addEventListener("keydown", reintentarTrasInteraccion);
     document.addEventListener("visibilitychange", () => {
