@@ -220,37 +220,42 @@ const SoundFX = {
         }
         guardarPreferenciasAudio();
     },
+startAmbient({ userGesture = false } = {}) {
+    if (this.ambientActive || !AppState.audioActivo || document.hidden) return;
 
-    startAmbient({ userGesture = false } = {}) {
-        if (this.ambientActive || !AppState.audioActivo || document.hidden) return;
-        if (!userGesture && !this.ambientAudio) return;
-        try {
-            if (!this.ambientAudio) {
-                this.ambientAudio = new Audio("audio/iguazu-ambiente.mp3");
-                this.ambientAudio.loop = true;
-                this.ambientAudio.preload = "auto";
-                this.ambientAudio.setAttribute("aria-hidden", "true");
-            }
-            this.ambientAudio.volume = this.getAmbientGainValue();
-            const reproduccion = this.ambientAudio.play();
-            Promise.resolve(reproduccion).then(() => {
-                this.ambientActive = true;
-                actualizarControlesAudio();
-            }).catch(error => {
-                this.ambientActive = false;
-                const mediaError = this.ambientAudio?.error;
-                console.warn("No se pudo reproducir el ambiente selvático.", {
-                    name: error?.name || "PlayPromiseRejected",
-                    code: mediaError?.code ?? null,
-                    message: error?.message || mediaError?.message || "El navegador rechazó audio.play()."
-                });
-                actualizarControlesAudio();
-            });
-        } catch (error) {
-            this.ambientActive = false;
-            console.warn("No se pudo iniciar el ambiente selvático.", error);
+    try {
+        if (!this.ambientAudio) {
+            this.ambientAudio = new Audio("audio/iguazu-ambiente.mp3");
+            this.ambientAudio.loop = true;
+            this.ambientAudio.preload = "auto";
+            this.ambientAudio.setAttribute("aria-hidden", "true");
         }
-    },
+
+        this.ambientAudio.volume = this.getAmbientGainValue();
+
+        const reproduccion = this.ambientAudio.play();
+
+        Promise.resolve(reproduccion).then(() => {
+            this.ambientActive = true;
+            actualizarControlesAudio();
+        }).catch(error => {
+            this.ambientActive = false;
+            const mediaError = this.ambientAudio?.error;
+
+            console.warn("No se pudo reproducir el ambiente selvático.", {
+                name: error?.name || "PlayPromiseRejected",
+                code: mediaError?.code ?? null,
+                message: error?.message || mediaError?.message || "El navegador rechazó audio.play()."
+            });
+
+            actualizarControlesAudio();
+        });
+
+    } catch (error) {
+        this.ambientActive = false;
+        console.warn("No se pudo iniciar el ambiente selvático.", error);
+    }
+},
 
     stopAmbient() {
         if (this.ambientBirdTimer) clearTimeout(this.ambientBirdTimer);
@@ -1756,7 +1761,25 @@ function actualizarControlesAudio() {
 
 function iniciarAudioHabilitado() {
     if (!AppState.audioActivo || document.hidden) return;
+
     SoundFX.startAmbient();
+
+    // En celulares, el navegador puede bloquear el autoplay.
+    // Ante la primera interacción del usuario, intentamos nuevamente.
+    const activarAudioConInteraccion = () => {
+        if (!AppState.audioActivo || document.hidden) return;
+
+        SoundFX.startAmbient({ userGesture: true });
+
+        document.removeEventListener("pointerdown", activarAudioConInteraccion);
+        document.removeEventListener("touchstart", activarAudioConInteraccion);
+        document.removeEventListener("keydown", activarAudioConInteraccion);
+    };
+
+    document.addEventListener("pointerdown", activarAudioConInteraccion, { once: true });
+    document.addEventListener("touchstart", activarAudioConInteraccion, { once: true });
+    document.addEventListener("keydown", activarAudioConInteraccion, { once: true });
+
 }
 
 function initControlSonido() {
