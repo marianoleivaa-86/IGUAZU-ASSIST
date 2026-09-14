@@ -165,7 +165,7 @@ function buscarLugarMencionadoTuki(textoNormalizado) {
 }
 
 function esActividadTuristicaTuki(lugar) {
-    return esLugarValidoParaItinerario(lugar) && TUKI_CATEGORIAS_TURISTICAS.includes(lugar.categoria);
+    return window.PlanificadorAPI.esLugarValidoParaItinerario(lugar) && TUKI_CATEGORIAS_TURISTICAS.includes(lugar.categoria);
 }
 
 function precioTukiEstaConfirmado(lugar) {
@@ -181,7 +181,7 @@ function obtenerOpcionesComidaTuki(intencion, contexto, soloEconomicas = false, 
         .filter(esActividadTuristicaTuki)
         .filter(lugar => lugar.categoria === "comida")
         .filter(lugar => !soloEconomicas || lugar.nivelGasto === "economico" || lugar.gratuito === true)
-        .filter(lugar => !filtrarDisponibilidad || estaDisponibleDurantePlan(lugar, contexto))
+        .filter(lugar => !filtrarDisponibilidad || window.estaDisponibleDurantePlan(lugar, contexto))
         .filter(lugar => lugar.aptoPara && lugar.aptoPara.includes(intencion.compania))
         .map(lugar => ({ lugar, distancia: calcularDistanciaKm((AppState.userCoords || CONFIG_APP.coordenadasCentro).lat, (AppState.userCoords || CONFIG_APP.coordenadasCentro).lng, lugar.coordenadas.lat, lugar.coordenadas.lng) }))
         .sort((a, b) => a.distancia - b.distancia)
@@ -190,11 +190,12 @@ function obtenerOpcionesComidaTuki(intencion, contexto, soloEconomicas = false, 
 }
 
 function ejecutarConClimaTuki(lluviaForzada, callback) {
-    if (!lluviaForzada || climaActual.lluvia) return callback();
+    const planificador = window.PlanificadorAPI;
+    if (!planificador || !lluviaForzada || planificador.climaActual.lluvia) return callback();
 
-    const climaAnterior = { ...climaActual };
-    climaActual = {
-        ...climaActual,
+    const climaAnterior = { ...planificador.climaActual };
+    planificador.climaActual = {
+        ...planificador.climaActual,
         estado: "listo",
         descripcion: "Escenario con lluvia",
         lluvia: true,
@@ -204,7 +205,7 @@ function ejecutarConClimaTuki(lluviaForzada, callback) {
     try {
         return callback();
     } finally {
-        climaActual = climaAnterior;
+        planificador.climaActual = climaAnterior;
     }
 }
 
@@ -212,12 +213,12 @@ function obtenerRecomendacionesAmpliasTuki(intencion, contexto) {
     return lugaresReales
         .filter(esActividadTuristicaTuki)
         .filter(lugar => !intencion.lluvia || lugar.alAireLibre !== true)
-        .filter(lugar => estaDisponibleDurantePlan(lugar, contexto))
-        .filter(lugar => esCompatibleConPresupuesto(lugar, intencion.presupuesto))
+        .filter(lugar => window.estaDisponibleDurantePlan(lugar, contexto))
+        .filter(lugar => window.PlanificadorAPI.esCompatibleConPresupuesto(lugar, intencion.presupuesto))
         .filter(lugar => lugar.aptoPara && lugar.aptoPara.includes(intencion.compania))
         .map(lugar => ({
             lugar,
-            puntaje: calcularPuntaje(lugar, contexto, intencion.compania, lugar.categoria)
+            puntaje: window.calcularPuntaje(lugar, contexto, intencion.compania, lugar.categoria)
         }))
         .sort((a, b) => b.puntaje - a.puntaje)
         .slice(0, 3)
@@ -231,8 +232,8 @@ function obtenerRecomendacionesCercanasTuki(intencion, contexto) {
         .filter(esActividadTuristicaTuki)
         .filter(lugar => lugar.coordenadas && typeof lugar.coordenadas.lat === "number")
         .filter(lugar => !intencion.lluvia || lugar.alAireLibre !== true)
-        .filter(lugar => estaDisponibleDurantePlan(lugar, contexto))
-        .filter(lugar => esCompatibleConPresupuesto(lugar, intencion.presupuesto))
+        .filter(lugar => window.estaDisponibleDurantePlan(lugar, contexto))
+        .filter(lugar => window.PlanificadorAPI.esCompatibleConPresupuesto(lugar, intencion.presupuesto))
         .filter(lugar => lugar.aptoPara && lugar.aptoPara.includes(intencion.compania))
         .map(lugar => ({
             lugar,
@@ -343,12 +344,12 @@ function resolverConsultaTuki(consulta) {
     }
 
     const interes = intencion.interes || "actividades";
-    const resultado = ejecutarConClimaTuki(intencion.lluvia, () => construirPlanConFallback({
+    const resultado = ejecutarConClimaTuki(intencion.lluvia, () => window.PlanificadorAPI.construirPlanConFallback({
         interes,
         tiempo: intencion.tiempo,
         compania: intencion.compania,
         presupuesto: intencion.presupuesto,
-        limiteHoras: horasDisponibles(intencion.tiempo),
+        limiteHoras: window.PlanificadorAPI.horasDisponibles(intencion.tiempo),
         ahora: contexto
     }));
 
@@ -468,13 +469,14 @@ function agregarRespuestaTuki(respuesta) {
 
 function actualizarContextoVisualTuki() {
     const contexto = contextoDeAhora();
+    const clima = window.PlanificadorAPI?.climaActual;
     const tiempo = document.querySelector("#tuki-context-time");
-    const clima = document.querySelector("#tuki-context-weather");
+    const climaTexto = document.querySelector("#tuki-context-weather");
     const hora = Math.floor(contexto.horaNumero);
     const minutos = Math.round((contexto.horaNumero % 1) * 60);
     const hora24 = `${String(hora).padStart(2, "0")}:${String(minutos).padStart(2, "0")}`;
     if (tiempo) tiempo.innerText = `${hora24} hs · ${contexto.momento}`;
-    if (clima) clima.innerText = climaActual.estado === "cargando" ? "Clima consultando" : climaActual.descripcion;
+    if (climaTexto) climaTexto.innerText = clima?.estado === "cargando" ? "Clima consultando" : (clima?.descripcion || "Clima no disponible");
 }
 
 function actualizarControlSonidoTuki() {
