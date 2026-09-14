@@ -346,6 +346,10 @@ function inicializarAplicacion() {
     if (appInitialized) return;
     appInitialized = true;
 
+    // Tuki usa sincrónicamente las funciones globales que expone el planificador.
+    // Precargarlo evita que una consulta llegue antes de que el módulo esté disponible.
+    cargarPlanificador();
+
     initNavegacion();
     initCategorias();
     initPlanificadorOpciones();

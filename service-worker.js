@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v26";
+const CACHE_NAME = "iguazu-assist-v27";
 const APP_SHELL = [
   "./",
   "./index.html",

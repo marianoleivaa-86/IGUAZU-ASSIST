@@ -2767,3 +2767,11 @@ window.generarPlanReal = generarPlan;
 window.estaDisponibleDurantePlan = estaDisponibleDurantePlan;
 window.calcularPuntaje = calcularPuntaje;
 window.contextoDeAhora = contextoDeAhora;
+window.PlanificadorAPI = {
+    get climaActual() { return climaActual; },
+    set climaActual(valor) { climaActual = valor; },
+    construirPlanConFallback,
+    esLugarValidoParaItinerario,
+    horasDisponibles,
+    esCompatibleConPresupuesto
+};
