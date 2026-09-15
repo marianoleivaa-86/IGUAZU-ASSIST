@@ -97,12 +97,45 @@ async function main() {
         const allErrors = [...consoleErrors, ...pageErrors, ...runtimeErrors.errors];
         check("g) sin errores de consola", allErrors.length === 0, allErrors.join(" | "));
         check("g) sin unhandledrejection", runtimeErrors.unhandled.length === 0, runtimeErrors.unhandled.join(" | "));
+        await verifyDesktopCardStyle(browser);
 
         console.log(`OK ${checks.length} checks passed`);
     } finally {
         await context.close();
         await browser.close();
         fs.rmSync(userDataDir, { recursive: true, force: true });
+    }
+}
+
+async function verifyDesktopCardStyle(browser) {
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    await page.setViewport({ width: 1280, height: 1100, deviceScaleFactor: 1 });
+    await page.setCacheEnabled(false);
+    try {
+        await page.goto(BASE_URL, { waitUntil: "networkidle0" });
+        await page.click("#tuki-fab");
+        await sleep(150);
+        await page.click('button[data-tuki-question="¿Dónde puedo comer?"]');
+        await page.waitForSelector(".tuki-place-card", { visible: true, timeout: 5000 });
+        const styles = await page.$eval(".tuki-place-card", card => {
+            const computed = getComputedStyle(card);
+            return {
+                background: computed.backgroundColor,
+                color: computed.color,
+                fill: computed.webkitTextFillColor,
+                border: computed.border
+            };
+        });
+        assert.deepEqual(styles, {
+            background: "rgb(74, 44, 26)",
+            color: "rgb(255, 255, 255)",
+            fill: "rgb(255, 255, 255)",
+            border: "1px solid rgb(184, 138, 82)"
+        });
+        console.log("PASS desktop 1280px .tuki-place-card computed style");
+    } finally {
+        await context.close();
     }
 }
 

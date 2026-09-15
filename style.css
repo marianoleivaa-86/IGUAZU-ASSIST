@@ -2615,6 +2615,23 @@ body.tuki-open {
     }
 }
 
+.tuki-place-card {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: #4a2c1a;
+    border: 1px solid #b88a52;
+    border-radius: 12px;
+    padding: 8px;
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
 @media (max-width: 768px) {
     .tuki-fab {
         bottom: calc(84px + env(safe-area-inset-bottom));
@@ -2944,23 +2961,6 @@ body.tuki-open {
 
 .tuki-bubble-text strong {
     color: var(--color-lime);
-}
-
-.tuki-place-card {
-    display: grid;
-    grid-template-columns: 78px minmax(0, 1fr);
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    background: #4a2c1a;
-    border: 1px solid #b88a52;
-    border-radius: 12px;
-    padding: 8px;
-    color: #ffffff;
-    -webkit-text-fill-color: #ffffff;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .tuki-place-card:hover {
