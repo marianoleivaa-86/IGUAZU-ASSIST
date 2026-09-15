@@ -26,16 +26,25 @@ const APP_SHELL = [
   "./tuki-branch-transparent-640.webp",
   "./img_aqva-160.webp",
   "./img_aqva-640.webp",
+  "./img_aqva.webp",
   "./img_casanova-160.webp",
   "./img_casanova-640.webp",
+  "./img_casanova.webp",
   "./img_cataratas-160.webp",
   "./img_cataratas-640.webp",
+  "./img_cataratas.webp",
   "./img_hito-160.webp",
   "./img_hito-640.webp",
+  "./img_hito.webp",
   "./img_mirador-160.webp",
   "./img_mirador-640.webp",
+  "./img_mirador.webp",
   "./img_saintgeorge-160.webp",
-  "./img_saintgeorge-640.webp"
+  "./img_saintgeorge-640.webp",
+  "./img_saintgeorge.webp",
+  "./tuki-avatar.webp",
+  "./tuki-branch-transparent.webp",
+  "./tuki-branch.webp"
 ];
 const NETWORK_FIRST_DATA = new Set(["/circuitos-estado.json"]);
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
