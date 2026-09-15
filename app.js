@@ -220,8 +220,9 @@ const SoundFX = {
         }
         guardarPreferenciasAudio();
     },
-startAmbient({ userGesture = false } = {}) {
-    if (this.ambientActive || !AppState.audioActivo || document.hidden) return;
+    startAmbient({ userGesture = false } = {}) {
+    if ((this.ambientActive && this.ambientAudio && !this.ambientAudio.paused) || !AppState.audioActivo || document.hidden) return;
+    if (this.ambientAudio?.paused) this.ambientActive = false;
 
     try {
         if (!this.ambientAudio) {
@@ -1773,11 +1774,15 @@ function iniciarAudioHabilitado() {
 
         document.removeEventListener("pointerdown", activarAudioConInteraccion);
         document.removeEventListener("touchstart", activarAudioConInteraccion);
+        document.removeEventListener("touchend", activarAudioConInteraccion);
+        document.removeEventListener("click", activarAudioConInteraccion);
         document.removeEventListener("keydown", activarAudioConInteraccion);
     };
 
     document.addEventListener("pointerdown", activarAudioConInteraccion, { once: true });
     document.addEventListener("touchstart", activarAudioConInteraccion, { once: true });
+    document.addEventListener("touchend", activarAudioConInteraccion, { once: true });
+    document.addEventListener("click", activarAudioConInteraccion, { once: true });
     document.addEventListener("keydown", activarAudioConInteraccion, { once: true });
 
 }
