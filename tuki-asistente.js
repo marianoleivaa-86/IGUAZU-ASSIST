@@ -662,7 +662,11 @@ function initTukiAsistente() {
     actualizarControlSonidoTuki();
 }
 
-document.addEventListener("DOMContentLoaded", initTukiAsistente);
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTukiAsistente, { once: true });
+} else {
+    initTukiAsistente();
+}
 
 window.TukiAsistente = {
     abrir: abrirTuki,
