@@ -79,6 +79,24 @@ async function main() {
         });
         check("e) fondo computado de tarjeta", computed.background === "rgb(74, 44, 26)", JSON.stringify(computed));
         check("e) color computado de tarjeta", computed.color === "rgb(255, 255, 255)", JSON.stringify(computed));
+        const geometry = await page.$eval(".tuki-place-card", card => {
+            const icon = card.querySelector(".tuki-place-icon")?.getBoundingClientRect();
+            const info = card.querySelector(".tuki-place-info")?.getBoundingClientRect();
+            const arrow = card.querySelector(".tuki-place-arrow")?.getBoundingClientRect();
+            const cardRect = card.getBoundingClientRect();
+            return {
+                icon: icon && { left: icon.left, right: icon.right, width: icon.width },
+                info: info && { left: info.left, right: info.right, width: info.width },
+                arrow: arrow && { left: arrow.left, right: arrow.right, width: arrow.width },
+                card: { left: cardRect.left, right: cardRect.right }
+            };
+        });
+        check("e) columnas separadas de tarjeta", geometry.icon && geometry.info && geometry.arrow
+            && geometry.icon.right <= geometry.info.left
+            && geometry.info.right <= geometry.arrow.left
+            && geometry.info.width > 80
+            && geometry.arrow.width > 0,
+        JSON.stringify(geometry));
 
         await page.click(".tuki-place-card");
         await sleep(250);

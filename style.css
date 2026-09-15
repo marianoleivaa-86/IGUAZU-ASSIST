@@ -2617,7 +2617,7 @@ body.tuki-open {
 
 .tuki-place-card {
     display: grid;
-    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-columns: 68px minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
     width: 100%;
@@ -2984,14 +2984,16 @@ body.tuki-open {
 }
 
 .tuki-place-icon {
-    position: absolute;
-    bottom: 3px;
-    right: 3px;
+    position: static;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
     font-size: 13px;
-    background: rgba(3, 14, 6, 0.85);
-    border-radius: 6px;
-    padding: 1px 3px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: #e9f6ee;
+    border-radius: 10px;
+    padding: 0;
+    border: 0;
 }
 
 .tuki-place-info {
@@ -3203,7 +3205,7 @@ body.tuki-open {
         height: 34px;
     }
     .tuki-place-card {
-        grid-template-columns: 68px minmax(0, 1fr);
+        grid-template-columns: 68px minmax(0, 1fr) auto;
     }
     .tuki-place-thumb {
         width: 68px;
