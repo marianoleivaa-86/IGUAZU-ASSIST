@@ -1704,7 +1704,7 @@ const lugaresReales = [
         descripcion: "Espacio nocturno con ambientación lounge, música electrónica y ritmos latinos, barra de coctelería y ambiente festivo.",
         ubicacion: "Av. Brasil (Centro)",
         direccion: "Av. Brasil 85, Puerto Iguazú",
-        coordenadas: { lat: -25.5982, lng: -54.5741 },
+        coordenadas: { lat: -25.59669, lng: -54.58504 },
         tipo: "Lounge Bar, Boliche & Discoteca",
         horario: "22:30 a 05:00 (Miércoles a Domingos)",
         rangoHorario: { apertura: 22.5, cierre: 29 },
