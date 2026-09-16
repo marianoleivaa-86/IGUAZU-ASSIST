@@ -14,6 +14,10 @@ const TukiUIState = {
 
 const TUKI_CATEGORIAS_TURISTICAS = ["naturaleza", "actividades", "noche", "comida"];
 
+function tukiText(key, fallback) {
+    return window.I18n?.t(key, fallback) || fallback;
+}
+
 function normalizarConsultaTuki(texto) {
     return String(texto || "")
         .normalize("NFD")
@@ -98,7 +102,7 @@ function interpretarConsultaTuki(consulta) {
 }
 
 function construirContextoTuki(intencion) {
-    const contexto = contextoDeAhora();
+    const contexto = window.contextoDeAhora();
 
     if (intencion.manana) {
         return {
@@ -137,19 +141,19 @@ function respuestaConversacionalTuki(textoNormalizado) {
     });
 
     if (/^(hola( tuki)?|buen dia|buenas( tardes| noches)?|hey|que tal)$/.test(texto)) {
-        return respuesta("¡Hola! 👋 Soy Tuki, tu asistente para descubrir Puerto Iguazú. ¿Querés que te recomiende qué hacer, dónde comer o qué visitar?");
+        return respuesta(tukiText("tukiHello", "¡Hola! 👋 Soy Tuki, tu asistente para descubrir Puerto Iguazú. ¿Querés que te recomiende qué hacer, dónde comer o qué visitar?"));
     }
 
     if (/^(gracias|muchas gracias|genial|perfecto|excelente)$/.test(texto)) {
-        return respuesta("¡De nada! 😊 Cuando quieras, puedo ayudarte a descubrir otro lugar o armar un plan en Iguazú.");
+        return respuesta(tukiText("tukiThanks", "¡De nada! Cuando quieras, puedo ayudarte a descubrir otro lugar o armar un plan en Iguazú."));
     }
 
     if (/^(quien sos|que sos|que haces|para que servis|sos un chatbot)$/.test(texto)) {
-        return respuesta("Soy Tuki, el asistente turístico de Iguazú Ahora. Puedo ayudarte a encontrar lugares, actividades, comida, información del clima y armar planes para Puerto Iguazú.");
+        return respuesta(tukiText("tukiWho", "Soy Tuki, el asistente turístico de Iguazú Assist. Puedo ayudarte a encontrar lugares, actividades, comida, información del clima y armar planes para Puerto Iguazú."));
     }
 
     if (/^(ayuda|que puedo preguntar|que podes hacer|como te uso)$/.test(texto)) {
-        return respuesta("Podés preguntarme qué hacer, dónde comer, qué visitar, qué hay cerca, qué opciones hay con lluvia o pedirme una recomendación para algunas horas.");
+        return respuesta(tukiText("tukiHelp", "Podés preguntarme qué hacer, dónde comer, qué visitar, qué hay cerca, qué opciones hay con lluvia o pedirme una recomendación para algunas horas."));
     }
 
     return null;
@@ -471,7 +475,7 @@ function agregarRespuestaTuki(respuesta) {
     mensaje.innerHTML = `
         <div class="tuki-message-avatar" aria-hidden="true">🦜</div>
         <div class="tuki-message-body">
-            <p>${escapar(respuesta.texto || "No encontré una respuesta exacta, pero puedo ayudarte con actividades, comida, clima y lugares cercanos.")}</p>
+            <p>${escapar(respuesta.texto || tukiText("tukiNoExact", "No encontré una respuesta exacta, pero puedo ayudarte con actividades, comida, clima y lugares cercanos."))}</p>
             ${crearTarjetasTuki(respuesta.lugares || [], respuesta.contexto)}
         </div>
     `;
@@ -480,7 +484,8 @@ function agregarRespuestaTuki(respuesta) {
 }
 
 function actualizarContextoVisualTuki() {
-    const contexto = contextoDeAhora();
+    if (typeof window.contextoDeAhora !== "function") return;
+    const contexto = window.contextoDeAhora();
     const clima = window.PlanificadorAPI?.climaActual;
     const tiempo = document.querySelector("#tuki-context-time");
     const climaTexto = document.querySelector("#tuki-context-weather");
@@ -488,7 +493,7 @@ function actualizarContextoVisualTuki() {
     const minutos = Math.round((contexto.horaNumero % 1) * 60);
     const hora24 = `${String(hora).padStart(2, "0")}:${String(minutos).padStart(2, "0")}`;
     if (tiempo) tiempo.innerText = `${hora24} hs · ${contexto.momento}`;
-    if (climaTexto) climaTexto.innerText = clima?.estado === "cargando" ? "Clima consultando" : (clima?.descripcion || "Clima no disponible");
+    if (climaTexto) climaTexto.innerText = clima?.estado === "cargando" ? tukiText("searching", "Buscando…") : (clima?.descripcion || tukiText("localWeather", "Clima local"));
 }
 
 function actualizarControlSonidoTuki() {
@@ -556,7 +561,7 @@ async function responderConsultaTuki(consulta) {
     console.error("ERROR REAL DE TUKI:", error?.message, error?.stack);
 
     respuesta = {
-            texto: "No pude completar la recomendación en este momento. Probá nuevamente o elegí otro horario.",
+            texto: tukiText("tukiError", "No pude completar la recomendación en este momento. Probá nuevamente o elegí otro horario."),
             lugares: [],
             contexto: null,
             intencion: null,
@@ -579,7 +584,7 @@ function enviarConsultaTuki(consulta) {
         if (intencion.cerca && !AppState.userCoords && !TukiUIState.esperandoUbicacion) {
             TukiUIState.esperandoUbicacion = true;
             agregarRespuestaTuki({
-                texto: "Estoy buscando tu ubicación. Si el GPS no está disponible, usaré la Plaza San Martín como referencia segura.",
+                texto: tukiText("searchingLocation", "Estoy buscando tu ubicación. Si el GPS no está disponible, usaré la Plaza San Martín como referencia segura."),
                 lugares: []
             });
             obtenerUbicacionUsuario(() => {
@@ -594,7 +599,7 @@ function enviarConsultaTuki(consulta) {
     } catch (error) {
         console.error("Tuki no pudo procesar la consulta.", error);
         const respuestaFallback = {
-            texto: "Tuki sigue disponible, pero no pudo procesar esa consulta. Probá preguntarme por actividades, comida, clima o lugares cercanos.",
+            texto: tukiText("tukiStillAvailable", "Tuki sigue disponible, pero no pudo procesar esa consulta. Probá preguntarme por actividades, comida, clima o lugares cercanos."),
             lugares: [],
             contexto: null,
             intencion: null,
@@ -605,6 +610,11 @@ function enviarConsultaTuki(consulta) {
         return respuestaFallback;
     }
 }
+
+window.addEventListener("iguazu-language-changed", () => {
+    actualizarContextoVisualTuki();
+    actualizarControlSonidoTuki();
+});
 
 function initTukiAsistente() {
     const fab = document.querySelector("#tuki-fab");

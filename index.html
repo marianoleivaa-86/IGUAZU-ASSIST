@@ -44,6 +44,7 @@
         <!-- Barra Superior con clima y control de sonido -->
         <div class="hero-top-nav">
             <div class="hero-top-right">
+                    <label class="language-switcher" for="language-select"><span class="language-switcher-icon" aria-hidden="true">🌐</span><span class="sr-only" data-i18n="languageLabel">Idioma</span><select id="language-select" aria-label="Idioma" title="Idioma"><option value="es">ES</option><option value="en">EN</option><option value="pt">PT</option></select></label>
                 <!-- Widget Clima en Vivo -->
                 <div id="weather-badge" class="hero-weather-pill" title="Clima en tiempo real en Puerto Iguazú" role="button" tabindex="0" aria-label="Abrir información meteorológica ampliada" aria-live="polite">
                     <span id="weather-icon" class="weather-icon">☁️</span>
@@ -77,19 +78,15 @@
                 </h1>
 
                 <div class="brand-pill-tag">
-                    <span>TU GUÍA INTELIGENTE EN IGUAZÚ</span>
+                    <span data-i18n="brandTagline">TU GUÍA INTELIGENTE EN IGUAZÚ</span>
                 </div>
 
-                <p class="hero-question">¿Qué querés hacer hoy?</p>
+                <p class="hero-question" data-i18n="heroQuestion">¿Qué querés hacer hoy?</p>
                 <button type="button" id="install-app-btn" class="install-app-btn hidden" aria-label="Instalar Iguazú Assist">
                     📲 Instalar app
                 </button>
-                <button type="button" class="hero-now-btn" onclick="abrirQueHagoAhora()">
-                    🧭 ¿Qué hago ahora?
-                </button>
-                <button type="button" class="hero-surprise-btn" onclick="abrirSorprendeme()">
-                    🦜 Sorpréndeme
-                </button>
+                <button type="button" class="hero-now-btn" onclick="abrirQueHagoAhora()" data-i18n="now">🧭 ¿Qué hago ahora?</button>
+                <button type="button" class="hero-surprise-btn" onclick="abrirSorprendeme()" data-i18n="surprise">🦜 Sorpréndeme</button>
             </div>
         </div>
     </header>
@@ -97,7 +94,7 @@
     <div id="weather-sheet" class="weather-sheet hidden" role="dialog" aria-modal="true" aria-labelledby="weather-sheet-title" aria-hidden="true">
         <div class="weather-sheet-panel" role="document">
             <div class="weather-sheet-header">
-                <h2 id="weather-sheet-title">Clima en Iguazú</h2>
+                <h2 id="weather-sheet-title" data-i18n="weatherTitle">Clima en Iguazú</h2>
                 <button type="button" class="weather-sheet-close" onclick="cerrarFichaClima()" aria-label="Cerrar información meteorológica">×</button>
             </div>
             <div id="weather-sheet-body"></div>
@@ -118,12 +115,9 @@
             <div class="section-title-wrap">
                 <h2 class="section-nearby-title">
                     <span class="nearby-pin-icon">📍</span>
-                    <span>Opciones </span>
-                    <span class="lime-highlight">Cerca Tuyo</span>
+                    <span data-i18n="nearbyTitle">Opciones Cerca Tuyo</span>
                 </h2>
-                <p class="section-nearby-desc">
-                    Ordenados por distancia GPS real y estado de apertura en tiempo real.
-                </p>
+                <p class="section-nearby-desc" data-i18n="nearbyDescription">Ordenados por distancia GPS real y estado de apertura en tiempo real.</p>
             </div>
 
             <!-- Barra de Estado GPS y Referencia -->
@@ -135,67 +129,67 @@
 
                 <button id="btn-refresh-gps" class="gps-refresh-action-btn" title="Actualizar mi ubicación GPS" aria-label="Actualizar GPS">
                     <span class="refresh-icon">🔄</span>
-                    <span>Actualizar GPS</span>
+                    <span data-i18n="refreshGps">Actualizar GPS</span>
                 </button>
             </div>
             <div id="gps-fallback-help" class="gps-fallback-help hidden" role="status" aria-live="polite">
-                <span>📍 Usando Plaza San Martín como referencia — activá tu ubicación para distancias más precisas.</span>
-                <button type="button" id="gps-fallback-retry" class="gps-fallback-retry">Reintentar GPS</button>
+                <span data-i18n="gpsFallback">📍 Usando Plaza San Martín como referencia — activá tu ubicación para distancias más precisas.</span>
+                <button type="button" id="gps-fallback-retry" class="gps-fallback-retry" data-i18n="retryGps">Reintentar GPS</button>
             </div>
             <div id="offline-readiness-banner" class="offline-readiness-banner hidden" role="status" aria-live="polite">
-                <span>📶 Abrí la app una vez con conexión para dejarla lista para usar sin señal.</span>
+                <span data-i18n="offlineReady">📶 Abrí la app una vez con conexión para dejarla lista para usar sin señal.</span>
                 <button type="button" id="offline-readiness-dismiss" class="offline-readiness-dismiss" aria-label="Cerrar aviso offline">×</button>
             </div>
 
             <!-- Barra de Filtros en Pastillas Desplazables -->
-            <div class="filter-chips-container" role="group" aria-label="Filtros de búsqueda">
+            <div class="filter-chips-container" role="group" aria-label="Filtros de búsqueda" data-i18n-aria-label="filters">
                 <button class="filter-chip active" data-nearby-filter="todos">
                     <span class="chip-icon">⭐</span>
-                    <span>Todos</span>
+                    <span data-i18n="all">Todos</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="favoritos">
                     <span class="chip-icon">★</span>
-                    <span>Mis favoritos</span>
+                    <span data-i18n="favorites">Mis favoritos</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="abiertos">
                     <span class="chip-icon">🟢</span>
-                    <span>Abiertos ahora</span>
+                    <span data-i18n="openNow">Abiertos ahora</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="caminando">
                     <span class="chip-icon">🚶</span>
-                    <span>A pie (&lt; 1.5 km)</span>
+                    <span data-i18n="walking">A pie (&lt; 1.5 km)</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="ferias_compras">
                     <span class="chip-icon">🛍️</span>
-                    <span>Ferias y Compras</span>
+                    <span data-i18n="fairsShopping">Ferias y Compras</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="gratuitos">
                     <span class="chip-icon">🎁</span>
-                    <span>Gratis</span>
+                    <span data-i18n="free">Gratis</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="naturaleza">
                     <span class="chip-icon">🌿</span>
-                    <span>Naturaleza</span>
+                    <span data-i18n="nature">Naturaleza</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="comida">
                     <span class="chip-icon">🍴</span>
-                    <span>Comer</span>
+                    <span data-i18n="eat">Comer</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="actividades">
                     <span class="chip-icon">🎭</span>
-                    <span>Cultura y Paseos</span>
+                    <span data-i18n="cultureWalks">Cultura y Paseos</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="noche">
                     <span class="chip-icon">🌙</span>
-                    <span>Noche</span>
+                    <span data-i18n="night">Noche</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="movilidad">
                     <span class="chip-icon">🚗</span>
-                    <span>Movilidad</span>
+                    <span data-i18n="mobility">Movilidad</span>
                 </button>
                 <button class="filter-chip" data-nearby-filter="alojamiento">
                     <span class="chip-icon">🏨</span>
-                    <span>Alojamiento</span>
+                    <span data-i18n="accommodation">Alojamiento</span>
                 </button>
             </div>
 
@@ -203,7 +197,7 @@
             <div class="nearby-search-toolbar" role="search">
                 <label class="nearby-search-box" for="nearby-search">
                     <span aria-hidden="true">⌕</span>
-                    <input id="nearby-search" type="search" placeholder="Buscar lugares, comida, paseos…" autocomplete="off" enterkeyhint="search">
+                    <input id="nearby-search" type="search" placeholder="Buscar lugares, comida, paseos…" data-i18n-placeholder="searchPlaceholder" autocomplete="off" enterkeyhint="search">
                     <button id="nearby-search-clear" class="search-clear-btn" type="button" aria-label="Borrar búsqueda" title="Borrar búsqueda">×</button>
                 </label>
                 <span id="nearby-count" class="nearby-results-count" role="status" aria-live="polite">Cargando opciones…</span>
@@ -225,8 +219,8 @@
             <div class="view-header-title">
                 <span class="view-icon">🧭</span>
                 <div>
-                    <h2>Explorar Iguazú</h2>
-                    <p>Descubrí atractivos, gastronomía y experiencias por categoría.</p>
+                    <h2 data-i18n="explore">Explorar Iguazú</h2>
+                    <p data-i18n="exploreDescription">Descubrí atractivos, gastronomía y experiencias por categoría.</p>
                 </div>
             </div>
 
@@ -303,16 +297,16 @@
                     <img src="tuki-avatar-160.webp" alt="Tuki Asistente" class="tuki-planner-avatar" loading="lazy" width="160" height="160">
                 </div>
                 <div>
-                    <h2>Armemos tu experiencia en Iguazú</h2>
-                    <p>Contanos tus preferencias y Tuki construirá el mejor itinerario personalizado para hoy.</p>
+                    <h2 data-i18n="plannerTitle">Armemos tu experiencia en Iguazú</h2>
+                    <p data-i18n="plannerDescription">Contanos tus preferencias y Tuki construirá el mejor itinerario personalizado para hoy.</p>
                 </div>
             </div>
 
             <div id="saved-plans-panel" class="saved-plans-panel" aria-labelledby="saved-plans-title">
                 <div class="saved-plans-heading">
                     <div>
-                        <h3 id="saved-plans-title">📅 Mis planes</h3>
-                        <p>Guardá tus itinerarios para volver a abrirlos sin generarlos de nuevo.</p>
+                        <h3 id="saved-plans-title" data-i18n="savedPlans">📅 Mis planes</h3>
+                        <p data-i18n="savedPlansDescription">Guardá tus itinerarios para volver a abrirlos sin generarlos de nuevo.</p>
                     </div>
                     <span id="saved-plans-count" class="metric-pill">0 planes</span>
                 </div>
@@ -325,7 +319,7 @@
                         <h3 id="now-recommendations-title">🧭 ¿Qué hago ahora?</h3>
                         <p id="now-recommendations-context">Recomendaciones según tu momento actual.</p>
                     </div>
-                    <button type="button" class="btn-card-action" onclick="generarRecomendacionesAhora()">↻ Actualizar</button>
+                    <button type="button" class="btn-card-action" onclick="generarRecomendacionesAhora()" data-i18n="update">↻ Actualizar</button>
                 </div>
                 <div id="now-recommendations-list" class="now-recommendations-list"></div>
             </section>
@@ -624,60 +618,60 @@
         <div class="tuki-panel-identity">
             <span class="tuki-panel-avatar" aria-hidden="true">🦜</span>
             <div>
-                <span class="tuki-eyebrow">Guía de Puerto Iguazú</span>
-                <h2 id="tuki-panel-title">Chateá con Tuki</h2>
+                <span class="tuki-eyebrow" data-i18n="tukiEyebrow">Guía de Puerto Iguazú</span>
+                <h2 id="tuki-panel-title" data-i18n="chatWithTuki">Chateá con Tuki</h2>
             </div>
         </div>
         <button id="tuki-close" class="tuki-icon-button" type="button" aria-label="Cerrar asistente">×</button>
     </header>
 
     <div class="tuki-context-strip">
-        <span id="tuki-context-time">Ahora en Iguazú</span>
-        <span id="tuki-context-weather">Clima local</span>
-        <span>Catálogo verificado</span>
+        <span id="tuki-context-time" data-i18n="nowInIguazu">Ahora en Iguazú</span>
+        <span id="tuki-context-weather" data-i18n="localWeather">Clima local</span>
+        <span data-i18n="verifiedCatalog">Catálogo verificado</span>
     </div>
 
     <div id="tuki-conversation" class="tuki-conversation" aria-live="polite" aria-label="Conversación con Tuki">
         <article class="tuki-message tuki-message-assistant">
             <div class="tuki-message-avatar" aria-hidden="true">🦜</div>
             <div class="tuki-message-body">
-                <p><strong>¡Hola! Soy Tuki.</strong> Escribime lo que necesitás y te respondo con recomendaciones concretas según la hora, el clima, la distancia y tu presupuesto.</p>
+                <p data-i18n="tukiGreeting">¡Hola! Soy Tuki. Escribime lo que necesitás y te respondo con recomendaciones concretas según la hora, el clima, la distancia y tu presupuesto.</p>
             </div>
         </article>
     </div>
 
-    <div class="tuki-quick-prompts" aria-label="Preguntas sugeridas">
-        <button type="button" data-tuki-question="¿Qué puedo hacer ahora?">Ahora</button>
-        <button type="button" data-tuki-question="¿Qué puedo hacer si llueve?">Si llueve</button>
-        <button type="button" data-tuki-question="¿Dónde puedo comer?">Dónde comer</button>
-        <button type="button" data-tuki-question="¿Qué me recomendás cerca?">Cerca mío</button>
+    <div class="tuki-quick-prompts" aria-label="Preguntas sugeridas" data-i18n-aria-label="suggestedQuestions">
+        <button type="button" data-tuki-question="¿Qué puedo hacer ahora?" data-i18n="quickNow">Ahora</button>
+        <button type="button" data-tuki-question="¿Qué puedo hacer si llueve?" data-i18n="quickRain">Si llueve</button>
+        <button type="button" data-tuki-question="¿Dónde puedo comer?" data-i18n="quickEat">Dónde comer</button>
+        <button type="button" data-tuki-question="¿Qué me recomendás cerca?" data-i18n="quickNear">Cerca mío</button>
     </div>
 
     <form id="tuki-form" class="tuki-form">
-        <label class="sr-only" for="tuki-input">Escribí tu consulta turística</label>
-        <textarea id="tuki-input" rows="1" maxlength="240" placeholder="Ej.: ¿Qué puedo hacer esta noche?" required></textarea>
-        <button type="submit" aria-label="Enviar consulta a Tuki">Enviar</button>
+        <label class="sr-only" for="tuki-input" data-i18n="tukiInputLabel">Escribí tu consulta turística</label>
+        <textarea id="tuki-input" rows="1" maxlength="240" placeholder="Ej.: ¿Qué puedo hacer esta noche?" data-i18n-placeholder="tukiPlaceholder" required></textarea>
+        <button type="submit" data-i18n="send" aria-label="Enviar consulta a Tuki">Enviar</button>
     </form>
 
     <footer class="tuki-panel-footer">
-        <label for="tuki-volume">Ambiente</label>
-        <input id="tuki-volume" type="range" min="0" max="100" step="1" value="58" aria-label="Volumen del ambiente de Misiones">
+        <label for="tuki-volume" data-i18n="ambience">Ambiente</label>
+        <input id="tuki-volume" type="range" min="0" max="100" step="1" value="58" aria-label="Volumen del ambiente de Misiones" data-i18n-aria-label="volumeLabel">
         <button id="tuki-sound-toggle" type="button" aria-pressed="true">Sonido activo</button>
     </footer>
 </aside>
 
-<nav class="bottom-nav" aria-label="Navegación principal">
+<nav class="bottom-nav" aria-label="Navegación principal" data-i18n-aria-label="navigation">
     <div class="bottom-nav-inner">
         <!-- 1. Inicio -->
         <button class="bottom-nav-btn active" id="bnav-home" onclick="volverInicio(); setActiveNav('bnav-home')" aria-label="Ir al inicio">
             <span class="bottom-nav-icon">🏠</span>
-            <span class="bottom-nav-label">Inicio</span>
+            <span class="bottom-nav-label" data-i18n="home">Inicio</span>
         </button>
 
         <!-- 2. Explorar -->
         <button class="bottom-nav-btn" id="bnav-explore" onclick="mostrarSeccion('categories-section'); setActiveNav('bnav-explore')" aria-label="Explorar categorías">
             <span class="bottom-nav-icon">🧭</span>
-            <span class="bottom-nav-label">Explorar</span>
+            <span class="bottom-nav-label" data-i18n="explore">Explorar</span>
         </button>
 
         <!-- 3. Tuki Botón Central Flotante -->
@@ -691,13 +685,13 @@
         <!-- 4. Mis Planes -->
         <button class="bottom-nav-btn" id="bnav-plans" onclick="mostrarSeccion('planner'); renderizarPlanesGuardados(); setActiveNav('bnav-plans')" aria-label="Mis Planes y armar itinerario">
             <span class="bottom-nav-icon">📅</span>
-            <span class="bottom-nav-label">Mis Planes</span>
+            <span class="bottom-nav-label" data-i18n="plans">Mis Planes</span>
         </button>
 
         <!-- 5. Perfil -->
         <button class="bottom-nav-btn" id="bnav-profile" onclick="mostrarSeccion('profile'); setActiveNav('bnav-profile')" aria-label="Mi Perfil y ajustes">
             <span class="bottom-nav-icon">👤</span>
-            <span class="bottom-nav-label">Perfil</span>
+            <span class="bottom-nav-label" data-i18n="profile">Perfil</span>
         </button>
     </div>
 </nav>
@@ -705,6 +699,7 @@
 <!-- ============================================================
      SCRIPTS DE LA APLICACIÓN
      ============================================================ -->
+<script src="i18n.js"></script>
 <script src="data.js"></script>
 <script src="app.js"></script>
 <script src="tuki-asistente.js?v=29"></script>

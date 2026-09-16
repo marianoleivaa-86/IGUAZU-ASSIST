@@ -5,6 +5,10 @@
 // ========================================================
 // ESTADO GLOBAL DE LA APLICACIÓN
 // ========================================================
+function uiText(key, fallback) {
+    return window.I18n?.t(key, fallback) || fallback;
+}
+
 const AppState = {
     interes: "naturaleza",
     tiempo: "medio día",
@@ -164,7 +168,7 @@ function cargarPlanificador() {
     planificadorLoadPromise = import("./planificador-inteligente.js").catch(error => {
         planificadorLoadPromise = null;
         console.error("No se pudo cargar el planificador.", error);
-        mostrarToast("No se pudo cargar el planificador. Revisá tu conexión e intentá de nuevo.");
+        mostrarToast(uiText("tukiError", "No se pudo cargar el planificador. Revisá tu conexión e intentá de nuevo."));
         throw error;
     });
     return planificadorLoadPromise;
@@ -629,7 +633,7 @@ function actualizarEstadoGps(texto, estado) {
     const retryButton = document.querySelector("#btn-refresh-gps");
     if (retryButton) {
         const retryLabel = retryButton.querySelector("span:last-child");
-        if (retryLabel) retryLabel.textContent = ["fallback", "stored"].includes(estado) ? "Reintentar GPS" : "Actualizar GPS";
+        if (retryLabel) retryLabel.textContent = ["fallback", "stored"].includes(estado) ? uiText("retryGps", "Reintentar GPS") : uiText("refreshGps", "Actualizar GPS");
     }
 }
 
@@ -697,17 +701,17 @@ function esPermisoGpsDenegado(error) {
 function aplicarUbicacionTrasErrorGps(error) {
     if (esPermisoGpsDenegado(error)) {
         aplicarFallbackUbicacion();
-        mostrarToast("📍 Permiso GPS denegado · referencia Plaza San Martín (Centro)");
+        mostrarToast(uiText("gpsFallback", "📍 Permiso GPS denegado · referencia Plaza San Martín (Centro)"));
         return;
     }
 
     if (restaurarUbicacionGuardada()) {
-        mostrarToast("📍 GPS no disponible · usando última ubicación conocida");
+        mostrarToast(uiText("noLocation", "📍 GPS no disponible · usando última ubicación conocida"));
         return;
     }
 
     aplicarFallbackUbicacion();
-    mostrarToast("📍 Usando Plaza San Martín (Centro) como referencia");
+    mostrarToast(uiText("gpsFallback", "📍 Usando Plaza San Martín (Centro) como referencia"));
 }
 
 function iniciarSeguimientoGps() {
@@ -1155,7 +1159,7 @@ function mostrarEstadoListaVacia(lista, mensaje = "No hay opciones para este fil
     const heading = document.createElement("h4");
     heading.textContent = mensaje;
     const detail = document.createElement("p");
-    detail.textContent = "Probá seleccionando otra opción o ampliando el criterio de búsqueda.";
+    detail.textContent = uiText("tukiNoExact", "Probá seleccionando otra opción o ampliando el criterio de búsqueda.");
     empty.append(heading, detail);
     lista.replaceChildren(empty);
 }
@@ -1474,7 +1478,7 @@ function mostrarResultadosCategoria(icono, titulo, descripcion, lugares = []) {
 
     const validPlaces = Array.isArray(lugares) ? lugares.filter(Boolean) : [];
     if (!validPlaces.length) {
-        mostrarEstadoListaVacia(lista, "No se encontraron lugares en esta categoría.");
+        mostrarEstadoListaVacia(lista, uiText("noLocation", "No se encontraron lugares en esta categoría."));
     } else {
         const fragment = document.createDocumentFragment();
         validPlaces.forEach(lugar => fragment.appendChild(crearTarjetaLugar(lugar)));
@@ -1619,7 +1623,7 @@ async function compartirLugar(lugar) {
 function mostrarDetalle(nombreOLugar) {
     const lugar = buscarLugarSeguro(nombreOLugar);
     if (!lugar) {
-        mostrarToast("No se encontró la información de este lugar.");
+        mostrarToast(uiText("noLocation", "No se encontró la información de este lugar."));
         return;
     }
 
@@ -1748,12 +1752,12 @@ function actualizarControlesAudio() {
         audioBtn.setAttribute("aria-pressed", String(activo));
         audioBtn.setAttribute("aria-label", activo ? "Silenciar efectos de sonido" : "Activar efectos de sonido");
         audioBtn.title = activo
-            ? "Sonido y ambiente activados (clic para silenciar)"
-            : "Sonido silenciado (clic para activar)";
+            ? `${uiText("soundActive", "Sonido activo")} (clic para silenciar)`
+            : `${uiText("soundOn", "Activar sonido")} (clic para activar)`;
     }
-    if (profileBtn) profileBtn.textContent = activo ? "Activado 🔊" : "Silenciado 🔇";
+    if (profileBtn) profileBtn.textContent = activo ? `${uiText("soundActive", "Activado")} 🔊` : `${uiText("soundOn", "Silenciado")} 🔇`;
     if (tukiBtn) {
-        tukiBtn.textContent = activo ? "Sonido activo" : "Activar sonido";
+        tukiBtn.textContent = activo ? uiText("soundActive", "Sonido activo") : uiText("soundOn", "Activar sonido");
         tukiBtn.classList.toggle("active", activo);
         tukiBtn.setAttribute("aria-pressed", String(activo));
     }
@@ -1798,13 +1802,13 @@ function initControlSonido() {
         guardarPreferenciasAudio();
         actualizarControlesAudio();
         if (AppState.audioActivo) {
-            mostrarToast("🔊 Sonido y ambiente de selva activados");
+            mostrarToast(`🔊 ${uiText("soundActive", "Sonido y ambiente de selva activados")}`);
             SoundFX.startAmbient({ userGesture: true });
         } else {
             SoundFX.stopAmbient();
             SoundFX.stopAll();
             SoundFX.suspend();
-            mostrarToast("🔇 Sonido silenciado");
+            mostrarToast(`🔇 ${uiText("soundOn", "Sonido silenciado")}`);
         }
     });
 

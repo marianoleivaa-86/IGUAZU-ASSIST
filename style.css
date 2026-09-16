@@ -3301,3 +3301,38 @@ body.tuki-open {
 @media (max-width: 480px) {
     .hero-header { background-image: url('hero-bg-640.webp'); }
 }
+
+/* Selector de idioma — infraestructura ES/EN/PT */
+.language-switcher {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 32px;
+    padding: 0 7px;
+    border: 1px solid var(--border-glass);
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--text-white);
+}
+.language-switcher-icon { font-size: 14px; line-height: 1; }
+.language-switcher select {
+    appearance: none;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .04em;
+    cursor: pointer;
+}
+.language-switcher select option { background: #092012; color: #fff; }
+.language-switcher:focus-within { border-color: var(--color-lime); box-shadow: 0 0 0 2px rgba(126, 229, 41, .2); }
+@media (max-width: 380px) {
+    .language-switcher { padding: 0 5px; }
+    .language-switcher-icon { display: none; }
+    .language-switcher select { font-size: 10px; }
+}
