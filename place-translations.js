@@ -662,5 +662,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Selva", "Drinks", "Ambiente", "Coberto"]
         }
+    },
+    18: {
+        en: {
+            nombre: "Río Uruguay Bus to the Falls (Park Line)",
+            descripcion: "A regular bus service connecting Puerto Iguazú Bus Terminal with the National Park entrance every 20 minutes.",
+            ubicacion: "Bus Terminal",
+            tipo: "Direct Public Transportation",
+            precioTexto: "Affordable round-trip ticket",
+            promocion: "Departures every 20 minutes from the terminal",
+            etiquetas: ["Affordable", "Direct to Falls", "Frequent", "Bus"]
+        },
+        pt: {
+            nombre: "Ônibus Río Uruguay para as Cataratas (Linha Parque)",
+            descripcion: "Serviço regular de ônibus que conecta o Terminal de Puerto Iguazú à entrada do Parque Nacional a cada 20 minutos.",
+            ubicacion: "Terminal Rodoviário",
+            tipo: "Transporte Público Direto",
+            precioTexto: "Passagem econômica de ida e volta",
+            promocion: "Saídas a cada 20 minutos do terminal",
+            etiquetas: ["Econômico", "Direto às Cataratas", "Frequente", "Ônibus"]
+        }
+    },
+    19: {
+        en: {
+            nombre: "Iguazú Airport Transfers (IGR)",
+            descripcion: "Official shuttles and minibuses to and from Mayor Carlos Krause Airport, with stops at hotels and downtown.",
+            ubicacion: "Airport and Hotels",
+            tipo: "Airport Shuttle & Transfers",
+            precioTexto: "Ask for the current rate",
+            promocion: null,
+            etiquetas: ["Airport", "Shuttle", "Luggage", "Transfers"]
+        },
+        pt: {
+            nombre: "Traslados ao Aeroporto de Iguazú (IGR)",
+            descripcion: "Shuttles e micro-ônibus oficiais de e para o Aeroporto Mayor Carlos Krause, com paradas em hotéis e no centro.",
+            ubicacion: "Aeroporto e Hotéis",
+            tipo: "Shuttle e Traslado Aeroportuário",
+            precioTexto: "Consultar tarifa vigente",
+            promocion: null,
+            etiquetas: ["Aeroporto", "Shuttle", "Bagagem", "Traslados"]
+        }
+    },
+    20: {
+        en: {
+            nombre: "Central Taxi and Remis Stand (San Martín Square)",
+            descripcion: "The main radio-taxi base with regulated fares for city rides, border crossings and transfers to attractions.",
+            ubicacion: "San Martín Square (Downtown)",
+            tipo: "Official Taxis & Private Excursions",
+            precioTexto: "Metered regulated fare / fixed-trip rates",
+            promocion: "24-hour service in the downtown area",
+            etiquetas: ["Taxi", "Remis", "24 Hours", "Downtown", "San Martín Square"]
+        },
+        pt: {
+            nombre: "Ponto Central de Táxis e Remises (Praça San Martín)",
+            descripcion: "Principal base de rádio-táxis com tarifas regulamentadas para trajetos urbanos, travessia de fronteiras e traslados a atrações.",
+            ubicacion: "Praça San Martín (Centro)",
+            tipo: "Táxis Oficiais e Excursões Privadas",
+            precioTexto: "Tarifa regulamentada por taxímetro / viagens fixas",
+            promocion: "Serviço 24 horas no centro",
+            etiquetas: ["Táxi", "Remis", "24 horas", "Centro", "Praça San Martín"]
+        }
+    },
+    22: {
+        en: {
+            nombre: "Loi Suites Iguazú Hotel",
+            descripcion: "An exclusive five-star resort immersed in the Selva Iryapú Reserve, with hanging bridges, pools and fine dining.",
+            ubicacion: "Selva Iryapú Reserve",
+            tipo: "Five-Star Rainforest Resort",
+            precioTexto: "Premium category",
+            promocion: null,
+            etiquetas: ["Luxury", "Rainforest", "Pools", "Spa", "Resort"]
+        },
+        pt: {
+            nombre: "Loi Suites Iguazú Hotel",
+            descripcion: "Resort exclusivo cinco estrelas imerso na Reserva Selva Iryapú, com pontes suspensas, piscinas e alta gastronomia.",
+            ubicacion: "Reserva Selva Iryapú",
+            tipo: "Resort Cinco Estrelas na Selva",
+            precioTexto: "Categoria Premium",
+            promocion: null,
+            etiquetas: ["Luxo", "Selva", "Piscinas", "Spa", "Resort"]
+        }
     }
 });
