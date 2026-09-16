@@ -422,5 +422,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Petiscos", "Vinhos", "Caminhada", "Centro", "Compras", "Feirinha"]
         }
+    },
+    32: {
+        en: {
+            nombre: "Bottle House (Ecological Project)",
+            descripcion: "An ecological project that builds creative spaces and objects from reused bottles and other materials, promoting environmental awareness.",
+            ubicacion: "Puerto Iguazú",
+            tipo: "Ecological Project & Recycled Art",
+            precioTexto: "Paid admission",
+            promocion: "A creative experience focused on reuse and sustainability",
+            etiquetas: ["Ecotourism", "Recycling", "Sustainability", "Family"]
+        },
+        pt: {
+            nombre: "Casa das Garrafas (Projeto Ecológico)",
+            descripcion: "Projeto ecológico que cria espaços e objetos originais com garrafas e outros materiais reutilizados, promovendo a conscientização ambiental.",
+            ubicacion: "Puerto Iguazú",
+            tipo: "Projeto Ecológico e Arte Reciclada",
+            precioTexto: "Entrada paga",
+            promocion: "Experiência criativa voltada à reutilização e à sustentabilidade",
+            etiquetas: ["Ecoturismo", "Reciclagem", "Sustentabilidade", "Família"]
+        }
+    },
+    39: {
+        en: {
+            nombre: "Diocesan Shrine of Our Lady of Mount Carmel",
+            descripcion: "A peaceful Catholic shrine and spiritual landmark in Puerto Iguazú, valued for its local history and devotional atmosphere.",
+            ubicacion: "Downtown Puerto Iguazú",
+            tipo: "Religious Shrine & Cultural Heritage",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Faith", "History", "Architecture", "Free", "Quiet"]
+        },
+        pt: {
+            nombre: "Santuário Diocesano Nossa Senhora do Carmo",
+            descripcion: "Santuário católico tranquilo e referência espiritual de Puerto Iguazú, valorizado por sua história local e atmosfera de devoção.",
+            ubicacion: "Centro de Puerto Iguazú",
+            tipo: "Santuário Religioso e Patrimônio Cultural",
+            precioTexto: "Acesso livre",
+            promocion: null,
+            etiquetas: ["Fé", "História", "Arquitetura", "Grátis", "Tranquilidade"]
+        }
+    },
+    11: {
+        en: {
+            nombre: "Full Moon Walk at the Falls",
+            descripcion: "A special nighttime visit to Iguazú Falls under the full moon, with a memorable rainforest and waterfall atmosphere.",
+            ubicacion: "Iguazú National Park",
+            tipo: "Nighttime Waterfall Experience",
+            precioTexto: "Special excursion admission",
+            promocion: "A unique way to experience the falls by moonlight",
+            etiquetas: ["Waterfalls", "Full Moon", "Night", "Nature", "Adventure"]
+        },
+        pt: {
+            nombre: "Passeio de Lua Cheia nas Cataratas",
+            descripcion: "Visita noturna especial às Cataratas do Iguaçu sob a lua cheia, com uma atmosfera inesquecível de selva e quedas d'água.",
+            ubicacion: "Parque Nacional do Iguaçu",
+            tipo: "Experiência Noturna nas Cataratas",
+            precioTexto: "Entrada de excursão especial",
+            promocion: "Uma forma única de conhecer as cataratas ao luar",
+            etiquetas: ["Cataratas", "Lua Cheia", "Noite", "Natureza", "Aventura"]
+        }
+    },
+    12: {
+        en: {
+            nombre: "Icebar Iguazú (Ice Bar)",
+            descripcion: "A fully ice-themed bar experience with frozen surroundings, winter clothing, drinks and plenty of fun.",
+            ubicacion: "Puerto Iguazú",
+            tipo: "Ice Bar Experience",
+            precioTexto: "Includes jacket, gloves and open bar",
+            promocion: null,
+            etiquetas: ["Rainy Day", "Drinks", "Fun", "Night", "Covered"]
+        },
+        pt: {
+            nombre: "Icebar Iguazú (Bar de Gelo)",
+            descripcion: "Experiência de bar totalmente ambientado em gelo, com roupas de inverno, bebidas e muita diversão.",
+            ubicacion: "Puerto Iguazú",
+            tipo: "Experiência em Bar de Gelo",
+            precioTexto: "Inclui casaco, luvas e open bar",
+            promocion: null,
+            etiquetas: ["Dia de Chuva", "Drinks", "Diversão", "Noite", "Coberto"]
+        }
     }
 });
