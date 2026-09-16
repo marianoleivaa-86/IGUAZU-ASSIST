@@ -102,5 +102,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: "Vida noturna e coquetéis no centro de Iguazú",
             etiquetas: ["Balada", "Bar", "Noite", "Música", "Drinks", "Lounge", "Centro"]
         }
+    },
+    3: {
+        en: {
+            nombre: "Hummingbird Garden",
+            descripcion: "A peaceful garden where visitors can observe colorful hummingbirds up close in a natural setting.",
+            ubicacion: "Downtown Puerto Iguazú",
+            tipo: "Wildlife Observation Garden",
+            precioTexto: "Paid admission",
+            promocion: "A unique close-up encounter with hummingbirds",
+            etiquetas: ["Hummingbirds", "Wildlife", "Garden", "Photography"]
+        },
+        pt: {
+            nombre: "Jardim dos Beija-flores",
+            descripcion: "Jardim tranquilo onde é possível observar de perto beija-flores coloridos em um ambiente natural.",
+            ubicacion: "Centro de Puerto Iguazú",
+            tipo: "Jardim de Observação da Fauna",
+            precioTexto: "Entrada paga",
+            promocion: "Um encontro único e próximo com os beija-flores",
+            etiquetas: ["Beija-flores", "Fauna", "Jardim", "Fotografia"]
+        }
+    },
+    4: {
+        en: {
+            nombre: "Macuco Trail and Arrechea Waterfall",
+            descripcion: "A jungle trail inside Iguazú National Park leading to the refreshing Arrechea waterfall.",
+            ubicacion: "Iguazú National Park",
+            tipo: "Jungle Trail & Waterfall",
+            precioTexto: "Included with National Park admission",
+            promocion: "A quiet rainforest walk away from the main circuits",
+            etiquetas: ["Jungle", "Trail", "Waterfall", "Adventure", "Nature"]
+        },
+        pt: {
+            nombre: "Trilha Macuco e Salto Arrechea",
+            descripcion: "Trilha na selva dentro do Parque Nacional do Iguaçu que leva ao refrescante Salto Arrechea.",
+            ubicacion: "Parque Nacional do Iguaçu",
+            tipo: "Trilha na Selva e Cachoeira",
+            precioTexto: "Incluído na entrada do Parque Nacional",
+            promocion: "Uma caminhada tranquila pela selva, longe dos circuitos principais",
+            etiquetas: ["Selva", "Trilha", "Cachoeira", "Aventura", "Natureza"]
+        }
+    },
+    25: {
+        en: {
+            nombre: "Eduardo Arrabal Waterfront",
+            descripcion: "A scenic riverside promenade for walking, sunsets and views toward the borders of Argentina, Brazil and Paraguay.",
+            ubicacion: "Puerto Iguazú Waterfront",
+            tipo: "Riverside Promenade & Viewpoint",
+            precioTexto: "Free access",
+            promocion: "Beautiful sunset views over the rivers",
+            etiquetas: ["Waterfront", "Sunset", "Walk", "Viewpoint", "Free"]
+        },
+        pt: {
+            nombre: "Costanera Eduardo Arrabal",
+            descripcion: "Passeio panorâmico às margens do rio para caminhar, apreciar o pôr do sol e observar as fronteiras de Argentina, Brasil e Paraguai.",
+            ubicacion: "Costanera de Puerto Iguazú",
+            tipo: "Passeio Ribeirinho e Mirante",
+            precioTexto: "Acesso gratuito",
+            promocion: "Belas vistas do pôr do sol sobre os rios",
+            etiquetas: ["Costanera", "Pôr do sol", "Caminhada", "Mirante", "Grátis"]
+        }
+    },
+    30: {
+        en: {
+            nombre: "BioCentro Iguazú",
+            descripcion: "A botanical garden and wildlife space showcasing native plants, reptiles, butterflies and regional biodiversity.",
+            ubicacion: "National Route 12, Km 4",
+            tipo: "Botanical Garden & Wildlife Center",
+            precioTexto: "Paid admission",
+            promocion: "A family-friendly visit focused on local biodiversity",
+            etiquetas: ["Botanical Garden", "Wildlife", "Butterflies", "Family", "Rainy Day"]
+        },
+        pt: {
+            nombre: "BioCentro Iguazú",
+            descripcion: "Jardim botânico e espaço de fauna que apresenta plantas nativas, répteis, borboletas e a biodiversidade regional.",
+            ubicacion: "Rodovia Nacional 12, Km 4",
+            tipo: "Jardim Botânico e Centro de Fauna",
+            precioTexto: "Entrada paga",
+            promocion: "Visita familiar dedicada à biodiversidade local",
+            etiquetas: ["Jardim Botânico", "Fauna", "Borboletas", "Família", "Dia de Chuva"]
+        }
     }
 });
