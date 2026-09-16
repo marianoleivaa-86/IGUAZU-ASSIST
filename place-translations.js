@@ -982,5 +982,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: "Visita responsável e autorizada",
             etiquetas: ["Cultura Guarani", "Comunidade Indígena", "Huella Guarani", "Artesanato", "Visita Agendada"]
         }
+    },
+    51: {
+        en: {
+            nombre: "Identity Walk",
+            descripcion: "A green space and urban walk for a relaxed stroll, local identity symbols and a connection between downtown and the waterfront.",
+            ubicacion: "Villa Florida Neighborhood",
+            tipo: "Urban Walk & Heritage",
+            precioTexto: "Free access",
+            promocion: "Ideal for a short walk",
+            etiquetas: ["Walk", "Local Identity", "Heritage", "Downtown", "Free", "Photography"]
+        },
+        pt: {
+            nombre: "Passeio da Identidade",
+            descripcion: "Espaço verde e passeio urbano para caminhar com tranquilidade, conhecer símbolos da identidade local e conectar o centro à área costeira.",
+            ubicacion: "Bairro Villa Florida",
+            tipo: "Passeio Urbano e Patrimônio",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: "Ideal para uma caminhada curta",
+            etiquetas: ["Passeio", "Identidade Local", "Patrimônio", "Centro", "Grátis", "Fotografia"]
+        }
+    },
+    54: {
+        en: {
+            nombre: "Municipal Directorate of Historic Heritage",
+            descripcion: "A permanent exhibition room highlighting the history, customs and way of life of Puerto Iguazú's pioneers.",
+            ubicacion: "Villa Florida Neighborhood",
+            tipo: "Historic Heritage & Exhibition Room",
+            precioTexto: "Ask for details",
+            promocion: "Local history and memory",
+            etiquetas: ["Museum", "Heritage", "History", "Pioneers", "Culture", "Rainy Day", "Ask for Hours"]
+        },
+        pt: {
+            nombre: "Direção Municipal do Patrimônio Histórico",
+            descripcion: "Sala de exposição permanente que apresenta a história, os costumes e o modo de vida dos pioneiros de Puerto Iguazú.",
+            ubicacion: "Bairro Villa Florida",
+            tipo: "Patrimônio Histórico e Sala de Exposição",
+            precioTexto: "Consultar",
+            promocion: "História e memória local",
+            etiquetas: ["Museu", "Patrimônio", "História", "Pioneiros", "Cultura", "Dia de Chuva", "Consultar Horários"]
+        }
+    },
+    53: {
+        en: {
+            nombre: "Tupã Lodge Guaraní Cultural Experience",
+            descripcion: "A cultural experience published by the Municipal Tourism Board combining an interpretive trail, stories, music, traditional flavors and Guaraní crafts. Prior reservation is required.",
+            ubicacion: "Puerto Iguazú (meeting point to be confirmed)",
+            tipo: "Guaraní Cultural Experience",
+            precioTexto: "Ask for the current rate",
+            promocion: "Prior reservation and respectful experience",
+            etiquetas: ["Guaraní Culture", "Interpretive Trail", "Food", "Crafts", "Prior Reservation", "Coordination Recommended"]
+        },
+        pt: {
+            nombre: "Experiência Cultural Guarani do Tupã Lodge",
+            descripcion: "Experiência publicada pelo órgão municipal que combina trilha interpretativa, relatos, música, sabores tradicionais e artesanato guarani. Requer reserva e coordenação prévia.",
+            ubicacion: "Puerto Iguazú (ponto de encontro a confirmar)",
+            tipo: "Experiência Cultural Guarani",
+            precioTexto: "Consultar tarifa vigente",
+            promocion: "Reserva prévia e experiência respeitosa",
+            etiquetas: ["Cultura Guarani", "Trilha Interpretativa", "Gastronomia", "Artesanato", "Reserva Prévia", "Coordenação Recomendada"]
+        }
+    },
+    55: {
+        en: {
+            nombre: "Pesca y Punto Iguazú",
+            descripcion: "A recreational space published by the Municipal Tourism Board for fishing and relaxing in a natural setting, with food and drink options. Confirm hours and rates before visiting.",
+            ubicacion: "Puerto Iguazú (location published in the municipal listing)",
+            tipo: "Recreational Fishing & Dining",
+            precioTexto: "Ask for the current rate",
+            promocion: "Confirm hours and rates before visiting",
+            etiquetas: ["Fishing", "Nature", "Food", "Drinks", "Relaxation", "Ask Before Visiting"]
+        },
+        pt: {
+            nombre: "Pesca y Punto Iguazú",
+            descripcion: "Espaço recreativo publicado pelo órgão municipal para pescar e relaxar em um ambiente natural, com opções de comida e bebida. Confirme horário e tarifa antes de ir.",
+            ubicacion: "Puerto Iguazú (localização publicada na ficha municipal)",
+            tipo: "Pesca Recreativa e Gastronomia",
+            precioTexto: "Consultar tarifa vigente",
+            promocion: "Confirmar horário e tarifa antes de visitar",
+            etiquetas: ["Pesca", "Natureza", "Gastronomia", "Bebidas", "Relaxamento", "Consultar Antes"]
+        }
     }
 });
