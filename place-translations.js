@@ -342,5 +342,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Adrenalina", "Cataratas", "Passeio de Barco", "Aventura", "Água"]
         }
+    },
+    31: {
+        en: {
+            nombre: "Iguazú Forest (Canopy & Rappel)",
+            descripcion: "An adventure circuit through pristine rainforest with canopy zip lines, assisted rappelling down a waterfall and trekking.",
+            ubicacion: "Route 12, Km 5",
+            tipo: "Rainforest Adventure & Ecotourism",
+            precioTexto: "Paid excursion with guides and instructors",
+            promocion: null,
+            etiquetas: ["Zip Line", "Rappel", "Adventure", "Adrenaline", "Rainforest"]
+        },
+        pt: {
+            nombre: "Iguazú Forest (Arvorismo e Rapel)",
+            descripcion: "Circuito de turismo de aventura na selva preservada, com tirolesa entre as copas das árvores, rapel assistido em uma queda d'água e trekking.",
+            ubicacion: "Rota 12, Km 5",
+            tipo: "Aventura na Selva e Ecoturismo",
+            precioTexto: "Excursão paga com guias e instrutores",
+            promocion: null,
+            etiquetas: ["Tirolesa", "Rapel", "Aventura", "Adrenalina", "Selva"]
+        }
+    },
+    9: {
+        en: {
+            nombre: "Duty Free Shop Puerto Iguazú",
+            descripcion: "A duty-free shopping center themed around world cities, offering fragrances, electronics, fashion and chocolates.",
+            ubicacion: "Border Crossing",
+            tipo: "Covered Shopping Destination",
+            precioTexto: "Free admission",
+            promocion: "Fully covered and air-conditioned shopping experience",
+            etiquetas: ["Rainy Day", "Shopping", "Covered", "Air-Conditioned", "Border"]
+        },
+        pt: {
+            nombre: "Duty Free Shop Puerto Iguazú",
+            descripcion: "Centro de compras duty-free temático com cidades do mundo, perfumaria, eletrônicos, moda e chocolates.",
+            ubicacion: "Passo de Fronteira",
+            tipo: "Passeio Comercial Coberto",
+            precioTexto: "Entrada livre",
+            promocion: "Passeio totalmente coberto e climatizado",
+            etiquetas: ["Dia de Chuva", "Compras", "Coberto", "Climatizado", "Fronteira"]
+        }
+    },
+    29: {
+        en: {
+            nombre: "Punto Iguazú Shopping Mall",
+            descripcion: "An open-air shopping center with well-known brands, design stores, outdoor cafés and dining options.",
+            ubicacion: "Victoria Aguirre Avenue",
+            tipo: "Open-Air Shopping Center",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Shopping", "Cafés", "Food", "Fashion"]
+        },
+        pt: {
+            nombre: "Shopping Punto Iguazú",
+            descripcion: "Centro comercial a céu aberto com lojas de marcas conhecidas, design, cafés ao ar livre e opções gastronômicas.",
+            ubicacion: "Avenida Victoria Aguirre",
+            tipo: "Centro Comercial a Céu Aberto",
+            precioTexto: "Acesso livre",
+            promocion: null,
+            etiquetas: ["Shopping", "Compras", "Cafés", "Gastronomia", "Moda"]
+        }
+    },
+    10: {
+        en: {
+            nombre: "Puerto Iguazú Downtown and La Feirinha",
+            descripcion: "A downtown walk with craft shops, stuffed olives, cheeses, empanadas, wines and a relaxed local atmosphere.",
+            ubicacion: "Brasil Avenue",
+            tipo: "Urban & Gastronomic Walk",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Food Boards", "Wines", "Walk", "Downtown", "Shopping", "Street Market"]
+        },
+        pt: {
+            nombre: "Centro de Puerto Iguazú e La Feirinha",
+            descripcion: "Passeio pelo centro com lojas de artesanato, azeitonas recheadas, queijos, empanadas, vinhos e um ambiente local descontraído.",
+            ubicacion: "Avenida Brasil",
+            tipo: "Passeio Urbano e Gastronômico",
+            precioTexto: "Acesso livre",
+            promocion: null,
+            etiquetas: ["Petiscos", "Vinhos", "Caminhada", "Centro", "Compras", "Feirinha"]
+        }
     }
 });
