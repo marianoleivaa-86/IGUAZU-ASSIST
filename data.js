@@ -397,7 +397,7 @@ const lugaresReales = [
         descripcion: "Feria artesanal y de emprendimientos locales en el corazón de Puerto Iguazú. Puestos de artesanías, recuerdos y productos regionales.",
         ubicacion: "Plaza San Martín (Centro)",
         direccion: "Plaza San Martín, Av. Victoria Aguirre y Av. Brasil, Puerto Iguazú",
-        coordenadas: { lat: -25.5979, lng: -54.5742 },
+        coordenadas: { lat: -25.5971967, lng: -54.5771102 },
         tipo: "Feria Artesanal & Emprendedores",
         horario: "18:00 a 22:00 todos los días",
         rangoHorario: { apertura: 18, cierre: 22 },
