@@ -182,5 +182,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: "Visita familiar dedicada à biodiversidade local",
             etiquetas: ["Jardim Botânico", "Fauna", "Borboletas", "Família", "Dia de Chuva"]
         }
+    },
+    34: {
+        en: {
+            nombre: "Selva Iryapú Nature Reserve",
+            descripcion: "A protected subtropical rainforest reserve with native jungle, trails and lodges integrated into the environment.",
+            ubicacion: "Selva Iryapú",
+            tipo: "Rainforest Nature Reserve",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Native Jungle", "Trails", "Ecotourism", "Free"]
+        },
+        pt: {
+            nombre: "Reserva Natural Selva Iryapú",
+            descripcion: "Reserva protegida de selva subtropical com mata nativa, trilhas e lodges integrados ao ambiente.",
+            ubicacion: "Selva Iryapú",
+            tipo: "Reserva Natural de Selva",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: null,
+            etiquetas: ["Selva Nativa", "Trilhas", "Ecoturismo", "Grátis"]
+        }
+    },
+    24: {
+        en: {
+            nombre: "Plaza San Martín Market",
+            descripcion: "A craft and local entrepreneurship market in the heart of Puerto Iguazú, with handmade goods, souvenirs and regional products.",
+            ubicacion: "San Martín Square (Downtown)",
+            tipo: "Craft & Local Entrepreneurship Market",
+            precioTexto: "Free access",
+            promocion: "Daily evening market in the main square",
+            etiquetas: ["Market", "Crafts", "Free", "Downtown", "San Martín Square", "Local Business"]
+        },
+        pt: {
+            nombre: "Feira da Plaza San Martín",
+            descripcion: "Feira de artesanato e empreendimentos locais no coração de Puerto Iguazú, com artesanatos, lembranças e produtos regionais.",
+            ubicacion: "Praça San Martín (Centro)",
+            tipo: "Feira de Artesanato e Empreendedores",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: "Feira noturna diária na praça principal",
+            etiquetas: ["Feira", "Artesanato", "Grátis", "Centro", "Praça San Martín", "Empreendimentos"]
+        }
+    },
+    6: {
+        en: {
+            nombre: "Three Borders Landmark",
+            descripcion: "An iconic viewpoint over the confluence of the Iguazú and Paraná rivers, where Argentina, Brazil and Paraguay meet.",
+            ubicacion: "Waterfront and Three Borders",
+            tipo: "Monument & Panoramic Viewpoint",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Must-see", "Three Countries", "Sunset", "Craft Market", "Water Show", "Free"]
+        },
+        pt: {
+            nombre: "Marco das Três Fronteiras",
+            descripcion: "Mirante icônico com vista panorâmica da confluência dos rios Iguaçu e Paraná, unindo Argentina, Brasil e Paraguai.",
+            ubicacion: "Costanera e Três Fronteiras",
+            tipo: "Monumento e Mirante Panorâmico",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: null,
+            etiquetas: ["Imperdível", "3 Países", "Pôr do sol", "Feira de Artesanato", "Show de Águas", "Grátis"]
+        }
+    },
+    26: {
+        en: {
+            nombre: "Yasy Porá Mbyá Guaraní Community",
+            descripcion: "An authentic cultural experience guided by community members, with jungle trails, medicinal plant knowledge, ancestral traps and crafts.",
+            ubicacion: "Selva Iryapú Reserve",
+            tipo: "Community-Based Cultural Tourism",
+            precioTexto: "Community contribution with local guide",
+            promocion: null,
+            etiquetas: ["Guaraní Culture", "Indigenous Community", "Rainforest", "Trails", "Crafts"]
+        },
+        pt: {
+            nombre: "Comunidade Mbyá Guarani Yasy Porá",
+            descripcion: "Experiência cultural autêntica guiada por membros da comunidade, com trilhas na selva, conhecimento de plantas medicinais, armadilhas ancestrais e artesanato.",
+            ubicacion: "Reserva Selva Iryapú",
+            tipo: "Turismo Cultural Comunitário",
+            precioTexto: "Contribuição comunitária com guia local",
+            promocion: null,
+            etiquetas: ["Cultura Guarani", "Comunidade Indígena", "Selva", "Trilhas", "Artesanato"]
+        }
     }
 });
