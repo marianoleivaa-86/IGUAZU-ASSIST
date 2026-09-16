@@ -742,5 +742,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Luxo", "Selva", "Piscinas", "Spa", "Resort"]
         }
+    },
+    23: {
+        en: {
+            nombre: "Iguazú Grand Hotel & Resort",
+            descripcion: "A luxury hotel with spacious suites, spa, tennis courts and a kids' club just minutes from downtown.",
+            ubicacion: "Route 12",
+            tipo: "Luxury Resort",
+            precioTexto: "Superior category",
+            promocion: null,
+            etiquetas: ["Luxury", "Kids' Club", "Dining", "Spa", "Hotel"]
+        },
+        pt: {
+            nombre: "Iguazú Grand Hotel & Resort",
+            descripcion: "Hotel de luxo com suítes amplas, spa, quadras de tênis e clube infantil a poucos minutos do centro da cidade.",
+            ubicacion: "Rota 12",
+            tipo: "Resort de Luxo",
+            precioTexto: "Categoria Superior",
+            promocion: null,
+            etiquetas: ["Luxo", "Kids Club", "Gastronomia", "Spa", "Hotel"]
+        }
+    },
+    40: {
+        en: {
+            nombre: "Iguazú River Panoramic Viewpoint and Walk",
+            descripcion: "A panoramic balcony above the Iguazú River cliffs, with walking paths, benches and open views toward Brazil and the river confluence.",
+            ubicacion: "Iguazú River Cliffs",
+            tipo: "Panoramic Viewpoint & Riverside Walk",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Viewpoint", "Panoramic Views", "Sunset", "Photography", "Free", "Iguazú River"]
+        },
+        pt: {
+            nombre: "Mirante e Passeio Panorâmico do Rio Iguaçu",
+            descripcion: "Balcão panorâmico sobre as barrancas do Rio Iguaçu, com caminhos para pedestres, bancos e vista aberta para o litoral do Brasil e a confluência.",
+            ubicacion: "Barrancas do Rio Iguaçu",
+            tipo: "Mirante Panorâmico e Passeio Ribeirinho",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: null,
+            etiquetas: ["Mirante", "Vistas Panorâmicas", "Pôr do sol", "Fotografia", "Grátis", "Rio Iguaçu"]
+        }
+    },
+    41: {
+        en: {
+            nombre: "Mariposa Waterfall",
+            descripcion: "A hidden natural waterfall among the riverside rainforest near the Three Borders Landmark, with a natural spring-water pool.",
+            ubicacion: "Riverside Waterfront",
+            tipo: "Natural Waterfall & Trekking",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Waterfall", "Adventure", "Nature", "Free", "Water", "Trekking"]
+        },
+        pt: {
+            nombre: "Salto Mariposa",
+            descripcion: "Cachoeira natural escondida na selva ribeirinha próxima ao Marco das Três Fronteiras, com piscina natural de água de nascente.",
+            ubicacion: "Costanera Ribeirinha",
+            tipo: "Cachoeira Natural e Trekking",
+            precioTexto: "Acesso livre",
+            promocion: null,
+            etiquetas: ["Cachoeira", "Aventura", "Natureza", "Grátis", "Água", "Trekking"]
+        }
+    },
+    42: {
+        en: {
+            nombre: "Mbocay Waterfall (Embocay Creek)",
+            descripcion: "A beautiful waterfall and urban nature reserve on Mbocay Creek, with subtropical rainforest shade, pools and native flora.",
+            ubicacion: "Mbocay Neighborhood",
+            tipo: "Natural Waterfall & Urban Ecotourism",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Waterfall", "Urban Rainforest", "Nature", "Birds", "Free"]
+        },
+        pt: {
+            nombre: "Salto do Mbocay (Arroio Embocay)",
+            descripcion: "Bela cachoeira e reserva natural urbana no arroio Mbocay, com sombra de selva subtropical, poços e flora nativa.",
+            ubicacion: "Bairro Mbocay",
+            tipo: "Cachoeira Natural e Ecoturismo Urbano",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: null,
+            etiquetas: ["Cachoeira", "Selva Urbana", "Natureza", "Aves", "Grátis"]
+        }
     }
 });
