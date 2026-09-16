@@ -262,5 +262,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Cultura Guarani", "Comunidade Indígena", "Selva", "Trilhas", "Artesanato"]
         }
+    },
+    7: {
+        en: {
+            nombre: "La Aripuca",
+            descripcion: "An impressive structure built from rescued giant tree trunks, inspired by a traditional Guaraní trap and dedicated to environmental awareness.",
+            ubicacion: "Route 12, Km 4.5",
+            tipo: "Cultural & Themed Park",
+            precioTexto: "Paid admission",
+            promocion: null,
+            etiquetas: ["Guaraní Culture", "Crafts", "Yerba Mate Ice Cream", "Family"]
+        },
+        pt: {
+            nombre: "La Aripuca",
+            descripcion: "Impressionante estrutura construída com troncos gigantes resgatados, inspirada em uma armadilha tradicional guarani para conscientizar sobre o cuidado ambiental.",
+            ubicacion: "Rota 12, Km 4,5",
+            tipo: "Parque Cultural e Temático",
+            precioTexto: "Entrada paga",
+            promocion: null,
+            etiquetas: ["Cultura Guarani", "Artesanato", "Sorvete de Erva-mate", "Família"]
+        }
+    },
+    27: {
+        en: {
+            nombre: "Imágenes de la Selva Museum",
+            descripcion: "A cultural space housing Rodolfo Teófilo Allou's magnificent wood sculpture collection depicting Misiones wildlife, legends and characters.",
+            ubicacion: "Route 12, Km 5",
+            tipo: "Sculpture & Culture Museum",
+            precioTexto: "Affordable admission",
+            promocion: null,
+            etiquetas: ["Museum", "Culture", "Sculpture", "Wood", "Rainy Day"]
+        },
+        pt: {
+            nombre: "Museu Imágenes de la Selva",
+            descripcion: "Espaço cultural que abriga a magnífica coleção de esculturas em madeira de Rodolfo Teófilo Allou, retratando a fauna, as lendas e os personagens missioneiros.",
+            ubicacion: "Rota 12, Km 5",
+            tipo: "Museu de Esculturas e Cultura",
+            precioTexto: "Entrada acessível",
+            promocion: null,
+            etiquetas: ["Museu", "Cultura", "Esculturas", "Madeira", "Dia de Chuva"]
+        }
+    },
+    28: {
+        en: {
+            nombre: "Waterfront Artisans' Walk",
+            descripcion: "Local and Guaraní artisan stalls along the scenic route to the Three Borders Landmark, offering basketry, carved wood and souvenirs.",
+            ubicacion: "Three Borders Avenue and Waterfront",
+            tipo: "Outdoor Crafts Promenade",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Market", "Crafts", "Shopping", "Free", "Waterfront"]
+        },
+        pt: {
+            nombre: "Passeio dos Artesãos da Costanera",
+            descripcion: "Barracas de artesãos locais e guaranis no caminho panorâmico até o Marco das Três Fronteiras, com cestaria, madeira entalhada e lembranças.",
+            ubicacion: "Avenida Três Fronteiras e Costanera",
+            tipo: "Passeio de Artesanato ao Ar Livre",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: null,
+            etiquetas: ["Feira", "Artesanato", "Compras", "Grátis", "Costanera"]
+        }
+    },
+    8: {
+        en: {
+            nombre: "Iguazú Gran Aventura (Boat Ride)",
+            descripcion: "An exciting twin-engine boat ride to the foot of the San Martín and Tres Mosqueteros waterfalls, with an unforgettable splash experience.",
+            ubicacion: "Inside Iguazú National Park",
+            tipo: "Water Adventure at the Falls",
+            precioTexto: "Ask for the official excursion rate",
+            promocion: null,
+            etiquetas: ["Adrenaline", "Waterfalls", "Boat Ride", "Adventure", "Water"]
+        },
+        pt: {
+            nombre: "Iguazú Gran Aventura (Passeio de Barco)",
+            descripcion: "Emocionante navegação em lancha bimotor até a base dos saltos San Martín e Tres Mosqueteros, com um inesquecível banho de água.",
+            ubicacion: "Dentro do Parque Nacional do Iguaçu",
+            tipo: "Aventura Náutica nas Cataratas",
+            precioTexto: "Consultar tarifa oficial da excursão",
+            promocion: null,
+            etiquetas: ["Adrenalina", "Cataratas", "Passeio de Barco", "Aventura", "Água"]
+        }
     }
 });
