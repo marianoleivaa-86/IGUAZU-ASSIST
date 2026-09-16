@@ -902,5 +902,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Igreja", "Patrimônio", "Cultura", "Bairro", "Grátis", "Consultar horários"]
         }
+    },
+    47: {
+        en: {
+            nombre: "Yryapú Mbyá Guaraní Community",
+            descripcion: "A Mbyá community in the Yryapú rainforest. Experiences, walks and crafts must be arranged in advance with community representatives.",
+            ubicacion: "Yryapú Rainforest",
+            tipo: "Mbyá Community Tourism",
+            precioTexto: "Arrange with the community / local guide",
+            promocion: "Responsible visit with community authorization",
+            etiquetas: ["Guaraní Culture", "Indigenous Community", "Community Tourism", "Rainforest", "Crafts", "Pre-arranged Visit"]
+        },
+        pt: {
+            nombre: "Comunidade Mbya Guarani Yryapu",
+            descripcion: "Comunidade mbya na selva Yryapú. As experiências, caminhadas e artesanatos devem ser combinados previamente com representantes comunitários.",
+            ubicacion: "Selva Yryapú",
+            tipo: "Turismo Comunitário Mbya",
+            precioTexto: "Combinar com a comunidade / guia local",
+            promocion: "Visita responsável e com autorização da comunidade",
+            etiquetas: ["Cultura Guarani", "Comunidade Indígena", "Turismo Comunitário", "Selva", "Artesanato", "Visita Agendada"]
+        }
+    },
+    48: {
+        en: {
+            nombre: "Fortín Mbororé Guaraní Village",
+            descripcion: "A Mbyá community tourism experience with cultural knowledge, crafts and guided trails, visited with prior coordination and respect for the community.",
+            ubicacion: "Puerto Iguazú",
+            tipo: "Mbyá Village & Community Tourism",
+            precioTexto: "Ask about current rate and availability",
+            promocion: "Arrange your visit before arriving",
+            etiquetas: ["Guaraní Culture", "Village", "Indigenous Community", "Trails", "Crafts", "Pre-arranged Visit"]
+        },
+        pt: {
+            nombre: "Aldeia Guarani Fortín Mbororé",
+            descripcion: "Experiência de turismo comunitário mbya com saberes, artesanato e trilhas guiadas. A visita é feita com coordenação prévia e respeito à comunidade.",
+            ubicacion: "Puerto Iguazú",
+            tipo: "Aldeia e Turismo Comunitário Mbya",
+            precioTexto: "Consultar tarifa e disponibilidade",
+            promocion: "Agende antes de se aproximar",
+            etiquetas: ["Cultura Guarani", "Aldeia", "Comunidade Indígena", "Trilhas", "Artesanato", "Visita Agendada"]
+        }
+    },
+    49: {
+        en: {
+            nombre: "Miri Marangatu Mbyá Community",
+            descripcion: "An Mbyá community in Puerto Iguazú's Huella Guaraní network. Ask in advance whether community experiences are available for visitors.",
+            ubicacion: "Puerto Iguazú Area",
+            tipo: "Mbyá Community & Living Culture",
+            precioTexto: "Arrange with the community",
+            promocion: "Do not enter without authorization",
+            etiquetas: ["Guaraní Culture", "Indigenous Community", "Huella Guaraní", "Rainforest", "Pre-arranged Visit"]
+        },
+        pt: {
+            nombre: "Comunidade Mbya Miri Marangatu",
+            descripcion: "Comunidade mbya integrante da rede Huella Guarani de Puerto Iguazú. Consulte previamente se há experiências comunitárias disponíveis para visitantes.",
+            ubicacion: "Área de Puerto Iguazú",
+            tipo: "Comunidade Mbya e Cultura Viva",
+            precioTexto: "Combinar com a comunidade",
+            promocion: "Não entrar sem autorização",
+            etiquetas: ["Cultura Guarani", "Comunidade Indígena", "Huella Guarani", "Selva", "Visita Agendada"]
+        }
+    },
+    50: {
+        en: {
+            nombre: "Ita Poty Miri Mbyá Community",
+            descripcion: "An Mbyá community recognized within the Huella Guaraní network. Visits must be authorized and arranged responsibly in advance.",
+            ubicacion: "Puerto Iguazú Area",
+            tipo: "Mbyá Community & Responsible Tourism",
+            precioTexto: "Arrange with the community",
+            promocion: "Responsible visit with authorization",
+            etiquetas: ["Guaraní Culture", "Indigenous Community", "Huella Guaraní", "Crafts", "Pre-arranged Visit"]
+        },
+        pt: {
+            nombre: "Comunidade Mbya Ita Poty Miri",
+            descripcion: "Comunidade mbya reconhecida na rede Huella Guarani. A visita deve ser autorizada e coordenada de forma responsável.",
+            ubicacion: "Área de Puerto Iguazú",
+            tipo: "Comunidade Mbya e Turismo Responsável",
+            precioTexto: "Combinar com a comunidade",
+            promocion: "Visita responsável e autorizada",
+            etiquetas: ["Cultura Guarani", "Comunidade Indígena", "Huella Guarani", "Artesanato", "Visita Agendada"]
+        }
     }
 });
