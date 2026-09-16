@@ -1,7 +1,8 @@
-const CACHE_NAME = "iguazu-assist-v31";
+const CACHE_NAME = "iguazu-assist-v32";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./place-translations.js",
   "./style.css",
   "./i18n.js",
   "./data.js",

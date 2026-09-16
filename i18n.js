@@ -253,6 +253,12 @@
         return DICTIONARY[current]?.[key] ?? DICTIONARY.es[key] ?? fallback;
     }
 
+    function placeText(lugar, campo) {
+        const original = lugar?.[campo];
+        const translated = window.PLACE_TRANSLATIONS?.[lugar?.id]?.[current]?.[campo];
+        return translated ?? original ?? "";
+    }
+
     function apply(root = document) {
         document.documentElement.lang = current;
         root.querySelectorAll?.("[data-i18n]").forEach(element => {
@@ -292,7 +298,7 @@
         apply();
     }
 
-    window.I18n = Object.freeze({ get language() { return current; }, supported: SUPPORTED.slice(), t: translate, setLanguage, apply, init });
+    window.I18n = Object.freeze({ get language() { return current; }, supported: SUPPORTED.slice(), t: translate, placeText, setLanguage, apply, init });
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once: true });
     else init();
 })();
