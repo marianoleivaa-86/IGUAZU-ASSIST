@@ -18,6 +18,10 @@ function tukiText(key, fallback) {
     return window.I18n?.t(key, fallback) || fallback;
 }
 
+function tukiPlaceText(lugar, campo, fallback = "") {
+    return window.I18n?.placeText(lugar, campo) || lugar?.[campo] || fallback;
+}
+
 function normalizarConsultaTuki(texto) {
     return String(texto || "")
         .normalize("NFD")
@@ -180,7 +184,7 @@ function precioTukiEstaConfirmado(lugar) {
 }
 
 function construirAvisoPrecioNoConfirmadoTuki(lugar) {
-    return `No tengo un precio actualizado confirmado para ${lugar.nombre}. Te recomiendo verificar la tarifa y las condiciones en la fuente oficial antes de ir.`;
+    return `No tengo un precio actualizado confirmado para ${tukiPlaceText(lugar, "nombre", lugar.nombre)}. Te recomiendo verificar la tarifa y las condiciones en la fuente oficial antes de ir.`;
 }
 
 function obtenerOpcionesComidaTuki(intencion, contexto, soloEconomicas = false, filtrarDisponibilidad = true) {
@@ -287,10 +291,10 @@ function resolverConsultaTuki(consulta) {
             ? `El precio informado es: ${precio}. Fuente oficial: ${lugarMencionado.precio.fuente || "consultar sitio oficial"}.`
             : intencion.consultaHorario
                 ? `El horario informado es: ${horario}. ${disponibilidad.texto}.`
-                : `${lugarMencionado.descripcion}`;
+                : `${tukiPlaceText(lugarMencionado, "descripcion", lugarMencionado.descripcion)}`;
 
         return {
-            texto: `Según mi catálogo, ${lugarMencionado.nombre}: ${datoPrincipal}`,
+            texto: `Según mi catálogo, ${tukiPlaceText(lugarMencionado, "nombre", lugarMencionado.nombre)}: ${datoPrincipal}`,
             lugares: [lugarMencionado],
             contexto,
             intencion,
@@ -432,6 +436,7 @@ function crearTarjetasTuki(lugares, contexto) {
     return `
         <div class="tuki-recommendations">
             ${lugares.map(lugar => {
+                const nombre = tukiPlaceText(lugar, "nombre", "Lugar sin nombre");
                 const distancia = Number.isFinite(lugar.distanciaTuki)
                     ? `${formatearDistancia(lugar.distanciaTuki)} · `
                     : "";
@@ -444,7 +449,7 @@ function crearTarjetasTuki(lugares, contexto) {
                     <button class="tuki-place-card" type="button" data-tuki-place="${escaparAttr(lugar.nombre)}">
                         <span class="tuki-place-icon" aria-hidden="true">${lugar.icono}</span>
                         <span class="tuki-place-info">
-                            <strong>${escapar(lugar.nombre)}</strong>
+                            <strong>${escapar(nombre)}</strong>
                             <span>${escapar(`${distancia}${gasto} · ${horario}`)}</span>
                         </span>
                         <span class="tuki-place-arrow" aria-hidden="true">›</span>

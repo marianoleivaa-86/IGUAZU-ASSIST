@@ -9,6 +9,10 @@ function uiText(key, fallback) {
     return window.I18n?.t(key, fallback) || fallback;
 }
 
+function placeText(lugar, campo, fallback = "") {
+    return window.I18n?.placeText(lugar, campo) || lugar?.[campo] || fallback;
+}
+
 const AppState = {
     interes: "naturaleza",
     tiempo: "medio día",
@@ -1036,6 +1040,10 @@ function requiereCoordinacionLugar(lugar) {
 }
 
 function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = {}) {
+    const nombre = placeText(lugar, "nombre", "Lugar sin nombre");
+    const descripcion = placeText(lugar, "descripcion", "Información no disponible.");
+    const ubicacion = placeText(lugar, "ubicacion", "Ubicación no disponible");
+    const promocion = placeText(lugar, "promocion");
     const article = document.createElement("article");
     article.className = "place-feed-card";
     article.dataset.placeName = textoSeguro(lugar.nombre);
@@ -1053,7 +1061,7 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
         image.srcset = srcset;
         image.sizes = "(max-width: 480px) 76px, 95px";
     }
-    image.alt = textoSeguro(lugar.nombre, "Lugar de Iguazú");
+    image.alt = textoSeguro(nombre, "Lugar de Iguazú");
     image.loading = "lazy";
     image.addEventListener("error", () => {
         if (image.dataset.fallbackApplied) return;
@@ -1072,18 +1080,18 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     titleRow.className = "place-card-title-row";
     const title = document.createElement("h3");
     title.className = "place-card-title";
-    title.textContent = textoSeguro(lugar.nombre, "Lugar sin nombre");
+    title.textContent = textoSeguro(nombre, "Lugar sin nombre");
     titleRow.appendChild(title);
     if (esImperdibleSiempreVisible(lugar)) {
         titleRow.appendChild(crearPill("⭐ Imperdible destacado", "badge-featured-gold"));
     } else if (lugar.destacado) {
         titleRow.appendChild(crearPill("⭐ Destacado", "badge-featured-gold"));
     }
-    if (lugar.promocion) titleRow.appendChild(crearPill(`🏷️ ${textoSeguro(lugar.promocion)}`, "meta-pill promo-pill"));
+    if (promocion) titleRow.appendChild(crearPill(`🏷️ ${textoSeguro(promocion)}`, "meta-pill promo-pill"));
 
     const description = document.createElement("p");
     description.className = "place-card-description";
-    description.textContent = textoSeguro(lugar.descripcion, "Información no disponible.");
+    description.textContent = textoSeguro(descripcion, "Información no disponible.");
 
     const metaLine = document.createElement("div");
     metaLine.className = "place-card-meta-line";
@@ -1094,7 +1102,7 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
         if (traslado) metaLine.appendChild(crearPill(traslado, distancia <= APP_CONSTANTS.WALKING_LIMIT_KM ? "tag-badge walk-badge" : "tag-badge car-badge"));
         metaLine.appendChild(crearBadgeDisponibilidad(disponibilidad));
     } else {
-        metaLine.appendChild(crearPill(`📍 ${textoSeguro(lugar.ubicacion || lugar.direccion, "Ubicación no disponible")}`, "meta-pill loc-pill"));
+        metaLine.appendChild(crearPill(`📍 ${textoSeguro(ubicacion || lugar.direccion, "Ubicación no disponible")}`, "meta-pill loc-pill"));
         metaLine.appendChild(crearPill(`🕒 ${textoSeguro(lugar.horario, "Consultar horarios")}`, "meta-pill hours-pill"));
     }
 
@@ -1127,7 +1135,7 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     detailButton.className = "btn-action-detail";
     detailButton.dataset.action = "detail";
     detailButton.dataset.placeName = textoSeguro(lugar.nombre);
-    detailButton.setAttribute("aria-label", `Ver detalle de ${textoSeguro(lugar.nombre)}`);
+    detailButton.setAttribute("aria-label", `Ver detalle de ${textoSeguro(nombre)}`);
     detailButton.innerHTML = '<span class="action-icon">☆</span><span>Ver detalle</span>';
 
     const favoriteButton = document.createElement("button");
@@ -1136,7 +1144,7 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     favoriteButton.dataset.action = "favorite";
     favoriteButton.dataset.placeId = String(lugar.id ?? "");
     favoriteButton.setAttribute("aria-pressed", String(esLugarFavorito(lugar)));
-    favoriteButton.setAttribute("aria-label", `${esLugarFavorito(lugar) ? "Quitar" : "Guardar"} ${textoSeguro(lugar.nombre)} ${esLugarFavorito(lugar) ? "de" : "en"} favoritos`);
+    favoriteButton.setAttribute("aria-label", `${esLugarFavorito(lugar) ? "Quitar" : "Guardar"} ${textoSeguro(nombre)} ${esLugarFavorito(lugar) ? "de" : "en"} favoritos`);
     favoriteButton.innerHTML = esLugarFavorito(lugar) ? "★ Guardado" : "☆ Guardar";
 
     const directions = document.createElement("a");
@@ -1343,6 +1351,11 @@ function renderizarCercaMio(categoriaFiltro = "todos") {
     AppState.nearbyVisibleCount = Math.min(12, filtrados.length);
     renderizarBloqueCercaMio(lista);
 }
+
+window.addEventListener("iguazu-language-changed", () => {
+    if (typeof renderizarCercaMio === "function") renderizarCercaMio(AppState.filtroCercaMio || "todos");
+    if (AppState.detailPlace && typeof mostrarDetalle === "function") mostrarDetalle(AppState.detailPlace.id);
+});
 
 function renderizarBloqueCercaMio(lista) {
     const filtrados = Array.isArray(AppState.nearbyItems) ? AppState.nearbyItems : [];
@@ -1651,17 +1664,18 @@ function mostrarDetalle(nombreOLugar) {
     }
 
     establecerTexto("#detail-icon", lugar.icono, "📍");
-    establecerTexto("#detail-title", lugar.nombre, "Lugar de Iguazú");
-    establecerTexto("#detail-description", lugar.descripcion, "Información no disponible.");
-    establecerTexto("#detail-location", lugar.direccion || lugar.ubicacion, "Consultar ubicación");
+    establecerTexto("#detail-title", placeText(lugar, "nombre", "Lugar de Iguazú"), "Lugar de Iguazú");
+    establecerTexto("#detail-description", placeText(lugar, "descripcion", "Información no disponible."), "Información no disponible.");
+    establecerTexto("#detail-location", lugar.direccion || placeText(lugar, "ubicacion"), "Consultar ubicación");
     establecerTexto("#detail-hours", lugar.horario, "Consultar horarios");
-    establecerTexto("#detail-price", lugar.precio, "Consultar tarifa");
+    establecerTexto("#detail-price", placeText(lugar, "precioTexto") || lugar.precio, "Consultar tarifa");
 
     const badgesContainer = document.querySelector("#detail-badges");
     if (badgesContainer) {
         const badges = document.createDocumentFragment();
         if (lugar.destacado) badges.appendChild(crearPill("⭐ Destacado", "badge-featured-gold"));
-        if (lugar.promocion) badges.appendChild(crearPill(`🏷️ ${textoSeguro(lugar.promocion)}`, "meta-pill promo-pill"));
+        const promocion = placeText(lugar, "promocion");
+        if (promocion) badges.appendChild(crearPill(`🏷️ ${textoSeguro(promocion)}`, "meta-pill promo-pill"));
         badges.appendChild(crearPill(
             lugar.alAireLibre === false ? "🏛️ Techado (mejor con lluvia)" : "🌿 Al aire libre",
             "meta-pill"

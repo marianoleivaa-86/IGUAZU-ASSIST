@@ -25,8 +25,11 @@ let itinerarioActual = [];
 let itinerarioContexto = {};
 let ultimaSorpresaId = null;
 let itinerarioAdaptacion = { activa: false, nivel: "exacto", mensaje: "", criteriosRelajados: [] };
-
 let ultimaSorpresaCategoria = null;
+
+function planPlaceText(lugar, campo, fallback = "") {
+    return window.I18n?.placeText(lugar, campo) || lugar?.[campo] || fallback;
+}
 let ultimaSorpresaTipo = null;
 let sorpresasRecientesIds = [];
 let sorpresasRecientesTipos = [];
@@ -1918,6 +1921,10 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
         : [];
 
     lugares.forEach((lugar, index) => {
+        const nombre = planPlaceText(lugar, "nombre", "Lugar sin nombre");
+        const descripcion = planPlaceText(lugar, "descripcion", "Información no disponible.");
+        const ubicacion = planPlaceText(lugar, "ubicacion", "Consultar ubicación");
+        const precioCatalogo = planPlaceText(lugar, "precioTexto");
         const esComplemento = index >= cantidadPrincipales;
         const tipoEtiqueta = esComplemento ? "➕ Parada recomendada" : "⭐ Parada principal";
 const paradaCalculada = trazadoFinal[index]?.lugar?.id === lugar?.id
@@ -1953,7 +1960,7 @@ const paradaCalculada = trazadoFinal[index]?.lugar?.id === lugar?.id
         const indoorBadge = lugar.alAireLibre ? "🌿 Al aire libre" : "🏛️ Techado / Interior";
         const precioTexto = lugar.gratuito === true
             ? "🎁 Gratis"
-            : textoSeguro(lugar.precioTexto || lugar.precio?.texto || lugar.precio, "💰 Consultar tarifa");
+            : textoSeguro(precioCatalogo || lugar.precio?.texto || lugar.precio, "💰 Consultar tarifa");
         const distanciaTexto = coordenadasValidasPlan(itinerarioContexto.origenCoords) && coordenadasValidasPlan(lugar.coordenadas)
             ? `📍 ${formatearDistancia(calcularDistanciaKm(itinerarioContexto.origenCoords.lat, itinerarioContexto.origenCoords.lng, lugar.coordenadas.lat, lugar.coordenadas.lng))}`
             : "📍 Ubicación disponible en detalle";
@@ -1975,9 +1982,9 @@ const paradaCalculada = trazadoFinal[index]?.lugar?.id === lugar?.id
                     <div class="plan-card-details">
                         <span>${escapar(precioTexto)}</span>
                         <span>${escapar(distanciaTexto)}</span>
-                        <span>📌 ${escapar(lugar.ubicacion || lugar.direccion || "Consultar ubicación")}</span>
+                        <span>📌 ${escapar(ubicacion || lugar.direccion || "Consultar ubicación")}</span>
                     </div>
-                    <p>${escapar(lugar.descripcion)}</p>
+                    <p>${escapar(descripcion)}</p>
                     
                     <div class="plan-card-actions">
                         <button class="btn-card-action primary" onclick="mostrarDetalle('${escaparAttr(lugar.nombre)}')">
@@ -2661,11 +2668,13 @@ function generarRecomendacionesAhora() {
     } else {
         const renderRecommendationCard = (item, index, esMejorOpcion = false) => {
             const lugar = item.lugar;
+            const nombre = planPlaceText(lugar, "nombre", "Lugar sin nombre");
+            const precioCatalogo = planPlaceText(lugar, "precioTexto");
             const mapsQuery = encodeURIComponent(`${lugar.nombre}, ${lugar.direccion || lugar.ubicacion || "Puerto Iguazú"}`);
-            const precio = lugar.gratuito ? "🎁 Gratis" : textoSeguro(lugar.precioTexto || lugar.precio?.texto, "💰 Consultar tarifa");
+            const precio = lugar.gratuito ? "🎁 Gratis" : textoSeguro(precioCatalogo || lugar.precio?.texto, "💰 Consultar tarifa");
             return `<article class="now-recommendation-card ${esMejorOpcion ? "best" : ""}">
                 <div class="now-recommendation-title">
-                    <h4>${escapar(lugar.nombre)}</h4>
+                    <h4>${escapar(nombre)}</h4>
                 </div>
                 ${esMejorOpcion ? "<div class=\"now-recommendation-why-label\">¿Por qué esta?</div>" : ""}
                 <p class="now-recommendation-reason">${escapar(item.motivos.texto)}</p>
@@ -2740,7 +2749,7 @@ function abrirComparadorOpciones() {
         return `<article class="now-comparison-card ${index === 0 ? "best" : ""}">
             ${imagen ? `<img class="now-comparison-image" src="${escaparAttr(imagen)}" alt="${escaparAttr(lugar.nombre)}" loading="lazy">` : ""}
             <h5>${index === 0 ? "⭐ Mejor opción para vos ahora" : "Otra opción"}</h5>
-            <h4>${escapar(lugar.nombre)}</h4>
+                    <h4>${escapar(nombre)}</h4>
             <div class="now-comparison-indicators">${indicadores.map(indicador => `<span>${escapar(indicador)}</span>`).join("") || "<span>Consultar información disponible</span>"}</div>
             <p class="now-comparison-why"><strong>Por qué:</strong> ${escapar(item.motivos.texto || "Opción compatible con el contexto actual.")}</p>
             <div class="now-recommendation-actions">
