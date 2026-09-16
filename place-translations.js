@@ -822,5 +822,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Cachoeira", "Selva Urbana", "Natureza", "Aves", "Grátis"]
         }
+    },
+    43: {
+        en: {
+            nombre: "Dr. Marta Teodora Schwarz House Museum",
+            descripcion: "A heritage and history space dedicated to Iguazú's notable community doctor, preserving her instruments and memory.",
+            ubicacion: "Downtown",
+            tipo: "History Museum & Cultural Heritage",
+            precioTexto: "Free admission",
+            promocion: null,
+            etiquetas: ["Museum", "History", "Heritage", "Culture", "Downtown", "Free", "Rainy Day"]
+        },
+        pt: {
+            nombre: "Casa Museu Dra. Marta Teodora Schwarz",
+            descripcion: "Espaço patrimonial e histórico dedicado à ilustre médica comunitária de Iguazú, preservando seus instrumentos e sua memória.",
+            ubicacion: "Centro",
+            tipo: "Museu Histórico e Patrimônio Cultural",
+            precioTexto: "Entrada livre e gratuita",
+            promocion: null,
+            etiquetas: ["Museu", "História", "Patrimônio", "Cultura", "Centro", "Grátis", "Dia de Chuva"]
+        }
+    },
+    44: {
+        en: {
+            nombre: "Casanova Night Club & Disco",
+            descripcion: "An iconic Puerto Iguazú nightclub with a dance floor, live DJs, cocktails and themed weekend shows.",
+            ubicacion: "Downtown / Nightlife District",
+            tipo: "Nightclub, Dance Club & Disco",
+            precioTexto: "Admission with drink included",
+            promocion: "Main dance floor, DJ and cocktails",
+            etiquetas: ["Dance Club", "Disco", "Night", "Music", "Party", "Drinks", "Downtown"]
+        },
+        pt: {
+            nombre: "Casanova Night Club & Disco",
+            descripcion: "Discoteca e clube noturno emblemático de Puerto Iguazú, com pista de dança, DJ ao vivo, coquetelaria e shows temáticos nos fins de semana.",
+            ubicacion: "Centro / Zona Noturna",
+            tipo: "Discoteca, Balada e Clube Noturno",
+            precioTexto: "Entrada paga com consumação",
+            promocion: "Pista principal, DJ e coquetelaria",
+            etiquetas: ["Balada", "Discoteca", "Noite", "Música", "Festa", "Drinks", "Centro"]
+        }
+    },
+    52: {
+        en: {
+            nombre: "Iguazú Casino",
+            descripcion: "A casino and entertainment center with slot machines, poker, roulette and dining options.",
+            ubicacion: "National Route 12, Km 1640, Puerto Iguazú",
+            tipo: "Casino & Entertainment Center",
+            precioTexto: "Ask about admission fees and conditions",
+            promocion: null,
+            etiquetas: ["Casino", "Slots", "Poker", "Roulette", "Night", "Dining"]
+        },
+        pt: {
+            nombre: "Cassino Iguazú",
+            descripcion: "Cassino e centro de entretenimento com máquinas caça-níqueis, pôquer, roleta e opções gastronômicas.",
+            ubicacion: "Rodovia Nacional 12, km 1640, Puerto Iguazú",
+            tipo: "Cassino e Centro de Entretenimento",
+            precioTexto: "Consultar tarifas e condições de entrada",
+            promocion: null,
+            etiquetas: ["Cassino", "Caça-níqueis", "Pôquer", "Roleta", "Noite", "Gastronomia"]
+        }
+    },
+    46: {
+        en: {
+            nombre: "Saint Mary of Iguazú Church",
+            descripcion: "A parish church in Puerto Iguazú, offering a spiritual meeting place and a window into local community life.",
+            ubicacion: "Villa Alta Neighborhood",
+            tipo: "Parish Church & Cultural Heritage",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Church", "Heritage", "Culture", "Neighborhood", "Free", "Ask about hours"]
+        },
+        pt: {
+            nombre: "Igreja Santa Maria do Iguaçu",
+            descripcion: "Templo paroquial de Puerto Iguazú, espaço de encontro espiritual e uma oportunidade de conhecer a vida comunitária local.",
+            ubicacion: "Bairro Villa Alta",
+            tipo: "Igreja Paroquial e Patrimônio Cultural",
+            precioTexto: "Acesso livre",
+            promocion: null,
+            etiquetas: ["Igreja", "Patrimônio", "Cultura", "Bairro", "Grátis", "Consultar horários"]
+        }
     }
 });
