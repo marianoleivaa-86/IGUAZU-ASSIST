@@ -502,5 +502,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Dia de Chuva", "Drinks", "Diversão", "Noite", "Coberto"]
         }
+    },
+    13: {
+        en: {
+            nombre: "Dancing Waters Show at Three Borders",
+            descripcion: "A nighttime audiovisual show of lights, folk music and water projections representing the culture of the three countries.",
+            ubicacion: "Three Borders Landmark",
+            tipo: "Nighttime Show",
+            precioTexto: "Free access",
+            promocion: null,
+            etiquetas: ["Lights", "Music", "Family", "Free", "Night", "Landmark"]
+        },
+        pt: {
+            nombre: "Show de Águas Dançantes no Marco das Três Fronteiras",
+            descripcion: "Espetáculo audiovisual noturno de luzes, música folclórica e projeções de água que representam a cultura dos três países.",
+            ubicacion: "Marco das Três Fronteiras",
+            tipo: "Espetáculo Noturno",
+            precioTexto: "Acesso livre e gratuito",
+            promocion: null,
+            etiquetas: ["Luzes", "Música", "Família", "Grátis", "Noite", "Marco"]
+        }
+    },
+    37: {
+        en: {
+            nombre: "Tupí Brewery & Terrace",
+            descripcion: "A craft brewery with a downtown terrace, Missiones beers on tap, generous sharing boards and music in a lively atmosphere.",
+            ubicacion: "Downtown",
+            tipo: "Craft Brewery & Bar",
+            precioTexto: "À la carte consumption",
+            promocion: null,
+            etiquetas: ["Craft Beer", "Terrace", "Night", "Sharing Boards", "Music", "Downtown"]
+        },
+        pt: {
+            nombre: "Tupí Cervejaria e Terraço",
+            descripcion: "Cervejaria artesanal com terraço no centro, torneiras de cervejas missioneiras, porções generosas e música em um ambiente animado.",
+            ubicacion: "Centro",
+            tipo: "Cervejaria Artesanal e Bar",
+            precioTexto: "Consumo à la carte",
+            promocion: null,
+            etiquetas: ["Cerveja Artesanal", "Terraço", "Noite", "Porções", "Música", "Centro"]
+        }
+    },
+    15: {
+        en: {
+            nombre: "El Quincho del Tío Querido",
+            descripcion: "A traditional Argentine grill with selected meats cooked over charcoal, regional fish and live tango and folk shows.",
+            ubicacion: "Pres. Juan D. Perón Avenue",
+            tipo: "Argentine Grill & Live Show",
+            precioTexto: "Gourmet menu and grill",
+            promocion: null,
+            etiquetas: ["Barbecue", "Live Show", "Tango", "Tradition", "Covered"]
+        },
+        pt: {
+            nombre: "El Quincho del Tío Querido",
+            descripcion: "Parrilla argentina tradicional com carnes selecionadas na brasa, peixes regionais e shows de tango e folclore ao vivo.",
+            ubicacion: "Avenida Pres. Juan D. Perón",
+            tipo: "Parrilla Argentina e Show",
+            precioTexto: "Cardápio gourmet e parrilla",
+            promocion: null,
+            etiquetas: ["Churrasco", "Show ao Vivo", "Tango", "Tradição", "Coberto"]
+        }
+    },
+    16: {
+        en: {
+            nombre: "La Rueda 1975",
+            descripcion: "A historic restaurant with a welcoming atmosphere, homemade pasta, beef cuts and fish from the Paraná basin.",
+            ubicacion: "Downtown",
+            tipo: "Traditional Argentine Cuisine",
+            precioTexto: "Traditional menu",
+            promocion: null,
+            etiquetas: ["Classic", "Pasta", "Meat", "Covered", "Downtown"]
+        },
+        pt: {
+            nombre: "La Rueda 1975",
+            descripcion: "Restaurante histórico e acolhedor, com massas caseiras, cortes de carne bovina e peixes da bacia do Paraná.",
+            ubicacion: "Centro",
+            tipo: "Culinária Tradicional Argentina",
+            precioTexto: "Cardápio tradicional",
+            promocion: null,
+            etiquetas: ["Clássico", "Massas", "Carnes", "Coberto", "Centro"]
+        }
     }
 });
