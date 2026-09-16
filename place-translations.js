@@ -582,5 +582,85 @@ window.PLACE_TRANSLATIONS = Object.freeze({
             promocion: null,
             etiquetas: ["Clássico", "Massas", "Carnes", "Coberto", "Centro"]
         }
+    },
+    35: {
+        en: {
+            nombre: "The Argentine Experience Iguazú",
+            descripcion: "An interactive gourmet dinner with premium wine pairing, guided empanada making and Argentine beef cuts.",
+            ubicacion: "Gastronomic District",
+            tipo: "Gastronomic & Wine Experience",
+            precioTexto: "Premium guided gastronomic experience",
+            promocion: null,
+            etiquetas: ["Argentine Wines", "Empanadas", "Gourmet", "Interactive", "Night"]
+        },
+        pt: {
+            nombre: "The Argentine Experience Iguazú",
+            descripcion: "Jantar gourmet interativo com harmonização de vinhos premium, preparo guiado de empanadas e cortes de carne argentina.",
+            ubicacion: "Centro Gastronômico",
+            tipo: "Experiência Gastronômica e de Vinhos",
+            precioTexto: "Experiência gastronômica premium com guia",
+            promocion: null,
+            etiquetas: ["Vinhos Argentinos", "Empanadas", "Gourmet", "Interativo", "Noite"]
+        }
+    },
+    36: {
+        en: {
+            nombre: "Doña María Restaurant",
+            descripcion: "A standout culinary offering with handmade filled pasta, regional fish and a carefully selected wine cellar at Hotel Saint George.",
+            ubicacion: "Downtown",
+            tipo: "Regional Cuisine & Handmade Pasta",
+            precioTexto: "Varied menu",
+            promocion: null,
+            etiquetas: ["Homemade Pasta", "River Fish", "Downtown", "Covered", "Comfort"]
+        },
+        pt: {
+            nombre: "Restaurante Doña María",
+            descripcion: "Proposta culinária de destaque com massas artesanais recheadas, peixes regionais e uma seleção de vinhos no Hotel Saint George.",
+            ubicacion: "Centro",
+            tipo: "Culinária Regional e Massas Artesanais",
+            precioTexto: "Cardápio variado",
+            promocion: null,
+            etiquetas: ["Massas Caseiras", "Peixes de Rio", "Centro", "Coberto", "Conforto"]
+        }
+    },
+    38: {
+        en: {
+            nombre: "La Toscana Trattoria",
+            descripcion: "A warm, family-friendly trattoria with wood-fired pizzas, fresh Italian pasta and homemade desserts in the city center.",
+            ubicacion: "Downtown",
+            tipo: "Italian Trattoria & Pizzeria",
+            precioTexto: "Traditional menu",
+            promocion: null,
+            etiquetas: ["Pizza", "Pasta", "Downtown", "Family", "Wood-Fired Oven"]
+        },
+        pt: {
+            nombre: "La Toscana Trattoria",
+            descripcion: "Trattoria acolhedora e familiar com pizzas no forno a lenha, massas italianas frescas e sobremesas caseiras no centro da cidade.",
+            ubicacion: "Centro",
+            tipo: "Trattoria Italiana e Pizzaria",
+            precioTexto: "Cardápio tradicional",
+            promocion: null,
+            etiquetas: ["Pizzas", "Massas", "Centro", "Família", "Forno a Lenha"]
+        }
+    },
+    17: {
+        en: {
+            nombre: "Jungle Restaurant",
+            descripcion: "A dining experience surrounded by native rainforest, serving contemporary dishes and signature cocktails with views of nature.",
+            ubicacion: "Rainforest Area",
+            tipo: "Rainforest Restaurant & Lounge",
+            precioTexto: "Signature cuisine",
+            promocion: null,
+            etiquetas: ["Rainforest", "Cocktails", "Atmosphere", "Covered"]
+        },
+        pt: {
+            nombre: "Jungle Restaurante",
+            descripcion: "Experiência gastronômica cercada pela selva nativa, com pratos contemporâneos e coquetéis autorais com vista para a natureza.",
+            ubicacion: "Zona de Selva",
+            tipo: "Restaurante e Lounge na Selva",
+            precioTexto: "Culinária autoral",
+            promocion: null,
+            etiquetas: ["Selva", "Drinks", "Ambiente", "Coberto"]
+        }
     }
 });
