@@ -166,6 +166,7 @@ let gpsWatchId = null;
 let lastGpsWatchUpdate = 0;
 let deferredInstallPrompt = null;
 let planificadorLoadPromise = null;
+let _activarAudioConInteraccion = null; // Referencia al listener de interacción de audio para evitar duplicados.
 
 function cargarPlanificador() {
     if (planificadorLoadPromise) return planificadorLoadPromise;
@@ -1784,25 +1785,37 @@ function iniciarAudioHabilitado() {
     SoundFX.startAmbient();
 
     // En celulares, el navegador puede bloquear el autoplay.
-    // Ante la primera interacción del usuario, intentamos nuevamente.
-    const activarAudioConInteraccion = () => {
+    // Usamos una referencia de módulo (_activarAudioConInteraccion) para poder eliminar
+    // los listeners anteriores antes de registrar nuevos, evitando duplicados cuando
+    // esta función se llama varias veces (pageshow, visibilitychange, etc.).
+    if (_activarAudioConInteraccion) {
+        document.removeEventListener("pointerdown", _activarAudioConInteraccion);
+        document.removeEventListener("touchstart", _activarAudioConInteraccion);
+        document.removeEventListener("touchend", _activarAudioConInteraccion);
+        document.removeEventListener("click", _activarAudioConInteraccion);
+        document.removeEventListener("keydown", _activarAudioConInteraccion);
+        _activarAudioConInteraccion = null;
+    }
+
+    _activarAudioConInteraccion = () => {
         if (!AppState.audioActivo || document.hidden) return;
 
         SoundFX.startAmbient({ userGesture: true });
 
-        document.removeEventListener("pointerdown", activarAudioConInteraccion);
-        document.removeEventListener("touchstart", activarAudioConInteraccion);
-        document.removeEventListener("touchend", activarAudioConInteraccion);
-        document.removeEventListener("click", activarAudioConInteraccion);
-        document.removeEventListener("keydown", activarAudioConInteraccion);
+        // Limpiar todos los listeners una vez que el audio se intentó con gesto real.
+        document.removeEventListener("pointerdown", _activarAudioConInteraccion);
+        document.removeEventListener("touchstart", _activarAudioConInteraccion);
+        document.removeEventListener("touchend", _activarAudioConInteraccion);
+        document.removeEventListener("click", _activarAudioConInteraccion);
+        document.removeEventListener("keydown", _activarAudioConInteraccion);
+        _activarAudioConInteraccion = null;
     };
 
-    document.addEventListener("pointerdown", activarAudioConInteraccion, { once: true });
-    document.addEventListener("touchstart", activarAudioConInteraccion, { once: true });
-    document.addEventListener("touchend", activarAudioConInteraccion, { once: true });
-    document.addEventListener("click", activarAudioConInteraccion, { once: true });
-    document.addEventListener("keydown", activarAudioConInteraccion, { once: true });
-
+    document.addEventListener("pointerdown", _activarAudioConInteraccion);
+    document.addEventListener("touchstart", _activarAudioConInteraccion, { passive: true });
+    document.addEventListener("touchend", _activarAudioConInteraccion, { passive: true });
+    document.addEventListener("click", _activarAudioConInteraccion);
+    document.addEventListener("keydown", _activarAudioConInteraccion);
 }
 
 function initControlSonido() {
