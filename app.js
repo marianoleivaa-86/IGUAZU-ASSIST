@@ -236,7 +236,7 @@ const SoundFX = {
     try {
         if (!this.ambientAudio) {
             this.ambientAudio = new Audio("audio/iguazu-ambiente.mp3");
-            this.ambientAudio.loop = true;
+            this.ambientAudio.loop = false;
             this.ambientAudio.preload = "auto";
             this.ambientAudio.setAttribute("aria-hidden", "true");
         }
