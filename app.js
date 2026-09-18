@@ -341,7 +341,7 @@ function inicializarExperienciaPwa() {
     window.addEventListener("beforeinstallprompt", event => {
         event.preventDefault();
         deferredInstallPrompt = event;
-        installButton?.classList.remove("hidden");
+        installButton?.classList.add("hidden");
     });
     window.addEventListener("appinstalled", () => {
         deferredInstallPrompt = null;
@@ -372,7 +372,6 @@ function initMenuPrincipal() {
     const panel = document.querySelector("#main-menu-panel");
     const close = document.querySelector("#main-menu-close");
     const install = document.querySelector("#main-menu-install");
-    const audio = document.querySelector("#main-menu-audio");
     const preferences = document.querySelector("#main-menu-preferences");
     if (!toggle || !panel || !close) return;
 
@@ -401,7 +400,6 @@ function initMenuPrincipal() {
         document.querySelector("#install-app-btn")?.click();
         setOpen(false, { restoreFocus: true });
     });
-    audio?.addEventListener("click", () => document.querySelector("#audio-toggle")?.click());
     preferences?.addEventListener("click", () => {
         mostrarSeccion("profile");
         setOpen(false, { restoreFocus: true });
@@ -1836,7 +1834,6 @@ function actualizarControlesAudio() {
     const audioBtn = document.querySelector("#audio-toggle");
     const profileBtn = document.querySelector("#profile-audio-toggle");
     const tukiBtn = document.querySelector("#tuki-sound-toggle");
-    const menuAudio = document.querySelector("#main-menu-audio");
     const tukiVolume = document.querySelector("#tuki-volume");
     const activo = AppState.audioActivo;
 
@@ -1854,10 +1851,6 @@ function actualizarControlesAudio() {
         tukiBtn.textContent = activo ? uiText("soundActive", "Sonido activo") : uiText("soundOn", "Activar sonido");
         tukiBtn.classList.toggle("active", activo);
         tukiBtn.setAttribute("aria-pressed", String(activo));
-    }
-    if (menuAudio) {
-        menuAudio.textContent = activo ? "🔊 Ambiente selvático · Activado" : "🔇 Ambiente selvático · Silenciado";
-        menuAudio.setAttribute("aria-pressed", String(activo));
     }
     if (tukiVolume) tukiVolume.value = String(AppState.volumenAmbiente);
 }
