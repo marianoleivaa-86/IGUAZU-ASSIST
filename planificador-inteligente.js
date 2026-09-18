@@ -2776,9 +2776,51 @@ window.generarPlanReal = generarPlan;
 window.estaDisponibleDurantePlan = estaDisponibleDurantePlan;
 window.calcularPuntaje = calcularPuntaje;
 window.contextoDeAhora = contextoDeAhora;
+
+function clonarEstadoPlanificador(valor) {
+    try {
+        return JSON.parse(JSON.stringify(valor ?? null));
+    } catch (error) {
+        console.info("No se pudo clonar el estado del planificador.", error);
+        return null;
+    }
+}
+
+function obtenerItinerarioActual() {
+    return clonarEstadoPlanificador(itinerarioActual) || [];
+}
+
+function obtenerItinerarioContexto() {
+    return clonarEstadoPlanificador(itinerarioContexto) || {};
+}
+
+function restaurarItinerario(actividades, contexto = {}) {
+    if (!Array.isArray(actividades) || !actividades.length) return false;
+    const actividadesClonadas = clonarEstadoPlanificador(actividades);
+    const contextoClonado = clonarEstadoPlanificador(contexto);
+    if (!actividadesClonadas || !contextoClonado) return false;
+    itinerarioActual = actividadesClonadas;
+    itinerarioContexto = contextoClonado;
+    return true;
+}
+
+function volverARenderizarItinerario() {
+    if (!Array.isArray(itinerarioActual) || !itinerarioActual.length) return false;
+    const contextoPlan = itinerarioContexto.contextoPlan || itinerarioContexto.ahora || {};
+    const paraManana = Number.isFinite(Number(itinerarioContexto.ahora?.diaSemana)) &&
+        Number.isFinite(Number(contextoPlan.diaSemana)) &&
+        Number(itinerarioContexto.ahora.diaSemana) !== Number(contextoPlan.diaSemana);
+    renderizarItinerario(itinerarioActual, itinerarioActual.length, paraManana);
+    return true;
+}
+
 window.PlanificadorAPI = {
     get climaActual() { return climaActual; },
     set climaActual(valor) { climaActual = valor; },
+    obtenerItinerarioActual,
+    obtenerItinerarioContexto,
+    restaurarItinerario,
+    volverARenderizarItinerario,
     construirPlanConFallback,
     esLugarValidoParaItinerario,
     horasDisponibles,

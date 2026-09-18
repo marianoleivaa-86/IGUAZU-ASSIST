@@ -2034,9 +2034,12 @@ function generarIdPlan() {
 }
 
 function crearSnapshotPlanActual() {
-    if (typeof itinerarioActual === "undefined" || !Array.isArray(itinerarioActual) || !itinerarioActual.length) return null;
-    const contexto = clonarPlanSeguro(typeof itinerarioContexto !== "undefined" ? itinerarioContexto : {});
-    const actividades = clonarPlanSeguro(itinerarioActual);
+    const api = window.PlanificadorAPI;
+    const actividadesActuales = api?.obtenerItinerarioActual?.();
+    if (!Array.isArray(actividadesActuales) || !actividadesActuales.length) return null;
+    const contextoActual = api?.obtenerItinerarioContexto?.() || {};
+    const contexto = clonarPlanSeguro(contextoActual);
+    const actividades = clonarPlanSeguro(actividadesActuales);
     if (!contexto || !actividades) return null;
     const ahora = new Date().toISOString();
     const existente = AppState.currentPlanId ? obtenerPlanPorId(AppState.currentPlanId) : null;
@@ -2142,11 +2145,7 @@ function guardarPlanActual() {
     if (ok) {
         if (typeof SoundFX !== "undefined") SoundFX.play("plan");
         mostrarToast(actualizado ? "✅ Cambios guardados en Mis planes" : "✅ Plan guardado en Mis planes");
-        if (typeof renderizarItinerario === "function") {
-            const contextoPlan = itinerarioContexto.contextoPlan || itinerarioContexto.ahora || {};
-            const paraManana = Number.isFinite(Number(itinerarioContexto.ahora?.diaSemana)) && Number.isFinite(Number(contextoPlan.diaSemana)) && Number(itinerarioContexto.ahora.diaSemana) !== Number(contextoPlan.diaSemana);
-            renderizarItinerario(itinerarioActual, itinerarioActual.length, paraManana);
-        }
+        window.PlanificadorAPI?.volverARenderizarItinerario?.();
     }
 }
 
@@ -2159,18 +2158,21 @@ function abrirPlanGuardado(id) {
     const contexto = clonarPlanSeguro(plan.contexto || {});
     const actividades = clonarPlanSeguro(plan.actividades);
     if (!contexto || !actividades) return;
-    itinerarioContexto = contexto;
-    itinerarioActual = actividades;
+    const api = window.PlanificadorAPI;
+    if (!api?.restaurarItinerario?.(actividades, contexto)) {
+        mostrarToast("⚠️ No se pudo restaurar el itinerario");
+        return;
+    }
     AppState.currentPlanId = plan.id;
     AppState.interes = contexto.interes || contexto.intereses?.[0] || "naturaleza";
     AppState.tiempo = contexto.tiempo || "medio día";
     AppState.compania = contexto.compania || "solo";
     AppState.presupuesto = contexto.presupuesto || "medio";
     if (contexto.origenCoords) AppState.userCoords = clonarPlanSeguro(contexto.origenCoords);
-    if (contexto.contextoPlan?.clima && typeof climaActual !== "undefined") climaActual = clonarPlanSeguro(contexto.contextoPlan.clima);
+    if (contexto.contextoPlan?.clima && api) api.climaActual = clonarPlanSeguro(contexto.contextoPlan.clima);
     if (typeof sincronizarOpcionesPlanificador === "function") sincronizarOpcionesPlanificador(contexto);
     mostrarSeccion("planner");
-    renderizarItinerario(itinerarioActual, itinerarioActual.length, false);
+    api.volverARenderizarItinerario?.();
     renderizarPlanesGuardados();
     mostrarToast("📅 Plan recuperado");
 }
