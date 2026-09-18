@@ -1028,15 +1028,15 @@ img {
     background: var(--bg-card);
     border: 1px solid var(--border-forest);
     border-radius: 16px;
-    padding: 16px;
+    padding: 12px;
     display: flex;
     align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 .planner-avatar-wrap {
-    width: 60px;
-    height: 60px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
     border: 2px solid var(--color-lime);
     overflow: hidden;
@@ -1053,19 +1053,19 @@ img {
     background: var(--bg-card);
     border: 1px solid var(--border-forest);
     border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
 }
 .planner-card-question h3 {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: var(--text-emerald);
 }
 
 .planner-options-grid-4, .planner-options-grid-5, .planner-options-grid-3 {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 .planner-options-grid-4 { grid-template-columns: repeat(4, 1fr); }
 .planner-options-grid-5 { grid-template-columns: repeat(5, 1fr); }
@@ -1075,16 +1075,16 @@ img {
     background: rgba(8, 28, 14, 0.9);
     border: 1px solid var(--border-forest);
     border-radius: 12px;
-    padding: 10px 4px;
+    padding: 8px 4px;
     color: var(--text-white);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 2px;
     transition: all 0.2s;
 }
 .option-btn:hover {
@@ -1097,13 +1097,13 @@ img {
     box-shadow: 0 0 12px var(--color-lime-glow);
 }
 .option-icon {
-    font-size: 18px;
+    font-size: 16px;
 }
 .option-title {
     font-weight: 700;
 }
 .option-sub {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-dim);
 }
 
@@ -1112,8 +1112,8 @@ img {
     background: var(--color-lime);
     border: 1px solid #8af032;
     border-radius: 14px;
-    padding: 14px;
-    font-size: 14px;
+    padding: 11px;
+    font-size: 13px;
     font-weight: 800;
     color: var(--color-lime-dark);
     cursor: pointer;
@@ -1121,7 +1121,7 @@ img {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin-top: 14px;
+    margin-top: 10px;
     box-shadow: 0 4px 18px var(--color-lime-glow);
     transition: all 0.2s;
 }
@@ -1179,8 +1179,8 @@ img {
     font-size: 11.5px;
 }
 .saved-plans-panel {
-    margin: 16px 0 18px;
-    padding: 14px;
+    margin: 10px 0 12px;
+    padding: 10px;
     background: var(--bg-card);
     border: 1px solid var(--border-forest);
     border-radius: 18px;
@@ -1189,16 +1189,16 @@ img {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 7px;
 }
-.saved-plans-heading h3 { font-size: 18px; color: var(--text-white); }
-.saved-plans-heading p { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
-.saved-plans-list { display: flex; flex-direction: column; gap: 9px; }
-.saved-plans-empty { padding: 12px; border: 1px dashed var(--border-forest); border-radius: 12px; color: var(--text-muted); font-size: 12px; }
+.saved-plans-heading h3 { font-size: 16px; color: var(--text-white); }
+.saved-plans-heading p { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+.saved-plans-list { display: flex; flex-direction: column; gap: 6px; }
+.saved-plans-empty { padding: 9px; border: 1px dashed var(--border-forest); border-radius: 12px; color: var(--text-muted); font-size: 11px; }
 .saved-plan-card {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 11px 12px; background: rgba(8, 28, 14, .84);
+    padding: 9px 10px; background: rgba(8, 28, 14, .84);
     border: 1px solid var(--border-forest); border-radius: 13px;
 }
 .saved-plan-main { min-width: 0; }
