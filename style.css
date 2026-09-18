@@ -161,35 +161,40 @@ img {
     box-shadow: 0 0 10px var(--color-lime-glow);
 }
 .main-menu-panel {
-    position: absolute;
-    top: 64px;
-    left: 14px;
-    right: 14px;
-    z-index: 30;
-    padding: 8px;
-    background: rgba(3, 14, 6, 0.48);
-    border-radius: 18px;
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    padding: 0;
+    background: rgba(1, 8, 4, 0.62);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
 }
 .main-menu-panel.hidden { display: none; }
 .main-menu-card {
-    width: min(100%, 360px);
-    padding: 14px;
+    width: min(82vw, 380px);
+    height: 100%;
+    padding: 18px 16px;
     background: var(--bg-card);
     border: 1px solid var(--border-forest);
-    border-radius: 16px;
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    border-top: none;
+    border-bottom: none;
+    border-left: none;
+    border-radius: 0 22px 22px 0;
+    box-shadow: 14px 0 34px rgba(0, 0, 0, 0.55);
 }
 .main-menu-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border-forest);
 }
 .main-menu-header h2 {
     color: var(--text-white);
     font-family: var(--font-display);
-    font-size: 18px;
+    font-size: 20px;
 }
 .main-menu-close {
     width: 32px;
@@ -209,7 +214,8 @@ img {
 .main-menu-actions { display: grid; gap: 8px; }
 .main-menu-action {
     width: 100%;
-    padding: 11px 12px;
+    min-height: 54px;
+    padding: 14px 15px;
     border: 1px solid var(--border-forest);
     border-radius: 12px;
     background: rgba(8, 28, 14, 0.9);
