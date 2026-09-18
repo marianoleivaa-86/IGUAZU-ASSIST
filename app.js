@@ -1083,6 +1083,7 @@ function alternarFavorito(lugar) {
     if (AppState.detailPlace?.id != null && String(AppState.detailPlace.id) === id) {
         actualizarBotonFavorito(document.querySelector("#detail-favorite-btn"), lugar);
     }
+    if (wasFavorite && AppState.filtroCercaMio === "favoritos") renderizarCercaMio("favoritos");
 }
 
 function construirUrlMaps(lugar) {
