@@ -366,6 +366,76 @@ function inicializarExperienciaPwa() {
         }, { once: true });
     }
 }
+
+function initMenuPrincipal() {
+    const toggle = document.querySelector("#main-menu-toggle");
+    const panel = document.querySelector("#main-menu-panel");
+    const close = document.querySelector("#main-menu-close");
+    const install = document.querySelector("#main-menu-install");
+    const audio = document.querySelector("#main-menu-audio");
+    const preferences = document.querySelector("#main-menu-preferences");
+    if (!toggle || !panel || !close) return;
+
+    const setOpen = (open, { restoreFocus = false } = {}) => {
+        panel.classList.toggle("hidden", !open);
+        panel.setAttribute("aria-hidden", String(!open));
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", open ? "Cerrar menú principal" : "Abrir menú principal");
+        if (open) close.focus();
+        else if (restoreFocus) toggle.focus();
+    };
+
+    toggle.addEventListener("click", () => setOpen(panel.classList.contains("hidden")));
+    close.addEventListener("click", () => setOpen(false, { restoreFocus: true }));
+    panel.addEventListener("click", event => {
+        if (event.target === panel) setOpen(false, { restoreFocus: true });
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !panel.classList.contains("hidden")) {
+            event.preventDefault();
+            setOpen(false, { restoreFocus: true });
+        }
+    });
+
+    install?.addEventListener("click", () => {
+        document.querySelector("#install-app-btn")?.click();
+        setOpen(false, { restoreFocus: true });
+    });
+    audio?.addEventListener("click", () => document.querySelector("#audio-toggle")?.click());
+    preferences?.addEventListener("click", () => {
+        mostrarSeccion("profile");
+        setOpen(false, { restoreFocus: true });
+    });
+}
+
+function initPanelFiltrosCercaMio() {
+    const toggle = document.querySelector("#nearby-filter-toggle");
+    const panel = document.querySelector("#nearby-filter-panel");
+    const close = document.querySelector("#nearby-filter-close");
+    if (!toggle || !panel || !close) return;
+
+    const setOpen = (open, { restoreFocus = false } = {}) => {
+        panel.classList.toggle("hidden", !open);
+        panel.setAttribute("aria-hidden", String(!open));
+        toggle.setAttribute("aria-expanded", String(open));
+        toggle.setAttribute("aria-label", open ? "Cerrar filtros y ordenar" : "Abrir filtros y ordenar");
+        if (open) close.focus();
+        else if (restoreFocus) toggle.focus();
+    };
+
+    toggle.addEventListener("click", () => setOpen(panel.classList.contains("hidden")));
+    close.addEventListener("click", () => setOpen(false, { restoreFocus: true }));
+    panel.addEventListener("click", event => {
+        if (event.target === panel) setOpen(false, { restoreFocus: true });
+    });
+    document.addEventListener("keydown", event => {
+        if (event.key === "Escape" && !panel.classList.contains("hidden")) {
+            event.preventDefault();
+            setOpen(false, { restoreFocus: true });
+        }
+    });
+}
+
 function inicializarAplicacion() {
     if (appInitialized) return;
     appInitialized = true;
@@ -375,8 +445,10 @@ function inicializarAplicacion() {
     cargarPlanificador();
 
     initNavegacion();
+    initMenuPrincipal();
     initCategorias();
     initPlanificadorOpciones();
+    initPanelFiltrosCercaMio();
     initCercaMio();
     initSorprendeme();
     initFichaClima();
@@ -1256,6 +1328,12 @@ function abrirCercaMio() {
     }
 }
 
+function abrirFavoritosDesdeNavegacion() {
+    mostrarSeccion("home");
+    aplicarFiltroCercaMio("favoritos");
+    setActiveNav("bnav-favorites");
+}
+
 function obtenerCatalogoCompletoConDistancia() {
     const places = obtenerBaseDeLugares();
     const coords = AppState.userCoords && esCoordenadaValida(AppState.userCoords.lat, AppState.userCoords.lng)
@@ -1758,6 +1836,7 @@ function actualizarControlesAudio() {
     const audioBtn = document.querySelector("#audio-toggle");
     const profileBtn = document.querySelector("#profile-audio-toggle");
     const tukiBtn = document.querySelector("#tuki-sound-toggle");
+    const menuAudio = document.querySelector("#main-menu-audio");
     const tukiVolume = document.querySelector("#tuki-volume");
     const activo = AppState.audioActivo;
 
@@ -1775,6 +1854,10 @@ function actualizarControlesAudio() {
         tukiBtn.textContent = activo ? uiText("soundActive", "Sonido activo") : uiText("soundOn", "Activar sonido");
         tukiBtn.classList.toggle("active", activo);
         tukiBtn.setAttribute("aria-pressed", String(activo));
+    }
+    if (menuAudio) {
+        menuAudio.textContent = activo ? "🔊 Ambiente selvático · Activado" : "🔇 Ambiente selvático · Silenciado";
+        menuAudio.setAttribute("aria-pressed", String(activo));
     }
     if (tukiVolume) tukiVolume.value = String(AppState.volumenAmbiente);
 }
