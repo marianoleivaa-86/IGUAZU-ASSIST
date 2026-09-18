@@ -706,7 +706,15 @@
             <span class="bottom-nav-label" data-i18n="explore">Explorar</span>
         </button>
 
-        <!-- 3. Mis Planes -->
+        <!-- 3. Tuki / Planificador central -->
+        <button class="bottom-nav-center-btn" id="bnav-tuki" onclick="mostrarSeccion('planner'); setTimeout(() => document.querySelector('#planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); setActiveNav('bnav-plans')" aria-label="Abrir Tuki y el planificador">
+            <div class="tuki-circle-glow">
+                <img src="tuki-avatar.webp" alt="Tuki" class="tuki-nav-avatar">
+            </div>
+            <span class="tuki-nav-label">Tuki / Planificador</span>
+        </button>
+
+        <!-- 4. Mis Planes -->
         <button class="bottom-nav-btn" id="bnav-plans" onclick="mostrarSeccion('planner'); renderizarPlanesGuardados(); setActiveNav('bnav-plans')" aria-label="Mis Planes y armar itinerario">
             <span class="bottom-nav-icon">📅</span>
             <span class="bottom-nav-label" data-i18n="plans">Mis Planes</span>

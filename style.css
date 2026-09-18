@@ -1630,6 +1630,51 @@ img {
     font-weight: 700;
 }
 
+.bottom-nav-center-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: -24px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.tuki-circle-glow {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 3px solid var(--color-lime);
+    box-shadow: 0 0 18px var(--color-lime-glow);
+    overflow: hidden;
+    background: #041407;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.bottom-nav-center-btn:hover .tuki-circle-glow,
+.bottom-nav-center-btn:focus-visible .tuki-circle-glow {
+    transform: scale(1.08);
+    box-shadow: 0 0 24px var(--color-lime);
+}
+
+.tuki-nav-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.tuki-nav-label {
+    max-width: 92px;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--color-lime);
+    margin-top: 2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ========================================================
    RESPONSIVE (MOBILE & DESKTOP)
    ======================================================== */
