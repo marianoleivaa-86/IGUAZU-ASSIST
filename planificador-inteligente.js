@@ -961,6 +961,75 @@ function interesesCubiertosPorLugar(lugar, intereses) {
     });
 }
 
+function esLugarAbiertoAhora(lugar, fechaReferencia) {
+    if (!lugar || typeof lugar !== "object") return false;
+    const referencia = fechaReferencia ? new Date(fechaReferencia) : new Date();
+    if (isNaN(referencia.getTime())) return false;
+
+    const horaActual = referencia.getHours() + referencia.getMinutes() / 60;
+    const minutoActual = referencia.getHours() * 60 + referencia.getMinutes();
+    const diaActual = referencia.getDay();
+
+    const textoHorario = typeof lugar.horarios === "string" ? lugar.horarios.trim() : "";
+
+    if (!textoHorario) {
+        const rangos = Array.isArray(lugar.rangosHorarios) ? lugar.rangosHorarios : (lugar.rangoHorario ? [lugar.rangoHorario] : []);
+        if (rangos.length > 0 && typeof estaAbiertoEnHorario === "function") {
+            return estaAbiertoEnHorario(lugar, horaActual, diaActual);
+        }
+        return false;
+    }
+
+    const t = textoHorario.toLowerCase();
+    if (t.includes("24") && (t.includes("hs") || t.includes("horas") || /24\s*[:-]\s*00/i.test(t) || /24\s*horas?/i.test(t))) {
+        return true;
+    }
+
+    const rangoMatch = textoHorario.match(/(\d{1,2}):(\d{2})\s*a\s*(\d{1,2}):(\d{2})/i);
+    if (rangoMatch) {
+        const [, hInicioStr, mInicioStr, hFinStr, mFinStr] = rangoMatch;
+        const hInicio = parseInt(hInicioStr, 10);
+        const mInicio = parseInt(mInicioStr, 10);
+        const hFin = parseInt(hFinStr, 10);
+        const mFin = parseInt(mFinStr, 10);
+
+        const minutosInicio = hInicio * 60 + mInicio;
+        let minutosFin = hFin * 60 + mFin;
+
+        if (minutosFin < minutosInicio) {
+            minutosFin += 24 * 60;
+            if (minutoActual < minutosInicio && minutoActual < minutosFin - 24 * 60) {
+                return false;
+            }
+            return minutoActual >= minutosInicio || minutoActual + 24 * 60 <= minutosFin;
+        }
+
+        return minutoActual >= minutosInicio && minutoActual <= minutosFin;
+    }
+
+    const horasMatch = textoHorario.match(/(\d{1,2})\s*a\s*(\d{1,2})/i);
+    if (horasMatch) {
+        const [, hInicioStr, hFinStr] = horasMatch;
+        const hInicio = parseInt(hInicioStr, 10);
+        const hFin = parseInt(hFinStr, 10);
+        const minutosInicio = hInicio * 60;
+        let minutosFin = hFin * 60;
+
+        if (minutosFin < minutosInicio) {
+            minutosFin += 24 * 60;
+            if (minutoActual < minutosInicio) {
+                return (minutoActual + 24 * 60) <= minutosFin;
+            }
+            return minutoActual >= minutosInicio;
+        }
+
+        return minutoActual >= minutosInicio && minutoActual <= minutosFin;
+    }
+
+    return false;
+}
+window.esLugarAbiertoAhora = esLugarAbiertoAhora;
+
 function esCandidatoValido(lugar, opciones = {}) {
     if (!lugar || CATEGORIAS_EXCLUIDAS_DEL_ITINERARIO.includes(lugar.categoria)) return false;
     const viabilidad = evaluarViabilidadLugar(lugar, opciones.contexto || {});
@@ -2361,7 +2430,13 @@ window.generarSorpresa = function () {
         });
 
     if (!opciones.length) {
-        contenedor.innerHTML = `<div class="surprise-empty"><div class="surprise-empty-icon">🦜</div><h2>No encontramos una sorpresa responsable para este momento</h2><p>Probá nuevamente más tarde o revisá el planificador: Tuki respeta horario, clima, preferencias y actividades ya incluidas.</p></div>`;
+        const ahora = contextoAhora || obtenerFechaHoraArgentina();
+        const horaActual = Number.isFinite(ahora?.horaNumero) ? ahora.horaNumero : null;
+        const esMadrugada = Number.isFinite(horaActual) && horaActual < 6;
+        const mensajeBase = esMadrugada
+            ? `<div class="surprise-empty"><div class="surprise-empty-icon">🦜</div><h2>La mayoría de los atractivos están cerrados ahora</h2><p>Hacé <strong>${String(Math.round((6 - horaActual) * 2)).padStart(2, '0')}h después</strong> o armá tu plan para la <strong>mañana siguiente</strong> en el planificador: Tuki respeta horario, clima y preferencias.</p><p class="surprise-tip">💡 Chequeá "Planificador Inteligente" para armá tu día completamente.</p></div>`
+            : `<div class="surprise-empty"><div class="surprise-empty-icon">🦜</div><h2>No encontramos una sorpresa responsable para este momento</h2><p>Probá nuevamente más tarde o revisá el planificador: Tuki respeta horario, clima, preferencias y actividades ya incluidas.</p></div>`;
+        contenedor.innerHTML = mensajeBase;
         return;
     }
 
