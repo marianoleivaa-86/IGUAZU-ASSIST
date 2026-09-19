@@ -104,6 +104,78 @@ async function cacheFirst(request) {
   }
 }
 
+async function audioWithOfflineFallback(request) {
+  try {
+    const response = await fetch(request);
+    if (!response.ok) throw new Error(`Audio request failed with HTTP ${response.status}`);
+    return response;
+  } catch (error) {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match("./audio/iguazu-ambiente.mp3");
+    if (!cached) throw error;
+
+    const buffer = await cached.arrayBuffer();
+    const total = buffer.byteLength;
+    const rangeHeader = request.headers.get("Range");
+    const baseHeaders = {
+      "Accept-Ranges": "bytes",
+      "Content-Type": "audio/mpeg"
+    };
+
+    if (!rangeHeader) {
+      return new Response(buffer, {
+        status: 200,
+        headers: {
+          ...baseHeaders,
+          "Content-Length": String(total)
+        }
+      });
+    }
+
+    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+    if (!match || (!match[1] && !match[2])) {
+      return new Response(null, {
+        status: 416,
+        headers: {
+          ...baseHeaders,
+          "Content-Range": `bytes */${total}`
+        }
+      });
+    }
+
+    let start;
+    let end;
+    if (!match[1]) {
+      const suffixLength = Math.min(Number(match[2]), total);
+      start = total - suffixLength;
+      end = total - 1;
+    } else {
+      start = Number(match[1]);
+      end = match[2] ? Math.min(Number(match[2]), total - 1) : total - 1;
+    }
+
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= total || start > end) {
+      return new Response(null, {
+        status: 416,
+        headers: {
+          ...baseHeaders,
+          "Content-Range": `bytes */${total}`
+        }
+      });
+    }
+
+    const body = buffer.slice(start, end + 1);
+    return new Response(body, {
+      status: 206,
+      headers: {
+        ...baseHeaders,
+        "Content-Range": `bytes ${start}-${end}/${total}`,
+        "Content-Length": String(body.byteLength)
+      }
+    });
+  }
+}
+
 self.addEventListener("fetch", event => {
   const request = event.request;
   const url = new URL(request.url);
@@ -117,14 +189,12 @@ self.addEventListener("fetch", event => {
     return;
   }
 
- // El audio MP3 usa solicitudes Range (206 Partial Content).
-// No debe pasar por Cache API.
-if (sameOrigin && url.pathname === "/audio/iguazu-ambiente.mp3") {
-    event.respondWith(fetch(request));
+  if (request.method === "GET" && sameOrigin && url.pathname === "/audio/iguazu-ambiente.mp3") {
+    event.respondWith(audioWithOfflineFallback(request));
     return;
-}
+  }
 
-if (sameOrigin) {
+  if (sameOrigin) {
     event.respondWith(cacheFirst(request));
-}
+  }
 });
