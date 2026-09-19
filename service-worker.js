@@ -47,6 +47,7 @@ const APP_SHELL = [
   "./tuki-branch-transparent.webp",
   "./tuki-branch.webp"
 ];
+
 const NETWORK_FIRST_DATA = new Set(["./data.js", "/circuitos-estado.json"]);
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
 

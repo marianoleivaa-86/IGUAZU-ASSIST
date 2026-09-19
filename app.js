@@ -531,6 +531,11 @@ function manejarHash(hash) {
         return;
     }
 
+    if (requestedId === "surprise") {
+        abrirSorprendeme();
+        return;
+    }
+
     mostrarSeccion(requestedId, { updateHash: false });
 }
 
