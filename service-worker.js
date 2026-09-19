@@ -1,11 +1,10 @@
-const CACHE_NAME = "iguazu-assist-v36";
+const CACHE_NAME = "iguazu-assist-v37";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./place-translations.js",
   "./style.css",
   "./i18n.js",
-  "./data.js",
   "./app.js",
   "./planificador-inteligente.js",
   "./tuki-asistente.js",
@@ -48,7 +47,7 @@ const APP_SHELL = [
   "./tuki-branch-transparent.webp",
   "./tuki-branch.webp"
 ];
-const NETWORK_FIRST_DATA = new Set(["/circuitos-estado.json"]);
+const NETWORK_FIRST_DATA = new Set(["./data.js", "/circuitos-estado.json"]);
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
 
 self.addEventListener("install", event => {

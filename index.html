@@ -742,8 +742,31 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("./service-worker.js")
-        .then(reg => console.log("Iguazú Assist SW registrado:", reg.scope))
+        .then(reg => {
+          console.log("Iguazú Assist SW registrado:", reg.scope);
+
+          // Detectar si hay una actualización disponible
+          reg.addEventListener("updatefound", () => {
+            const newWorker = reg.installing;
+            console.log("Nueva versión del SW disponible:", newWorker);
+
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                // El nuevo SW está instalado y listo para activarse
+                console.log("Nueva versión del SW instalada y lista.");
+                // Notificar al usuario o recargar automáticamente
+                window.dispatchEvent(new CustomEvent("sw-update-available"));
+              }
+            });
+          });
+        })
         .catch(err => console.error("Error SW:", err));
+
+      // Detectar cuando el SW toma control (nueva versión activa)
+      window.addEventListener("controllerchange", () => {
+        console.log("SW actualizado, recargando página...");
+        window.location.reload();
+      });
     });
   }
 
