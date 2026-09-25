@@ -1465,7 +1465,29 @@ function renderizarBloqueCercaMio(lista) {
 // ========================================================
 
 function initSorprendeme() {
-    // Inicialización de vista
+    // Esperar a que el planificador esté disponible, igual que hace abrirSorprendeme().
+    cargarPlanificador().then(() => {
+        // Ejecutar la implementación existente de generarSorpresa().
+        // Esta función renderiza en #surprise-container (ídem planificador-inteligente.js:2514).
+        if (typeof window.generarSorpresa === "function") {
+            window.generarSorpresa();
+        }
+
+        // Mover los nodos reales que acaba de generar desde #surprise-container
+        // hacia #home-surprise-container (ídem index.html), para que aparezcan
+        // en la pantalla de Inicio sin navegar a #surprise.
+        const homeContainer = document.getElementById("home-surprise-container");
+        const sourceContainer = document.getElementById("surprise-container");
+        if (!homeContainer || !sourceContainer) return;
+
+        // Mover los primeros nodos hijo (el renderizado genera un único <div> raíz).
+        while (sourceContainer.firstChild) {
+            homeContainer.appendChild(sourceContainer.firstChild);
+        }
+
+        // Mostrar el contenedor en la pantalla de Inicio.
+        homeContainer.classList.remove("hidden");
+    });
 }
 
 function initFichaClima() {
