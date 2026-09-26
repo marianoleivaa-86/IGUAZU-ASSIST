@@ -72,7 +72,7 @@ img {
     flex-direction: column;
     min-height: 100vh;
     padding-bottom: calc(85px + env(safe-area-inset-bottom)); /* Espacio para bottom nav fija + área segura */
-    max-width: 680px;
+    width: 100%;
     margin: 0 auto;
     background-color: var(--bg-main);
     box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
@@ -1834,23 +1834,22 @@ input:focus-visible {
 }
 
 @media (min-width: 681px) {
-    .app { border-left: 1px solid rgba(126,229,41,.08); border-right: 1px solid rgba(126,229,41,.08); }
-}
+    .app {
+        border-left: 1px solid rgba(126, 229, 41, .08);
+        border-right: 1px solid rgba(126, 229, 41, .08);
+        max-width: 1024px;
+    }
 
-@media (max-width: 480px) {
-    .nearby-search-toolbar { align-items: stretch; flex-direction: column; gap: 6px; }
-    .nearby-results-count { padding-left: 4px; }
-    .place-feed-card { grid-template-columns: 76px minmax(0, 1fr); align-items: start; }
-    .place-card-thumb-wrap { width: 76px; height: 76px; }
-    .place-card-actions-col { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); min-width: 0; }
-    .btn-action-detail, .btn-action-favorite, .btn-action-directions { padding: 8px 5px; font-size: 10.5px; }
-    .detail-secondary-actions { grid-template-columns: 1fr; }
-}
+    .bottom-nav-inner {
+        max-width: 1024px;
+    }
 
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    .cards-feed-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
 }
-
 @media (prefers-color-scheme: light) {
     /* La identidad sigue siendo selva oscura; sólo se evita transparencia excesiva en contextos claros. */
     .nearby-search-box input::placeholder { color: #8ba58f; }
@@ -2176,9 +2175,6 @@ input:focus-visible {
     outline-offset: 3px;
 }
 
-@media (min-width: 681px) {
-    .app { border-left: 1px solid rgba(126,229,41,.08); border-right: 1px solid rgba(126,229,41,.08); }
-}
 
 @media (max-width: 480px) {
     .nearby-search-toolbar { align-items: stretch; flex-direction: column; gap: 6px; }
