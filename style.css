@@ -1835,13 +1835,15 @@ input:focus-visible {
 
 @media (min-width: 681px) {
     .app {
-        border-left: 1px solid rgba(126, 229, 41, .08);
-        border-right: 1px solid rgba(126, 229, 41, .08);
-        max-width: 1024px;
+        width: 100%;
+        max-width: none;
+        border-left: none;
+        border-right: none;
     }
 
     .bottom-nav-inner {
-        max-width: 1024px;
+        width: 100%;
+        max-width: none;
     }
 
     .cards-feed-list {
