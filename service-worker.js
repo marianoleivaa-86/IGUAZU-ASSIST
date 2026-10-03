@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v41";
+const CACHE_NAME = "iguazu-assist-v42";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -48,7 +48,10 @@ const APP_SHELL = [
   "./tuki-branch.webp"
 ];
 
-const NETWORK_FIRST_DATA = new Set(["./data.js", "/circuitos-estado.json"]);
+const NETWORK_FIRST_DATA = new Set([
+  new URL("./data.js", self.location).pathname,
+  new URL("./circuitos-estado.json", self.location).pathname
+]);
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
 
 self.addEventListener("install", event => {
