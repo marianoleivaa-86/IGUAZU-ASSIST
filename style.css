@@ -2792,6 +2792,7 @@ body.tuki-open {
     .tuki-fab {
         bottom: calc(84px + env(safe-area-inset-bottom));
     }
+}
 
 
 .tuki-float-pulse-dot {
@@ -3368,7 +3369,6 @@ body.tuki-open {
         height: 68px;
 
     }
-}
 }
 
 /* Botón flotante compacto: el acceso a Tuki permanece siempre circular. */
