@@ -3371,6 +3371,15 @@ body.tuki-open {
     }
 }
 
+
+/* Variables locales del panel de Tuki (solo aplican dentro de .tuki-panel) */
+.tuki-panel {
+    --color-primary: #168052;
+    --color-primary-dark: #0a3d24;
+    --color-border: #cce5d5;
+    --radius-full: 9999px;
+}
+
 /* Botón flotante compacto: el acceso a Tuki permanece siempre circular. */
 .tuki-fab {
     width: 64px;
