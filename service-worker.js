@@ -1,4 +1,4 @@
-const CACHE_NAME = "iguazu-assist-v42";
+const CACHE_NAME = "iguazu-assist-v43";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -52,6 +52,7 @@ const NETWORK_FIRST_DATA = new Set([
   new URL("./data.js", self.location).pathname,
   new URL("./circuitos-estado.json", self.location).pathname
 ]);
+const AUDIO_PATH = new URL("./audio/iguazu-ambiente.mp3", self.location).pathname;
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
 
 self.addEventListener("install", event => {
@@ -192,7 +193,7 @@ self.addEventListener("fetch", event => {
     return;
   }
 
-  if (request.method === "GET" && sameOrigin && url.pathname === "/audio/iguazu-ambiente.mp3") {
+  if (request.method === "GET" && sameOrigin && url.pathname === AUDIO_PATH) {
     event.respondWith(audioWithOfflineFallback(request));
     return;
   }
