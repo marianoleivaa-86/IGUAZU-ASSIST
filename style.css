@@ -3451,6 +3451,12 @@ body.tuki-open {
         height: 72%;
         opacity: 0.28;
     }
+    .home-surprise-card .surprise-tuki-quote {
+        padding-right: 78px;
+    }
+    .home-surprise-card {
+        padding-bottom: 78px;
+    }
     .tuki-fab-bubble {
         right: 14px;
         bottom: 150px;
@@ -3500,4 +3506,124 @@ body.tuki-open {
     .language-switcher { padding: 0 5px; }
     .language-switcher-icon { display: none; }
     .language-switcher select { font-size: 10px; }
+}
+
+/* Presentación compacta del inicio en escritorio amplio. */
+@media (min-width: 1200px) {
+    .hero-header {
+        padding: 12px 20px;
+    }
+
+    .hero-top-nav {
+        margin-bottom: 8px;
+    }
+
+    .hero-brand-container {
+        min-height: 145px;
+        padding: 0;
+    }
+
+    .hero-brand-container .hero-brand-text {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 14px;
+    }
+
+    .hero-brand-text .brand-pill-tag,
+    .hero-brand-text .hero-now-btn,
+    .hero-brand-text .hero-surprise-btn {
+        margin: 0;
+    }
+
+    .home-surprise-card {
+        display: grid;
+        grid-template-columns: 60px minmax(0, 1fr) minmax(300px, 0.78fr);
+        grid-template-areas:
+            "icon title rationale"
+            "tags tags rationale"
+            "description description rationale"
+            "actions actions rationale"
+            "quick quick refresh";
+        gap: 8px 16px;
+        align-items: start;
+        padding: 14px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-forest);
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28);
+    }
+
+    .home-surprise-card > .surprise-icon {
+        grid-area: icon;
+        align-self: center;
+        margin: 0;
+        font-size: 48px;
+        line-height: 1;
+    }
+
+    .home-surprise-card > .surprise-place-title {
+        grid-area: title;
+        align-self: center;
+        margin: 0;
+    }
+
+    .home-surprise-card > .surprise-tags {
+        grid-area: tags;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 6px;
+        margin: 0;
+    }
+
+    .home-surprise-card > .surprise-rationale {
+        grid-area: rationale;
+        align-self: stretch;
+        padding: 12px 14px;
+        background: rgba(3, 14, 6, 0.48);
+        border: 1px solid var(--border-forest);
+        border-radius: 12px;
+    }
+
+    .home-surprise-card .surprise-tuki-quote {
+        max-width: none;
+        margin: 6px 0 0;
+    }
+
+    .home-surprise-card > .surprise-factor-list {
+        justify-content: flex-start;
+        margin-top: 6px;
+    }
+
+    .home-surprise-card > .surprise-description {
+        grid-area: description;
+        margin: 0;
+        font-size: 13.5px;
+        line-height: 1.4;
+    }
+
+    .home-surprise-card > .surprise-actions-row {
+        grid-area: actions;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .home-surprise-card > .quick-actions {
+        grid-area: quick;
+        margin-top: 0;
+    }
+
+    .home-surprise-card > .hero-surprise-btn {
+        grid-area: refresh;
+    }
+}
+
+/* A 1366px quedan ~435px por tarjeta y ~174px para texto tras imagen y acciones. */
+@media (min-width: 1366px) {
+    .cards-feed-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
