@@ -718,6 +718,122 @@ function actualizarControlSonidoTuki() {
     if (volumen) volumen.value = String(AppState.volumenAmbiente);
 }
 
+const TUKI_FAB_POSITION_KEY = "iguazu-tuki-fab-position-v1";
+const TUKI_FAB_VIEWPORT_GUTTER = 8;
+let tukiFabDragState = null;
+let tukiFabSuppressClick = false;
+let tukiFabHasCustomPosition = false;
+
+function limitarPosicionTukiFab(fab, left, top) {
+    const rect = fab.getBoundingClientRect();
+    const maxLeft = Math.max(TUKI_FAB_VIEWPORT_GUTTER, window.innerWidth - rect.width - TUKI_FAB_VIEWPORT_GUTTER);
+    const maxTop = Math.max(TUKI_FAB_VIEWPORT_GUTTER, window.innerHeight - rect.height - TUKI_FAB_VIEWPORT_GUTTER);
+    return {
+        left: Math.min(Math.max(left, TUKI_FAB_VIEWPORT_GUTTER), maxLeft),
+        top: Math.min(Math.max(top, TUKI_FAB_VIEWPORT_GUTTER), maxTop)
+    };
+}
+
+function aplicarPosicionTukiFab(fab, left, top) {
+    const posicion = limitarPosicionTukiFab(fab, left, top);
+    fab.style.left = `${posicion.left}px`;
+    fab.style.top = `${posicion.top}px`;
+    fab.style.right = "auto";
+    fab.style.bottom = "auto";
+    tukiFabHasCustomPosition = true;
+    return posicion;
+}
+
+function guardarPosicionTukiFab(fab) {
+    try {
+        const rect = fab.getBoundingClientRect();
+        localStorage.setItem(TUKI_FAB_POSITION_KEY, JSON.stringify({
+            x: Math.round(rect.left),
+            y: Math.round(rect.top)
+        }));
+    } catch (_) {
+        // El almacenamiento puede estar deshabilitado; el botón sigue funcionando en memoria.
+    }
+}
+
+function restaurarPosicionTukiFab(fab) {
+    try {
+        const guardada = JSON.parse(localStorage.getItem(TUKI_FAB_POSITION_KEY) || "null");
+        if (!guardada || !Number.isFinite(guardada.x) || !Number.isFinite(guardada.y)) return;
+        aplicarPosicionTukiFab(fab, guardada.x, guardada.y);
+        guardarPosicionTukiFab(fab);
+    } catch (_) {
+        // Una entrada inválida o un almacenamiento inaccesible no impiden usar la posición predeterminada.
+    }
+}
+
+function iniciarArrastreTukiFab(fab) {
+    if (typeof window.PointerEvent !== "function") return;
+
+    fab.addEventListener("pointerdown", evento => {
+        if (!evento.isPrimary || (evento.pointerType === "mouse" && evento.button !== 0) || TukiUIState.abierto) return;
+        const rect = fab.getBoundingClientRect();
+        tukiFabDragState = {
+            pointerId: evento.pointerId,
+            startX: evento.clientX,
+            startY: evento.clientY,
+            left: rect.left,
+            top: rect.top,
+            moved: false
+        };
+        try {
+            fab.setPointerCapture(evento.pointerId);
+        } catch (_) {
+            // Algunos entornos sintéticos no implementan captura; el gesto sigue siendo válido dentro del botón.
+        }
+    });
+
+    fab.addEventListener("pointermove", evento => {
+        const estado = tukiFabDragState;
+        if (!estado || estado.pointerId !== evento.pointerId) return;
+        const deltaX = evento.clientX - estado.startX;
+        const deltaY = evento.clientY - estado.startY;
+        if (!estado.moved && Math.hypot(deltaX, deltaY) < 5) return;
+        estado.moved = true;
+        evento.preventDefault();
+        evento.stopPropagation();
+        fab.classList.add("is-dragging");
+        aplicarPosicionTukiFab(fab, estado.left + deltaX, estado.top + deltaY);
+    });
+
+    const finalizarArrastre = (evento, cancelado = false) => {
+        const estado = tukiFabDragState;
+        if (!estado || estado.pointerId !== evento.pointerId) return;
+        tukiFabDragState = null;
+        if (estado.moved) {
+            fab.classList.remove("is-dragging");
+            guardarPosicionTukiFab(fab);
+            tukiFabSuppressClick = !cancelado;
+            if (tukiFabSuppressClick) window.setTimeout(() => { tukiFabSuppressClick = false; }, 0);
+        }
+    };
+
+    fab.addEventListener("pointerup", evento => finalizarArrastre(evento));
+    fab.addEventListener("pointercancel", evento => finalizarArrastre(evento, true));
+
+    fab.addEventListener("click", evento => {
+        if (!tukiFabSuppressClick) return;
+        evento.preventDefault();
+        evento.stopImmediatePropagation();
+        tukiFabSuppressClick = false;
+    }, true);
+
+    restaurarPosicionTukiFab(fab);
+    const limitarAlViewport = () => {
+        if (!tukiFabHasCustomPosition) return;
+        const rect = fab.getBoundingClientRect();
+        aplicarPosicionTukiFab(fab, rect.left, rect.top);
+        guardarPosicionTukiFab(fab);
+    };
+    window.addEventListener("resize", limitarAlViewport);
+    window.visualViewport?.addEventListener("resize", limitarAlViewport);
+}
+
 function abrirTuki() {
     const panel = document.querySelector("#tuki-panel");
     const backdrop = document.querySelector("#tuki-backdrop");
@@ -837,6 +953,7 @@ function initTukiAsistente() {
 
     if (!fab || !close || !backdrop || !form || !input || !conversacion) return;
 
+    iniciarArrastreTukiFab(fab);
     fab.addEventListener("click", abrirTuki);
     close.addEventListener("click", cerrarTuki);
     backdrop.addEventListener("click", cerrarTuki);

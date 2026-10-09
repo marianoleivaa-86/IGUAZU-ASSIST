@@ -63,6 +63,45 @@ async function main() {
         await sleep(150);
         check("c) backdrop cierra Tuki", await page.$eval("#tuki-panel", panel => panel.getAttribute("aria-hidden") === "true"));
 
+        const posicionInicial = await page.$eval("#tuki-fab", fab => {
+            const rect = fab.getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, left: rect.left, top: rect.top };
+        });
+        await page.mouse.move(posicionInicial.x, posicionInicial.y);
+        await page.mouse.down();
+        await page.mouse.move(posicionInicial.x - 110, posicionInicial.y - 90, { steps: 8 });
+        await page.mouse.up();
+        await sleep(50);
+        const despuesDelArrastre = await page.evaluate(() => {
+            const fab = document.querySelector("#tuki-fab");
+            const rect = fab.getBoundingClientRect();
+            return {
+                left: rect.left,
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                panelCerrado: document.querySelector("#tuki-panel").getAttribute("aria-hidden") === "true",
+                guardada: localStorage.getItem("iguazu-tuki-fab-position-v1")
+            };
+        });
+        check("c) arrastrar con mouse mueve el FAB sin abrir el chat", despuesDelArrastre.panelCerrado
+            && Math.abs(despuesDelArrastre.left - posicionInicial.left) > 5
+            && Math.abs(despuesDelArrastre.top - posicionInicial.top) > 5);
+        check("c) FAB queda dentro del viewport y guarda su posición", despuesDelArrastre.left >= 0
+            && despuesDelArrastre.top >= 0
+            && despuesDelArrastre.right <= despuesDelArrastre.width
+            && despuesDelArrastre.bottom <= despuesDelArrastre.height
+            && Boolean(despuesDelArrastre.guardada));
+        await page.reload({ waitUntil: "networkidle0" });
+        const posicionRestaurada = await page.$eval("#tuki-fab", fab => {
+            const rect = fab.getBoundingClientRect();
+            return { left: rect.left, top: rect.top };
+        });
+        check("c) posición del FAB se restaura tras recargar", Math.abs(posicionRestaurada.left - despuesDelArrastre.left) <= 1
+            && Math.abs(posicionRestaurada.top - despuesDelArrastre.top) <= 1);
+
         await page.click("#tuki-fab");
         await sleep(150);
         await page.click('button[data-tuki-question="¿Dónde puedo comer?"]');
@@ -116,6 +155,7 @@ async function main() {
         check("g) sin errores de consola", allErrors.length === 0, allErrors.join(" | "));
         check("g) sin unhandledrejection", runtimeErrors.unhandled.length === 0, runtimeErrors.unhandled.join(" | "));
         await verifyDesktopCardStyle(browser);
+        await verifyTouchDrag(browser);
 
         console.log(`OK ${checks.length} checks passed`);
     } finally {
@@ -152,6 +192,65 @@ async function verifyDesktopCardStyle(browser) {
             border: "1px solid rgb(184, 138, 82)"
         });
         console.log("PASS desktop 1280px .tuki-place-card computed style");
+    } finally {
+        await context.close();
+    }
+}
+
+async function verifyTouchDrag(browser) {
+    const context = await browser.createBrowserContext();
+    const page = await context.newPage();
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+    try {
+        await page.goto(BASE_URL, { waitUntil: "networkidle0" });
+        const client = await page.createCDPSession();
+        await client.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+        const start = await page.$eval("#tuki-fab", fab => {
+            const rect = fab.getBoundingClientRect();
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, left: rect.left, top: rect.top };
+        });
+        await client.send("Input.dispatchTouchEvent", {
+            type: "touchStart",
+            touchPoints: [{ x: start.x, y: start.y, id: 1 }]
+        });
+        await client.send("Input.dispatchTouchEvent", {
+            type: "touchMove",
+            touchPoints: [{ x: start.x - 90, y: start.y - 70, id: 1 }]
+        });
+        await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await sleep(50);
+        const dragged = await page.evaluate(() => {
+            const rect = document.querySelector("#tuki-fab").getBoundingClientRect();
+            return {
+                left: rect.left,
+                top: rect.top,
+                closed: document.querySelector("#tuki-panel").getAttribute("aria-hidden") === "true"
+            };
+        });
+        assert.ok(Math.abs(dragged.left - start.left) > 5 && Math.abs(dragged.top - start.top) > 5,
+            "touch drag should move the floating button");
+        assert.ok(dragged.closed, "touch drag must not open the chat");
+        console.log("PASS touch drag moves the FAB without opening the chat");
+
+        await page.evaluate(() => localStorage.setItem("iguazu-tuki-fab-position-v1", JSON.stringify({ x: 99999, y: -99999 })));
+        await page.reload({ waitUntil: "networkidle0" });
+        const clamped = await page.$eval("#tuki-fab", fab => {
+            const rect = fab.getBoundingClientRect();
+            return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: innerWidth, height: innerHeight };
+        });
+        assert.ok(clamped.left >= 0 && clamped.top >= 0 && clamped.right <= clamped.width && clamped.bottom <= clamped.height,
+            `restored position must be clamped to the viewport: ${JSON.stringify(clamped)}`);
+        console.log("PASS invalid saved position is clamped on restore");
+
+        await page.setViewport({ width: 320, height: 600, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
+        await sleep(50);
+        const resized = await page.$eval("#tuki-fab", fab => {
+            const rect = fab.getBoundingClientRect();
+            return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: innerWidth, height: innerHeight };
+        });
+        assert.ok(resized.left >= 0 && resized.top >= 0 && resized.right <= resized.width && resized.bottom <= resized.height,
+            `position after viewport resize must remain visible: ${JSON.stringify(resized)}`);
+        console.log("PASS FAB remains within viewport after resizing");
     } finally {
         await context.close();
     }

@@ -3389,7 +3389,10 @@ body.tuki-open {
     justify-content: center;
     border-radius: 50%;
     overflow: hidden;
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
     transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms ease;
 }
 
@@ -3400,6 +3403,12 @@ body.tuki-open {
 }
 
 .tuki-fab:active { transform: scale(0.96); }
+
+.tuki-fab.is-dragging {
+    cursor: grabbing;
+    transition: none;
+    transform: none;
+}
 
 .tuki-fab-avatar {
     width: 100%;
