@@ -1,13 +1,15 @@
-const CACHE_NAME = "iguazu-assist-v43";
+const CACHE_NAME = "iguazu-assist-v46";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./place-translations.js",
   "./style.css?v=33",
   "./i18n.js",
+  "./data.js",
+  "./agenda-eventos.js",
   "./app.js",
   "./planificador-inteligente.js",
-  "./tuki-asistente.js",
+  "./tuki-asistente.js?v=29",
   "./manifest.json",
   "./icon.svg",
   "./icon-180.png",
@@ -50,15 +52,22 @@ const APP_SHELL = [
 
 const NETWORK_FIRST_DATA = new Set([
   new URL("./data.js", self.location).pathname,
-  new URL("./circuitos-estado.json", self.location).pathname
+  new URL("./circuitos-estado.json", self.location).pathname,
+  new URL("./eventos.json", self.location).pathname
 ]);
+const OPTIONAL_APP_DATA = "./eventos.json";
 const AUDIO_PATH = new URL("./audio/iguazu-ambiente.mp3", self.location).pathname;
 const NETWORK_FIRST_EXTERNAL = "https://api.open-meteo.com/";
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(APP_SHELL))
+      .then(cache => cache.addAll(APP_SHELL).then(() => cache))
+      // La agenda es opcional durante la instalación: si falla, el shell
+      // principal sigue pudiendo instalarse y funcionar sin conexión.
+      .then(cache => cache.add(OPTIONAL_APP_DATA).catch(error => {
+        console.info("No se pudo precargar la agenda offline.", error);
+      }))
       .then(() => self.skipWaiting())
   );
 });

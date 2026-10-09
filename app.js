@@ -44,6 +44,7 @@ const APP_CONSTANTS = Object.freeze({
     SECTION_IDS: Object.freeze([
         "hero-section",
         "categories-section",
+        "agenda",
         "planner",
         "surprise",
         "profile",
@@ -58,6 +59,7 @@ const APP_CONSTANTS = Object.freeze({
         NAV_BY_SECTION: Object.freeze({
         "hero-section": "bnav-home",
         "categories-section": "bnav-explore",
+        agenda: "bnav-agenda",
         planner: "bnav-plans",
         profile: "bnav-profile"
     }),
@@ -166,6 +168,9 @@ let gpsWatchId = null;
 let lastGpsWatchUpdate = 0;
 let deferredInstallPrompt = null;
 let planificadorLoadPromise = null;
+let agendaLoadPromise = null;
+let agendaEventosCargados = [];
+let agendaCategoriaSeleccionada = "todas";
 let _activarAudioConInteraccion = null; // Referencia al listener de interacción de audio para evitar duplicados.
 
 function cargarPlanificador() {
@@ -443,6 +448,7 @@ function inicializarAplicacion() {
     cargarPlanificador();
 
     initNavegacion();
+    initAgenda();
     initMenuPrincipal();
     initCategorias();
     initPlanificadorOpciones();
@@ -516,7 +522,7 @@ function manejarHash(hash) {
     }
 
     const supportedViews = new Set([
-        "home", "nearby", "categories", "categories-section",
+        "home", "nearby", "categories", "categories-section", "agenda",
         "planner", "surprise", "profile", "results", "detail"
     ]);
 
@@ -595,6 +601,7 @@ function mostrarSeccion(seccionId, { updateHash = true } = {}) {
     AppState.currentView = requestedId === "hero-section" ? "home" : requestedId;
 
     if (targetId === "planner") cargarPlanificador();
+    if (targetId === "agenda") cargarAgendaInterfaz();
 
     if (updateHash) actualizarHash(requestedId === "nearby" ? "nearby" : targetId);
     actualizarNavegacionActiva(targetId);
@@ -604,6 +611,140 @@ function mostrarSeccion(seccionId, { updateHash = true } = {}) {
     }
     return true;
 }
+
+// ========================================================
+// AGENDA DE EVENTOS — DATOS CURADOS Y OFFLINE
+// ========================================================
+function agendaTextoSeguro(valor, fallback = "") {
+    return typeof valor === "string" && valor.trim() ? valor.trim() : fallback;
+}
+
+function formatearFechaAgenda(inicio, fin = null, zona = "America/Argentina/Buenos_Aires") {
+    try {
+        const opcionesFecha = { timeZone: zona, weekday: "short", day: "numeric", month: "short", year: "numeric" };
+        const opcionesHora = { timeZone: zona, hour: "2-digit", minute: "2-digit", hour12: false };
+        const fecha = new Date(inicio);
+        if (!Number.isFinite(fecha.getTime())) return "Fecha no disponible";
+        const dia = new Intl.DateTimeFormat("es-AR", opcionesFecha).format(fecha);
+        const horaInicio = new Intl.DateTimeFormat("es-AR", opcionesHora).format(fecha);
+        if (!fin) return `${dia} · ${horaInicio} hs`;
+        const fechaFin = new Date(fin);
+        if (!Number.isFinite(fechaFin.getTime())) return `${dia} · ${horaInicio} hs`;
+        const horaFin = new Intl.DateTimeFormat("es-AR", opcionesHora).format(fechaFin);
+        return `${dia} · ${horaInicio}–${horaFin} hs`;
+    } catch (error) {
+        return "Fecha no disponible";
+    }
+}
+
+function formatearPrecioAgenda(precio) {
+    if (!precio || typeof precio !== "object") return "Precio no informado";
+    if (precio.estado === "gratuito") return "Gratis confirmado";
+    if (precio.estado === "confirmado" && Number.isFinite(precio.monto)) {
+        return `${precio.moneda || ""} ${new Intl.NumberFormat("es-AR").format(precio.monto)}`.trim();
+    }
+    return "Precio no confirmado";
+}
+
+function establecerEstadoAgenda(mensaje, tipo = "info") {
+    const estado = document.querySelector("#agenda-status");
+    if (!estado) return;
+    estado.className = `agenda-status agenda-status-${tipo}`;
+    estado.textContent = mensaje;
+}
+
+function crearTarjetaAgenda(evento) {
+    const lugar = evento.lugar && typeof evento.lugar === "object" ? evento.lugar : null;
+    const nombreLugar = agendaTextoSeguro(lugar?.nombre);
+    const direccion = agendaTextoSeguro(lugar?.direccion);
+    const organizador = agendaTextoSeguro(evento.organizador);
+    const descripcion = agendaTextoSeguro(evento.descripcion);
+    const metadatos = [
+        `<span class="agenda-meta-item">🗓️ ${escapar(formatearFechaAgenda(evento.inicio, evento.fin, evento.zonaHoraria))}</span>`,
+        nombreLugar ? `<span class="agenda-meta-item">📍 ${escapar(nombreLugar)}</span>` : "",
+        direccion ? `<span class="agenda-meta-item">⌖ ${escapar(direccion)}</span>` : "",
+        organizador ? `<span class="agenda-meta-item">◎ ${escapar(organizador)}</span>` : ""
+    ].filter(Boolean).join("");
+    const precio = `<span class="agenda-price ${evento.precio?.estado === "gratuito" ? "agenda-price-free" : ""}">🎟️ ${escapar(formatearPrecioAgenda(evento.precio))}</span>`;
+    return `<article class="agenda-card">
+        <div class="agenda-card-topline">
+            <span class="agenda-category">${escapar(String(evento.categoria || "otro").replace(/_/g, " "))}</span>
+            ${precio}
+        </div>
+        <h3 class="agenda-card-title">${escapar(evento.titulo)}</h3>
+        ${descripcion ? `<p class="agenda-card-description">${escapar(descripcion)}</p>` : ""}
+        <div class="agenda-meta">${metadatos}</div>
+        <a class="agenda-source-link" href="${escapar(evento.fuenteUrl)}" target="_blank" rel="noopener noreferrer">Ver fuente oficial ↗</a>
+    </article>`;
+}
+
+function renderizarAgenda() {
+    const lista = document.querySelector("#agenda-list");
+    if (!lista || !window.AgendaEventos) return;
+    let eventos = AgendaEventos.obtenerEventosPublicos(agendaEventosCargados, new Date());
+    if (agendaCategoriaSeleccionada !== "todas") {
+        eventos = AgendaEventos.filtrarPorCategoria(eventos, agendaCategoriaSeleccionada);
+    }
+    eventos = AgendaEventos.ordenarPorInicio(eventos);
+    if (!eventos.length) {
+        lista.innerHTML = "";
+        establecerEstadoAgenda(
+            agendaCategoriaSeleccionada === "todas"
+                ? "Todavía no hay eventos confirmados publicados. Volvé a consultar pronto."
+                : "No hay eventos confirmados publicados en esta categoría.",
+            "empty"
+        );
+        return;
+    }
+    establecerEstadoAgenda(`${eventos.length} ${eventos.length === 1 ? "evento confirmado" : "eventos confirmados"}.`, "success");
+    lista.innerHTML = eventos.map(crearTarjetaAgenda).join("");
+}
+
+async function cargarAgendaInterfaz() {
+    if (!window.AgendaEventos) {
+        establecerEstadoAgenda("La agenda no está disponible en esta versión de la aplicación.", "error");
+        return;
+    }
+    if (!agendaLoadPromise) {
+        establecerEstadoAgenda("Cargando agenda…", "loading");
+        agendaLoadPromise = AgendaEventos.cargarAgenda({ base: document.baseURI })
+            .then(resultado => {
+                if (!resultado.ok) {
+                    agendaEventosCargados = [];
+                    const sinConexion = navigator.onLine === false;
+                    establecerEstadoAgenda(
+                        sinConexion
+                            ? "No se pudo cargar la agenda sin conexión. Probá nuevamente cuando tengas señal."
+                            : "No se pudo cargar la agenda. El resto de la aplicación continúa disponible.",
+                        "error"
+                    );
+                    return resultado;
+                }
+                agendaEventosCargados = Array.isArray(resultado.eventos) ? resultado.eventos : [];
+                renderizarAgenda();
+                return resultado;
+            })
+            .catch(error => {
+                agendaEventosCargados = [];
+                establecerEstadoAgenda("No se pudo cargar la agenda. El resto de la aplicación continúa disponible.", "error");
+                return { ok: false, error };
+            });
+    } else {
+        renderizarAgenda();
+    }
+    return agendaLoadPromise;
+}
+
+function initAgenda() {
+    const filtro = document.querySelector("#agenda-category-filter");
+    filtro?.addEventListener("change", event => {
+        agendaCategoriaSeleccionada = event.target.value || "todas";
+        renderizarAgenda();
+    });
+}
+
+window.cargarAgendaInterfaz = cargarAgendaInterfaz;
+window.renderizarAgenda = renderizarAgenda;
 
 function volverInicio() {
     SoundFX.play("cambio");

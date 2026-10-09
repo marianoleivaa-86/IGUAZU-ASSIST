@@ -320,6 +320,41 @@
         </section>
 
         <!-- ============================================================
+             AGENDA DE EVENTOS CONFIRMADOS
+             ============================================================ -->
+        <section id="agenda" class="view-section hidden" aria-label="Agenda de eventos">
+            <button class="back-button" onclick="volverAtras()" aria-label="Volver al inicio">
+                ← Volver al inicio
+            </button>
+
+            <div class="view-header-title agenda-view-header">
+                <span class="view-icon" aria-hidden="true">📆</span>
+                <div>
+                    <h2>Agenda de Iguazú</h2>
+                    <p>Eventos confirmados y actividades publicadas con fuente oficial.</p>
+                </div>
+            </div>
+
+            <div class="agenda-toolbar" aria-label="Filtros de agenda">
+                <label for="agenda-category-filter">Categoría</label>
+                <select id="agenda-category-filter">
+                    <option value="todas">Todas las categorías</option>
+                    <option value="recital">Recitales</option>
+                    <option value="festival">Festivales</option>
+                    <option value="feria">Ferias</option>
+                    <option value="cultural">Cultura</option>
+                    <option value="deportivo">Deportes</option>
+                    <option value="exposicion">Exposiciones</option>
+                    <option value="espectaculo">Espectáculos</option>
+                    <option value="otro">Otros</option>
+                </select>
+            </div>
+
+            <div id="agenda-status" class="agenda-status" role="status" aria-live="polite"></div>
+            <div id="agenda-list" class="agenda-list" aria-live="polite"></div>
+        </section>
+
+        <!-- ============================================================
              PLANIFICADOR INTELIGENTE (MIS PLANES)
              ============================================================ -->
         <section id="planner" class="view-section hidden" aria-label="Planificador de itinerario personalizado">
@@ -710,7 +745,13 @@
             <span class="bottom-nav-label" data-i18n="explore">Explorar</span>
         </button>
 
-        <!-- 3. Tuki / Planificador central -->
+        <!-- 3. Agenda -->
+        <button class="bottom-nav-btn" id="bnav-agenda" onclick="mostrarSeccion('agenda'); setActiveNav('bnav-agenda')" aria-label="Abrir agenda de eventos">
+            <span class="bottom-nav-icon">📆</span>
+            <span class="bottom-nav-label">Agenda</span>
+        </button>
+
+        <!-- 4. Tuki / Planificador central -->
         <button class="bottom-nav-center-btn" id="bnav-tuki" onclick="mostrarSeccion('planner'); setTimeout(() => document.querySelector('#planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0); setActiveNav('bnav-plans')" aria-label="Abrir Tuki y el planificador">
             <div class="tuki-circle-glow">
                 <img src="tuki-avatar.webp" alt="Tuki" class="tuki-nav-avatar">
@@ -718,13 +759,13 @@
             <span class="tuki-nav-label">Tuki / Planificador</span>
         </button>
 
-        <!-- 4. Mis Planes -->
+        <!-- 5. Mis Planes -->
         <button class="bottom-nav-btn" id="bnav-plans" onclick="mostrarSeccion('planner'); renderizarPlanesGuardados(); setActiveNav('bnav-plans')" aria-label="Mis Planes y armar itinerario">
             <span class="bottom-nav-icon">📅</span>
             <span class="bottom-nav-label" data-i18n="plans">Mis Planes</span>
         </button>
 
-        <!-- 4. Favoritos -->
+        <!-- 6. Favoritos -->
         <button class="bottom-nav-btn" id="bnav-favorites" onclick="abrirFavoritosDesdeNavegacion()" aria-label="Ver lugares favoritos">
             <span class="bottom-nav-icon">⭐</span>
             <span class="bottom-nav-label">Favoritos</span>
@@ -738,6 +779,7 @@
 <script src="place-translations.js"></script>
 <script src="i18n.js"></script>
 <script src="data.js"></script>
+<script src="agenda-eventos.js"></script>
 <script src="app.js"></script>
 <script src="tuki-asistente.js?v=29"></script>
 

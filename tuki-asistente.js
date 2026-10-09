@@ -13,6 +13,9 @@ const TukiUIState = {
 };
 
 const TUKI_CATEGORIAS_TURISTICAS = ["naturaleza", "actividades", "noche", "comida"];
+let tukiAgendaPromise = null;
+let tukiAgendaEventos = [];
+let tukiAgendaError = null;
 
 function tukiText(key, fallback) {
     return window.I18n?.t(key, fallback) || fallback;
@@ -36,10 +39,59 @@ function consultaTukiIncluye(texto, terminos) {
     return terminos.some(termino => texto.includes(termino));
 }
 
+function detectarCategoriaAgendaTuki(texto) {
+    const categorias = [
+        ["recital", ["recital", "musica en vivo", "musica", "banda", "concierto"]],
+        ["feria", ["feria", "emprendedor", "emprendedores", "artesanos"]],
+        ["cultural", ["cultural", "cultura", "teatro", "danza"]],
+        ["deportivo", ["deportivo", "deporte", "carrera", "torneo"]],
+        ["exposicion", ["exposicion", "muestra", "galeria"]],
+        ["fiesta_popular", ["fiesta popular", "fiesta", "celebracion"]],
+        ["encuentro_autos", ["encuentro de autos", "encuentro autos", "autos"]],
+        ["encuentro_motos", ["encuentro de motos", "encuentro motos", "motos"]],
+        ["festival", ["festival", "carnaval"]]
+    ];
+    return categorias.find(([, terminos]) => consultaTukiIncluye(texto, terminos))?.[0] || null;
+}
+
+function interpretarConsultaAgendaTuki(textoNormalizado) {
+    const texto = normalizarConsultaTuki(textoNormalizado);
+    const categoria = detectarCategoriaAgendaTuki(texto);
+    const periodo = consultaTukiIncluye(texto, ["manana", "mañana"])
+        ? "manana"
+        : consultaTukiIncluye(texto, ["fin de semana", "fin de semana largo"])
+            ? "fin_de_semana"
+            : consultaTukiIncluye(texto, ["esta noche", "hoy a la noche", "esta noche"])
+                ? "noche"
+                : consultaTukiIncluye(texto, ["hoy", "ahora"])
+                    ? "hoy"
+                    : consultaTukiIncluye(texto, ["proximamente", "próximamente", "proximo", "próximo"])
+                        ? "proximos"
+                        : null;
+    const marcadorAgenda = consultaTukiIncluye(texto, [
+        "evento", "eventos", "agenda", "cartelera", "programacion", "programación",
+        "recital", "musica en vivo", "feria", "emprendedor", "cultural", "deportivo",
+        "exposicion", "fiesta", "festival", "autos", "motos"
+    ]);
+    const preguntaPeriodo = consultaTukiIncluye(texto, ["que hay", "qué hay", "que se hace", "qué se hace"]);
+    const consultaAgenda = Boolean(marcadorAgenda || (periodo && preguntaPeriodo) || (periodo === "noche" && consultaTukiIncluye(texto, ["actividad", "actividades"])));
+    return {
+        esAgenda: consultaAgenda,
+        periodo: periodo || "proximos",
+        categoria,
+        parque: consultaTukiIncluye(texto, ["parque nacional", "parque iguazu", "parque iguazú"])
+    };
+}
+
 function interpretarConsultaTuki(consulta) {
     const texto = normalizarConsultaTuki(consulta);
+    const agenda = interpretarConsultaAgendaTuki(texto);
     const intencion = {
         texto,
+        esAgenda: agenda.esAgenda,
+        agendaPeriodo: agenda.periodo,
+        agendaCategoria: agenda.categoria,
+        agendaParque: agenda.parque,
         interes: null,
         compania: AppState.compania || "solo",
         presupuesto: AppState.presupuesto || "medio",
@@ -256,10 +308,125 @@ function obtenerRecomendacionesCercanasTuki(intencion, contexto) {
         .map(item => ({ ...item.lugar, distanciaTuki: item.distancia }));
 }
 
-function resolverConsultaTuki(consulta) {
+const TUKI_ZONA_AGENDA = "America/Argentina/Buenos_Aires";
+
+function partesFechaAgendaTuki(fecha) {
+    const partes = new Intl.DateTimeFormat("en-CA", {
+        timeZone: TUKI_ZONA_AGENDA,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23"
+    }).formatToParts(new Date(fecha));
+    return Object.fromEntries(partes.map(parte => [parte.type, Number(parte.value)]));
+}
+
+function medianocheAgendaTuki(anio, mes, dia) {
+    let instante = Date.UTC(anio, mes - 1, dia);
+    for (let intento = 0; intento < 3; intento += 1) {
+        const partes = partesFechaAgendaTuki(instante);
+        const representado = Date.UTC(partes.year, partes.month - 1, partes.day, partes.hour, partes.minute, partes.second);
+        const deseado = Date.UTC(anio, mes - 1, dia);
+        instante += deseado - representado;
+    }
+    return instante;
+}
+
+function intervaloAgendaTuki(periodo, ahora = new Date()) {
+    const partes = partesFechaAgendaTuki(ahora);
+    const inicioHoy = medianocheAgendaTuki(partes.year, partes.month, partes.day);
+    const diaActual = new Date(Date.UTC(partes.year, partes.month - 1, partes.day)).getUTCDay();
+    const siguienteDia = (dias) => {
+        const fecha = new Date(Date.UTC(partes.year, partes.month - 1, partes.day + dias));
+        return medianocheAgendaTuki(fecha.getUTCFullYear(), fecha.getUTCMonth() + 1, fecha.getUTCDate());
+    };
+
+    if (periodo === "hoy") return { desde: inicioHoy, hasta: siguienteDia(1), etiqueta: "hoy" };
+    if (periodo === "manana") return { desde: siguienteDia(1), hasta: siguienteDia(2), etiqueta: "mañana" };
+    if (periodo === "noche") return { desde: inicioHoy + 18 * 60 * 60 * 1000, hasta: siguienteDia(1) + 5 * 60 * 60 * 1000, etiqueta: "esta noche" };
+    if (periodo === "fin_de_semana") {
+        const diasHastaSabado = diaActual === 0 ? -1 : diaActual === 6 ? 0 : 6 - diaActual;
+        const inicio = siguienteDia(diasHastaSabado);
+        return { desde: inicio, hasta: siguienteDia(diasHastaSabado + 2), etiqueta: "este fin de semana" };
+    }
+    return { desde: new Date(ahora).getTime(), hasta: new Date(ahora).getTime() + 14 * 24 * 60 * 60 * 1000, etiqueta: "próximamente" };
+}
+
+async function cargarAgendaParaTuki() {
+    if (tukiAgendaPromise) return tukiAgendaPromise;
+    if (!window.AgendaEventos?.cargarAgenda) {
+        tukiAgendaError = { codigo: "MOTOR_NO_DISPONIBLE" };
+        return { ok: false, eventos: [], error: tukiAgendaError };
+    }
+    tukiAgendaPromise = window.AgendaEventos.cargarAgenda({ base: document.baseURI })
+        .then(resultado => {
+            if (!resultado.ok) {
+                tukiAgendaError = resultado.error || { codigo: "AGENDA_NO_CARGADA" };
+                tukiAgendaEventos = [];
+                return resultado;
+            }
+            tukiAgendaError = null;
+            tukiAgendaEventos = Array.isArray(resultado.eventos) ? resultado.eventos : [];
+            return resultado;
+        })
+        .catch(error => {
+            tukiAgendaError = error;
+            tukiAgendaEventos = [];
+            return { ok: false, eventos: [], error };
+        });
+    return tukiAgendaPromise;
+}
+
+function eventoCoincideParqueTuki(evento) {
+    const lugar = evento?.lugar && typeof evento.lugar === "object" ? evento.lugar : {};
+    const texto = normalizarConsultaTuki([
+        evento?.titulo,
+        evento?.descripcion,
+        lugar.nombre,
+        lugar.direccion
+    ].filter(Boolean).join(" "));
+    return texto.includes("parque nacional") || texto.includes("parque iguazu");
+}
+
+function consultarAgendaTuki(intencion, ahora = new Date()) {
+    if (tukiAgendaError) {
+        const sinConexion = typeof navigator !== "undefined" && navigator.onLine === false;
+        return {
+            texto: sinConexion
+                ? "No pude consultar la agenda sin conexión. Cuando recuperes señal, podés abrir Agenda y volver a intentarlo."
+                : "No pude consultar la agenda local en este momento. El resto de mis recomendaciones turísticas sigue disponible.",
+            eventos: [], contexto: null, intencion, exacta: false, error: tukiAgendaError
+        };
+    }
+    const publicos = window.AgendaEventos.obtenerEventosPublicos(tukiAgendaEventos, ahora);
+    const intervalo = intervaloAgendaTuki(intencion.agendaPeriodo, ahora);
+    let eventos = intencion.agendaPeriodo === "proximos"
+        ? publicos
+        : window.AgendaEventos.filtrarPorFecha(publicos, new Date(intervalo.desde).toISOString(), new Date(intervalo.hasta).toISOString());
+    if (intencion.agendaCategoria) eventos = window.AgendaEventos.filtrarPorCategoria(eventos, intencion.agendaCategoria);
+    if (intencion.agendaParque) eventos = eventos.filter(eventoCoincideParqueTuki);
+    eventos = window.AgendaEventos.ordenarPorInicio(eventos).slice(0, 5);
+    if (!eventos.length) {
+        return {
+            texto: `No tengo eventos confirmados cargados en la Agenda para ${intervalo.etiqueta}. Eso se refiere a la agenda de la aplicación, no a que no haya actividades en toda la ciudad. También podés explorar los atractivos turísticos permanentes.`,
+            eventos: [], contexto: null, intencion, exacta: false
+        };
+    }
+    return {
+        texto: `Encontré ${eventos.length === 1 ? "un evento confirmado" : `${eventos.length} eventos confirmados`} para ${intervalo.etiqueta}. Te dejo los datos y la fuente original:`,
+        eventos, contexto: null, intencion, exacta: true
+    };
+}
+
+function resolverConsultaTuki(consulta, opciones = {}) {
     const intencion = interpretarConsultaTuki(consulta);
     const conversacional = respuestaConversacionalTuki(intencion.texto);
     if (conversacional) return conversacional;
+
+    if (intencion.esAgenda) return consultarAgendaTuki(intencion, opciones.ahora || new Date());
 
     const contexto = construirContextoTuki(intencion);
     const consultaEntradaCataratas = intencion.consultaPrecio &&
@@ -460,6 +627,40 @@ function crearTarjetasTuki(lugares, contexto) {
     `;
 }
 
+function crearTarjetasAgendaTuki(eventos) {
+    if (!Array.isArray(eventos) || eventos.length === 0) return "";
+    return `
+        <div class="tuki-recommendations">
+            ${eventos.map(evento => {
+                const lugar = evento.lugar && typeof evento.lugar === "object" ? evento.lugar : null;
+                const lugarTexto = [lugar?.nombre, lugar?.direccion].filter(Boolean).join(" · ");
+                const precio = evento.precio?.estado === "gratuito"
+                    ? "Gratis confirmado"
+                    : evento.precio?.estado === "confirmado" && Number.isFinite(evento.precio.monto)
+                        ? `${evento.precio.moneda || ""} ${evento.precio.monto}`.trim()
+                        : null;
+                const fecha = new Intl.DateTimeFormat("es-AR", {
+                    timeZone: evento.zonaHoraria || TUKI_ZONA_AGENDA,
+                    dateStyle: "medium",
+                    timeStyle: "short"
+                }).format(new Date(evento.inicio));
+                return `
+                    <article class="tuki-place-card tuki-agenda-card">
+                        <span class="tuki-place-icon" aria-hidden="true">📆</span>
+                        <span class="tuki-place-info">
+                            <strong>${escapar(evento.titulo)}</strong>
+                            <span>🗓️ ${escapar(fecha)}${evento.fin ? `–${escapar(new Intl.DateTimeFormat("es-AR", { timeZone: evento.zonaHoraria || TUKI_ZONA_AGENDA, timeStyle: "short" }).format(new Date(evento.fin)))} hs` : ""}</span>
+                            ${lugarTexto ? `<span>📍 ${escapar(lugarTexto)}</span>` : ""}
+                            ${precio ? `<span>🎟️ ${escapar(precio)}</span>` : ""}
+                        </span>
+                        <a class="tuki-place-arrow" href="${escapar(evento.fuenteUrl)}" target="_blank" rel="noopener noreferrer" aria-label="Ver fuente oficial">↗</a>
+                    </article>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
 function agregarMensajeUsuarioTuki(texto) {
     const conversacion = document.querySelector("#tuki-conversation");
     if (!conversacion) return;
@@ -482,6 +683,7 @@ function agregarRespuestaTuki(respuesta) {
         <div class="tuki-message-body">
             <p>${escapar(respuesta.texto || tukiText("tukiNoExact", "No encontré una respuesta exacta, pero puedo ayudarte con actividades, comida, clima y lugares cercanos."))}</p>
             ${crearTarjetasTuki(respuesta.lugares || [], respuesta.contexto)}
+            ${crearTarjetasAgendaTuki(respuesta.eventos || [])}
         </div>
     `;
     conversacion.appendChild(mensaje);
@@ -560,6 +762,8 @@ async function responderConsultaTuki(consulta) {
     let respuesta;
     try {
         await window.cargarPlanificador();
+        const intencion = interpretarConsultaTuki(consulta);
+        if (intencion.esAgenda) await cargarAgendaParaTuki();
         respuesta = resolverConsultaTuki(consulta);
     } catch (error) {
     console.error("Tuki no pudo resolver la consulta.", error);
@@ -700,5 +904,11 @@ window.TukiAsistente = {
     cerrar: cerrarTuki,
     enviar: enviarConsultaTuki,
     interpretar: interpretarConsultaTuki,
-    resolver: resolverConsultaTuki
+    resolver: resolverConsultaTuki,
+    agenda: {
+        interpretar: interpretarConsultaAgendaTuki,
+        intervalo: intervaloAgendaTuki,
+        consultar: consultarAgendaTuki,
+        cargar: cargarAgendaParaTuki
+    }
 };
