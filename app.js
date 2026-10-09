@@ -79,6 +79,7 @@ const APP_CONSTANTS = Object.freeze({
 const PERSISTENCE_DB_NAME = "iguazu-assist-db";
 const PERSISTENCE_DB_VERSION = 1;
 const PERSISTENCE_STORE = "kv";
+const AGENDA_SNAPSHOT_KEY = "agenda-snapshot";
 let persistenceDbPromise = null;
 let persistenceIndexedDBActive = false;
 
@@ -116,6 +117,28 @@ function guardarPersistenciaIndexedDB(clave, valor) {
         transaction.oncomplete = () => resolve(true);
         transaction.onerror = () => reject(transaction.error);
     }));
+}
+
+async function guardarAgendaSnapshot(agenda) {
+    if (!agenda || !window.AgendaEventos || AgendaEventos.validarAgenda(agenda).length) return false;
+    try {
+        await guardarPersistenciaIndexedDB(AGENDA_SNAPSHOT_KEY, agenda);
+        return true;
+    } catch (error) {
+        console.info("No se pudo guardar la agenda offline.", error);
+        return false;
+    }
+}
+
+async function recuperarAgendaSnapshot() {
+    try {
+        const snapshot = await leerPersistenciaIndexedDB(AGENDA_SNAPSHOT_KEY);
+        if (!snapshot || !window.AgendaEventos || AgendaEventos.validarAgenda(snapshot).length) return null;
+        return snapshot;
+    } catch (error) {
+        console.info("No se pudo recuperar la agenda offline.", error);
+        return null;
+    }
 }
 
 async function inicializarPersistenciaIndexedDB() {
@@ -710,19 +733,31 @@ async function cargarAgendaInterfaz() {
         agendaLoadPromise = AgendaEventos.cargarAgenda({ base: document.baseURI })
             .then(resultado => {
                 if (!resultado.ok) {
-                    agendaEventosCargados = [];
-                    const sinConexion = navigator.onLine === false;
-                    establecerEstadoAgenda(
-                        sinConexion
-                            ? "No se pudo cargar la agenda sin conexión. Probá nuevamente cuando tengas señal."
-                            : "No se pudo cargar la agenda. El resto de la aplicación continúa disponible.",
-                        "error"
-                    );
-                    return resultado;
+                    return recuperarAgendaSnapshot().then(snapshot => {
+                        if (snapshot) {
+                            agendaEventosCargados = snapshot.eventos;
+                            renderizarAgenda();
+                            return { ...resultado, recuperadaOffline: true };
+                        }
+                        agendaEventosCargados = [];
+                        const sinConexion = navigator.onLine === false;
+                        establecerEstadoAgenda(
+                            sinConexion
+                                ? "No se pudo cargar la agenda sin conexión. Probá nuevamente cuando tengas señal."
+                                : "No se pudo cargar la agenda. El resto de la aplicación continúa disponible.",
+                            "error"
+                        );
+                        return resultado;
+                    });
                 }
                 agendaEventosCargados = Array.isArray(resultado.eventos) ? resultado.eventos : [];
-                renderizarAgenda();
-                return resultado;
+                const persistencia = resultado.agenda?.eventos?.length
+                    ? guardarAgendaSnapshot(resultado.agenda)
+                    : Promise.resolve(false);
+                return persistencia.then(() => {
+                    renderizarAgenda();
+                    return resultado;
+                });
             })
             .catch(error => {
                 agendaEventosCargados = [];
