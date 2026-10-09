@@ -137,10 +137,29 @@ function eventoFicticio(overrides = {}) {
 }
 const agendaCon = eventos => ({ schemaVersion: 1, zonaHoraria: zona, eventos });
 
-test("eventos.json es válido y no contiene ejemplos ficticios", () => {
+test("eventos.json es válido y contiene las ocurrencias oficiales verificadas", () => {
     const agenda = JSON.parse(fs.readFileSync(archivo, "utf8"));
     assert.deepEqual(validarAgenda(agenda), []);
-    assert.deepEqual(agenda.eventos, []);
+    assert.equal(agenda.eventos.length, 4);
+    assert.deepEqual(
+        agenda.eventos.map(evento => [evento.id, evento.inicio]),
+        [
+            ["atardecer-cataratas-2026-10-10", "2026-10-10T16:45:00-03:00"],
+            ["atardecer-cataratas-2026-10-31", "2026-10-31T16:45:00-03:00"],
+            ["atardecer-cataratas-2026-11-14", "2026-11-14T17:15:00-03:00"],
+            ["atardecer-cataratas-2026-11-28", "2026-11-28T17:15:00-03:00"]
+        ]
+    );
+    assert.equal(new Set(agenda.eventos.map(evento => evento.id)).size, 4);
+    assert.ok(agenda.eventos.every(evento => (
+        evento.titulo === "Atardecer en Cataratas" &&
+        evento.estadoEditorial === "confirmado" &&
+        evento.estadoVerificacion === "verificado" &&
+        urlValida(evento.fuenteUrl) &&
+        evento.precio.estado === "desconocido" &&
+        evento.precio.monto === null &&
+        evento.precio.moneda === null
+    )));
 });
 
 test("permite nulos en campos opcionales", () => {

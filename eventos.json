@@ -1,5 +1,110 @@
 {
   "schemaVersion": 1,
   "zonaHoraria": "America/Argentina/Buenos_Aires",
-  "eventos": []
+  "eventos": [
+    {
+      "id": "atardecer-cataratas-2026-10-10",
+      "titulo": "Atardecer en Cataratas",
+      "descripcion": "Experiencia especial guiada en el Circuito Superior del Parque Nacional Iguazú, con merienda regional, traslado en el Tren Ecológico de la Selva y brindis durante el recorrido. Requiere reserva anticipada; la ticketera oficial publica tarifas diferenciadas según edad y disponibilidad por fecha.",
+      "categoria": "espectaculo",
+      "inicio": "2026-10-10T16:45:00-03:00",
+      "fin": null,
+      "zonaHoraria": "America/Argentina/Buenos_Aires",
+      "lugar": {
+        "nombre": "Parque Nacional Iguazú",
+        "direccion": "Parque Nacional Iguazú, Argentina",
+        "coordenadas": null
+      },
+      "organizador": "Iguazú Argentina S.A.",
+      "fuenteUrl": "https://tickets.iguazuargentina.com/parque-nacional/atardecer-en-garganta-del-diablo",
+      "precio": {
+        "estado": "desconocido",
+        "monto": null,
+        "moneda": null,
+        "fuenteUrl": null,
+        "verificadoEn": null
+      },
+      "estadoVerificacion": "verificado",
+      "verificadoEn": "2026-10-09T00:21:03-03:00",
+      "estadoEditorial": "confirmado"
+    },
+    {
+      "id": "atardecer-cataratas-2026-10-31",
+      "titulo": "Atardecer en Cataratas",
+      "descripcion": "Experiencia especial guiada en el Circuito Superior del Parque Nacional Iguazú, con merienda regional, traslado en el Tren Ecológico de la Selva y brindis durante el recorrido. Requiere reserva anticipada; la ticketera oficial publica tarifas diferenciadas según edad y disponibilidad por fecha.",
+      "categoria": "espectaculo",
+      "inicio": "2026-10-31T16:45:00-03:00",
+      "fin": null,
+      "zonaHoraria": "America/Argentina/Buenos_Aires",
+      "lugar": {
+        "nombre": "Parque Nacional Iguazú",
+        "direccion": "Parque Nacional Iguazú, Argentina",
+        "coordenadas": null
+      },
+      "organizador": "Iguazú Argentina S.A.",
+      "fuenteUrl": "https://tickets.iguazuargentina.com/parque-nacional/atardecer-en-garganta-del-diablo",
+      "precio": {
+        "estado": "desconocido",
+        "monto": null,
+        "moneda": null,
+        "fuenteUrl": null,
+        "verificadoEn": null
+      },
+      "estadoVerificacion": "verificado",
+      "verificadoEn": "2026-10-09T00:21:03-03:00",
+      "estadoEditorial": "confirmado"
+    },
+    {
+      "id": "atardecer-cataratas-2026-11-14",
+      "titulo": "Atardecer en Cataratas",
+      "descripcion": "Experiencia especial guiada en el Circuito Superior del Parque Nacional Iguazú, con merienda regional, traslado en el Tren Ecológico de la Selva y brindis durante el recorrido. Requiere reserva anticipada; la ticketera oficial publica tarifas diferenciadas según edad y disponibilidad por fecha.",
+      "categoria": "espectaculo",
+      "inicio": "2026-11-14T17:15:00-03:00",
+      "fin": null,
+      "zonaHoraria": "America/Argentina/Buenos_Aires",
+      "lugar": {
+        "nombre": "Parque Nacional Iguazú",
+        "direccion": "Parque Nacional Iguazú, Argentina",
+        "coordenadas": null
+      },
+      "organizador": "Iguazú Argentina S.A.",
+      "fuenteUrl": "https://tickets.iguazuargentina.com/parque-nacional/atardecer-en-garganta-del-diablo",
+      "precio": {
+        "estado": "desconocido",
+        "monto": null,
+        "moneda": null,
+        "fuenteUrl": null,
+        "verificadoEn": null
+      },
+      "estadoVerificacion": "verificado",
+      "verificadoEn": "2026-10-09T00:21:03-03:00",
+      "estadoEditorial": "confirmado"
+    },
+    {
+      "id": "atardecer-cataratas-2026-11-28",
+      "titulo": "Atardecer en Cataratas",
+      "descripcion": "Experiencia especial guiada en el Circuito Superior del Parque Nacional Iguazú, con merienda regional, traslado en el Tren Ecológico de la Selva y brindis durante el recorrido. Requiere reserva anticipada; la ticketera oficial publica tarifas diferenciadas según edad y disponibilidad por fecha.",
+      "categoria": "espectaculo",
+      "inicio": "2026-11-28T17:15:00-03:00",
+      "fin": null,
+      "zonaHoraria": "America/Argentina/Buenos_Aires",
+      "lugar": {
+        "nombre": "Parque Nacional Iguazú",
+        "direccion": "Parque Nacional Iguazú, Argentina",
+        "coordenadas": null
+      },
+      "organizador": "Iguazú Argentina S.A.",
+      "fuenteUrl": "https://tickets.iguazuargentina.com/parque-nacional/atardecer-en-garganta-del-diablo",
+      "precio": {
+        "estado": "desconocido",
+        "monto": null,
+        "moneda": null,
+        "fuenteUrl": null,
+        "verificadoEn": null
+      },
+      "estadoVerificacion": "verificado",
+      "verificadoEn": "2026-10-09T00:21:03-03:00",
+      "estadoEditorial": "confirmado"
+    }
+  ]
 }
