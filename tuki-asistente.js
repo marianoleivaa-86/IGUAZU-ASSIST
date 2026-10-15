@@ -16,6 +16,9 @@ const TUKI_CATEGORIAS_TURISTICAS = ["naturaleza", "actividades", "noche", "comid
 let tukiAgendaPromise = null;
 let tukiAgendaEventos = [];
 let tukiAgendaError = null;
+// Memoria temporal: vive únicamente en esta carga de la página y nunca se persiste.
+const TUKI_MEMORIA_SESION_INICIAL = () => ({ interes: null, compania: null, presupuesto: null, tiempo: null, lluvia: null, lugaresReferenciados: [] });
+let tukiMemoriaSesion = TUKI_MEMORIA_SESION_INICIAL();
 
 function tukiText(key, fallback) {
     return window.I18n?.t(key, fallback) || fallback;
@@ -210,6 +213,183 @@ function respuestaConversacionalTuki(textoNormalizado) {
 
     if (/^(ayuda|que puedo preguntar|que podes hacer|como te uso)$/.test(texto)) {
         return respuesta(tukiText("tukiHelp", "Podés preguntarme qué hacer, dónde comer, qué visitar, qué hay cerca, qué opciones hay con lluvia o pedirme una recomendación para algunas horas."));
+    }
+
+    return null;
+}
+
+function detectarReferenciaAmbiguaTuki(texto) {
+    return /^(y\s+)?(ese|esa|eso|estos|estas|ellos|ellas|ahi|all[ií]|alli|la otra|el otro|cual|cu[aá]l)(\b|\s)/.test(texto) ||
+        /\b(esa opcion|ese lugar|la anterior|el anterior|cual de esos|esos|esas|el primero|la primera|el segundo|la segunda|el tercero|la tercera|primer lugar|segunda opcion)\b/.test(texto);
+}
+
+function esSeguimientoTuki(texto) {
+    return /^(y\b|ademas\b|tambien\b|otra\b|otro\b|mas\b|algo mas\b|si\b|pero\b|mejor\b|prefiero\b|vamos\b|voy\b|estoy\b|en ese caso\b)/.test(texto);
+}
+
+function actualizarMemoriaYResolverSeguimientoTuki(intencion) {
+    const texto = intencion.texto;
+    const prefiereSinLluvia = /\b(sin lluvia|sin lluvias|no llueve|si no llueve|buen clima|despejado)\b/.test(texto);
+    if (prefiereSinLluvia) intencion.lluvia = false;
+    const referenciaAmbigua = detectarReferenciaAmbiguaTuki(texto);
+    const indiceOrdinal = indiceLugarReferenciadoTuki(texto);
+    const ordinalResuelto = indiceOrdinal !== null && tukiMemoriaSesion.lugaresReferenciados.length > 0 &&
+        (indiceOrdinal === -1 || indiceOrdinal < tukiMemoriaSesion.lugaresReferenciados.length);
+    if (referenciaAmbigua && !ordinalResuelto && (!intencion.interes || intencion.ambigua) && !intencion.ahora && !intencion.cerca && !intencion.consultaHorario) {
+        return { intencion, pedirAclaracion: true };
+    }
+
+    const nuevoInteres = intencion.ambigua ? null : intencion.interes;
+    const cambioTema = Boolean(nuevoInteres && nuevoInteres !== tukiMemoriaSesion.interes);
+    if (nuevoInteres) tukiMemoriaSesion.interes = nuevoInteres;
+
+    const companiaExplicita = consultaTukiIncluye(texto, ["pareja", "romantico", "romantica", "novio", "novia", "chicos", "niños", "ninos", "hijos", "nenes", "familia", "familiar", "amigos", "grupo", "solo", "sola"]);
+    const presupuestoExplicito = consultaTukiIncluye(texto, ["poco presupuesto", "economico", "economica", "barato", "barata", "gratis", "gratuito", "sin limite", "alto presupuesto", "premium"]);
+    const tiempoExplicito = consultaTukiIncluye(texto, ["dos horas", "2 horas", "2 hs", "una hora", "1 hora", "1 hs", "unas horas", "3 horas", "3 hs", "todo el dia", "día completo", "dia completo"]);
+    const preferenciaExplicita = companiaExplicita || presupuestoExplicito || tiempoExplicito;
+
+    if (companiaExplicita) tukiMemoriaSesion.compania = intencion.compania;
+    if (presupuestoExplicito) tukiMemoriaSesion.presupuesto = intencion.presupuesto;
+    if (tiempoExplicito) tukiMemoriaSesion.tiempo = intencion.tiempo;
+
+    const lluviaExplicita = intencion.lluvia || prefiereSinLluvia;
+    if (lluviaExplicita) tukiMemoriaSesion.lluvia = intencion.lluvia;
+
+    // Las restricciones situacionales no se arrastran a un tema nuevo.
+    if (cambioTema) tukiMemoriaSesion.lluvia = intencion.lluvia ? true : null;
+
+    const memoriaTieneTema = Boolean(tukiMemoriaSesion.interes);
+    const esReferenciaDeSeguimiento = esSeguimientoTuki(texto) || preferenciaExplicita || intencion.lluvia || intencion.cerca || intencion.consultaHorario;
+    const intencionFinal = { ...intencion };
+    if (!nuevoInteres && memoriaTieneTema && esReferenciaDeSeguimiento) {
+        intencionFinal.interes = tukiMemoriaSesion.interes;
+        intencionFinal.ambigua = false;
+    }
+    if (!companiaExplicita && tukiMemoriaSesion.compania) intencionFinal.compania = tukiMemoriaSesion.compania;
+    if (!presupuestoExplicito && tukiMemoriaSesion.presupuesto) intencionFinal.presupuesto = tukiMemoriaSesion.presupuesto;
+    if (!tiempoExplicito && tukiMemoriaSesion.tiempo) intencionFinal.tiempo = tukiMemoriaSesion.tiempo;
+    if (!cambioTema && tukiMemoriaSesion.lluvia !== null && !intencion.lluvia) intencionFinal.lluvia = tukiMemoriaSesion.lluvia;
+
+    return { intencion: intencionFinal, pedirAclaracion: false };
+}
+
+function aclararReferenciaLugarTuki(intencion, lugares = []) {
+    const nombres = lugares.map(lugar => tukiPlaceText(lugar, "nombre", lugar.nombre)).filter(Boolean);
+    const opciones = nombres.length ? ` Las opciones anteriores fueron: ${nombres.join(", ")}.` : " No tengo una recomendación anterior concreta para identificarlo.";
+    return {
+        texto: `¿Cuál lugar querés que revise? No quiero adivinar.${opciones}`,
+        lugares,
+        contexto: null,
+        intencion,
+        fuenteUbicacion: null,
+        exacta: false,
+        conversacional: true
+    };
+}
+
+function indiceLugarReferenciadoTuki(texto) {
+    const ordinal = texto.match(/\b(primer(?:o|a)?|segund[oa]|tercer(?:o|a)?|cuart[oa]|ultim[oa])\b/);
+    if (!ordinal) return null;
+    return ({ primero: 0, primera: 0, primer: 0, segundo: 1, segunda: 1, tercero: 2, tercera: 2, tercer: 2, cuarto: 3, cuarta: 3, ultimo: -1, ultima: -1 })[ordinal[1]] ?? null;
+}
+
+function puntajeGastoReferenciaTuki(lugar) {
+    if (lugar?.gratuito === true) return 0;
+    return ({ economico: 1, medio: 2, alto: 3 })[lugar?.nivelGasto] ?? null;
+}
+
+function resolverReferenciaLugarTuki(intencion, contexto) {
+    const lugares = tukiMemoriaSesion.lugaresReferenciados;
+    const texto = intencion.texto;
+    const indice = indiceLugarReferenciadoTuki(texto);
+    const referenciaDemostrativa = detectarReferenciaAmbiguaTuki(texto) || /\b(ese lugar|esa opcion|esos lugares|de esos)\b/.test(texto);
+    const consultaMasCercano = intencion.cerca && /\b(cual|cuales|queda|quedan|mas cerca|cercano)\b/.test(texto);
+    const consultaComparativaPrecio = intencion.consultaPrecio && /\b(mas barato|mas economico|cuesta menos|mas caro)\b/.test(texto);
+    const consultaEstadoLugar = intencion.consultaHorario && /\b(abierto|abierta|abre|cerrado|cerrada|horario|puedo ir)\b/.test(texto) &&
+        !buscarLugarMencionadoTuki(texto);
+    const consultaDisponibilidadManana = intencion.manana && (
+        /\b(puedo ir|se puede ir|esta abierto|abierto)\b/.test(texto) || (lugares.length > 0 && esSeguimientoTuki(texto))
+    );
+
+    if (consultaMasCercano) {
+        const origen = AppState.userCoords || CONFIG_APP.coordenadasCentro;
+        if (lugares.length < 2 || !origen || !lugares.every(lugar => lugar.coordenadas && Number.isFinite(lugar.coordenadas.lat) && Number.isFinite(lugar.coordenadas.lng))) {
+            return aclararReferenciaLugarTuki(intencion, lugares);
+        }
+        const ordenados = lugares.map(lugar => ({
+            lugar,
+            distancia: calcularDistanciaKm(origen.lat, origen.lng, lugar.coordenadas.lat, lugar.coordenadas.lng)
+        })).sort((a, b) => a.distancia - b.distancia);
+        const masCercano = ordenados[0];
+        return {
+            texto: `${tukiPlaceText(masCercano.lugar, "nombre", masCercano.lugar.nombre)} es la opción más cercana entre las recomendaciones anteriores (${formatearDistancia(masCercano.distancia)} desde tu ubicación de referencia).`,
+            lugares: [{ ...masCercano.lugar, distanciaTuki: masCercano.distancia }],
+            contexto,
+            intencion,
+            fuenteUbicacion: AppState.gpsActive ? "tu ubicación GPS" : "la Plaza San Martín",
+            exacta: true
+        };
+    }
+
+    if (consultaComparativaPrecio) {
+        const indiceReal = indice === -1 ? lugares.length - 1 : indice;
+        if (indiceReal === null || indiceReal < 0 || indiceReal >= lugares.length || lugares.length < 2) {
+            return aclararReferenciaLugarTuki(intencion, lugares);
+        }
+        const objetivo = lugares[indiceReal];
+        const otros = lugares.filter((_, posicion) => posicion !== indiceReal);
+        const gastoObjetivo = puntajeGastoReferenciaTuki(objetivo);
+        const gastosOtros = otros.map(puntajeGastoReferenciaTuki);
+        if (gastoObjetivo === null || gastosOtros.some(gasto => gasto === null)) {
+            return {
+                texto: `No tengo niveles de gasto comparables para confirmar si ${tukiPlaceText(objetivo, "nombre", objetivo.nombre)} cuesta menos que las otras opciones. ¿Querés que compare otro par de lugares o preferís consultar un precio confirmado?`,
+                lugares: [objetivo], contexto, intencion, fuenteUbicacion: null, exacta: false, preservarReferenciasTuki: true
+            };
+        }
+        const esMasBarato = gastoObjetivo < Math.min(...gastosOtros);
+        const respuestaPrecio = /mas caro/.test(texto)
+            ? (gastoObjetivo > Math.max(...gastosOtros) ? "sí figura como la opción de mayor gasto" : "no figura como más cara que todas las demás")
+            : (esMasBarato ? "sí figura como la opción de menor gasto" : "no figura como más barata que todas las demás");
+        return {
+            texto: `Según los niveles de gasto del catálogo, ${tukiPlaceText(objetivo, "nombre", objetivo.nombre)} ${respuestaPrecio}.`,
+            lugares: [objetivo], contexto, intencion, fuenteUbicacion: null, exacta: true, preservarReferenciasTuki: true
+        };
+    }
+
+    if (consultaDisponibilidadManana) {
+        if (!lugares.length) return aclararReferenciaLugarTuki(intencion, lugares);
+        const disponibles = lugares.filter(lugar => window.estaDisponibleDurantePlan(lugar, contexto));
+        return {
+            texto: disponibles.length
+                ? `Según los horarios y la disponibilidad del catálogo para mañana, podés considerar ${disponibles.map(lugar => tukiPlaceText(lugar, "nombre", lugar.nombre)).join(", ")}.`
+                : "Las recomendaciones anteriores no figuran disponibles para mañana según los horarios y la disponibilidad del catálogo.",
+            lugares: disponibles,
+            contexto,
+            intencion,
+            fuenteUbicacion: null,
+            exacta: disponibles.length > 0,
+            preservarReferenciasTuki: true
+        };
+    }
+
+    if (consultaEstadoLugar || referenciaDemostrativa || indice !== null) {
+        let indiceReal = indice === -1 ? lugares.length - 1 : indice;
+        if (indiceReal === null && lugares.length === 1) indiceReal = 0;
+        if (indiceReal === null || indiceReal < 0 || indiceReal >= lugares.length) {
+            return aclararReferenciaLugarTuki(intencion, lugares);
+        }
+        const lugar = lugares[indiceReal];
+        if (!consultaEstadoLugar) {
+            return {
+                texto: `Entiendo que te referís a ${tukiPlaceText(lugar, "nombre", lugar.nombre)}. ¿Qué querés saber sobre ese lugar?`,
+                lugares: [lugar], contexto, intencion, fuenteUbicacion: null, exacta: false, conversacional: true
+            };
+        }
+        const disponibilidad = obtenerEstadoDisponibilidad(lugar, contexto.horaNumero, contexto.diaSemana);
+        return {
+            texto: `${tukiPlaceText(lugar, "nombre", lugar.nombre)}: ${lugar.horario || "No tengo un horario confirmado"}. ${disponibilidad.texto}`,
+            lugares: [lugar], contexto, intencion, fuenteUbicacion: null, exacta: Boolean(disponibilidad.abierto !== undefined)
+        };
     }
 
     return null;
@@ -421,14 +601,22 @@ function consultarAgendaTuki(intencion, ahora = new Date()) {
     };
 }
 
-function resolverConsultaTuki(consulta, opciones = {}) {
-    const intencion = interpretarConsultaTuki(consulta);
-    const conversacional = respuestaConversacionalTuki(intencion.texto);
+function resolverConsultaTukiInterna(consulta, opciones = {}) {
+    const intencionInicial = interpretarConsultaTuki(consulta);
+    const conversacional = respuestaConversacionalTuki(intencionInicial.texto);
     if (conversacional) return conversacional;
 
-    if (intencion.esAgenda) return consultarAgendaTuki(intencion, opciones.ahora || new Date());
+    if (intencionInicial.esAgenda) return consultarAgendaTuki(intencionInicial, opciones.ahora || new Date());
+
+    const { intencion, pedirAclaracion } = actualizarMemoriaYResolverSeguimientoTuki(intencionInicial);
+    if (pedirAclaracion) {
+        return aclararReferenciaLugarTuki(intencion, tukiMemoriaSesion.lugaresReferenciados);
+    }
 
     const contexto = construirContextoTuki(intencion);
+    const respuestaReferencia = resolverReferenciaLugarTuki(intencion, contexto);
+    if (respuestaReferencia) return respuestaReferencia;
+
     const consultaEntradaCataratas = intencion.consultaPrecio &&
         consultaTukiIncluye(intencion.texto, ["cataratas"]) &&
         consultaTukiIncluye(intencion.texto, ["entrar", "entrada", "ingreso"]);
@@ -595,6 +783,23 @@ function resolverConsultaTuki(consulta, opciones = {}) {
         fuenteUbicacion: null,
         exacta: !resultado.adaptacion.activa && !intencion.ambigua
     };
+}
+
+function resolverConsultaTuki(consulta, opciones = {}) {
+    const respuesta = resolverConsultaTukiInterna(consulta, opciones);
+    if (respuesta?.preservarReferenciasTuki) {
+        const { preservarReferenciasTuki, ...respuestaPublica } = respuesta;
+        return respuestaPublica;
+    }
+    const lugares = Array.isArray(respuesta?.lugares) ? respuesta.lugares : [];
+    if (lugares.length > 1) {
+        tukiMemoriaSesion.lugaresReferenciados = [...lugares];
+    } else if (lugares.length === 1) {
+        const nombre = lugares[0].nombre;
+        const yaReferenciado = tukiMemoriaSesion.lugaresReferenciados.some(lugar => lugar.id === lugares[0].id || lugar.nombre === nombre);
+        if (!yaReferenciado) tukiMemoriaSesion.lugaresReferenciados = [...lugares];
+    }
+    return respuesta;
 }
 
 function crearTarjetasTuki(lugares, contexto) {
@@ -1022,6 +1227,7 @@ window.TukiAsistente = {
     enviar: enviarConsultaTuki,
     interpretar: interpretarConsultaTuki,
     resolver: resolverConsultaTuki,
+    reiniciarSesion() { tukiMemoriaSesion = TUKI_MEMORIA_SESION_INICIAL(); },
     agenda: {
         interpretar: interpretarConsultaAgendaTuki,
         intervalo: intervaloAgendaTuki,

@@ -45,6 +45,7 @@ function distanciaKm(lat1, lng1, lat2, lng2) {
 function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tormenta: false }, disponible = () => true } = {}) {
     let climaActual = { ...clima };
     const llamadasPlanificador = [];
+    const llamadasDisponibilidad = [];
     const agendaStub = {
         ...Agenda,
         cargarAgenda: async () => ({ ok: true, eventos: [] })
@@ -55,7 +56,10 @@ function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tor
         addEventListener() {},
         setTimeout,
         contextoDeAhora: () => ({ momento: "mañana", horaNumero: 10, horaTexto: "10:00", diaSemana: 5 }),
-        estaDisponibleDurantePlan: (item, _contexto) => disponible(item),
+        estaDisponibleDurantePlan: (item, contexto) => {
+            llamadasDisponibilidad.push({ item, contexto });
+            return disponible(item, contexto);
+        },
         PlanificadorAPI: {
             esLugarValidoParaItinerario: item => Boolean(item?.planificable),
             esCompatibleConPresupuesto: () => true,
@@ -71,7 +75,8 @@ function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tor
             get climaActual() { return climaActual; },
             set climaActual(value) { climaActual = value; }
         },
-        get __llamadasPlanificador() { return llamadasPlanificador; }
+        get __llamadasPlanificador() { return llamadasPlanificador; },
+        get __llamadasDisponibilidad() { return llamadasDisponibilidad; }
     };
     const contexto = {
         window: ventana,
@@ -178,6 +183,186 @@ test("Tuki consulta el estado de apertura del lugar mencionado", () => {
     assert.equal(Array.from(respuesta.lugares, item => item.id).join(","), "horario-1");
     assert.match(respuesta.texto, /horario informado/i);
     assert.match(respuesta.texto, /Abierto/i);
+});
+
+test("Tuki hereda el tema y las preferencias explícitas en un seguimiento sobre lluvia", () => {
+    const { api, ventana } = crearTuki({ lugares: [
+        lugar({ id: "selva", nombre: "Centro de la Selva", categoria: "naturaleza" }),
+        lugar({ id: "museo", nombre: "Museo Cubierto", categoria: "naturaleza", alAireLibre: false })
+    ] });
+    api.resolver("Quiero naturaleza con mi familia, algo económico, para 2 horas", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Y si llueve?", { ahora: RELOJ });
+    const llamada = ventana.__llamadasPlanificador.at(-1);
+
+    assert.equal(respuesta.intencion.interes, "naturaleza");
+    assert.equal(respuesta.intencion.compania, "familia");
+    assert.equal(respuesta.intencion.presupuesto, "economico");
+    assert.equal(respuesta.intencion.tiempo, "1-2 horas");
+    assert.equal(respuesta.intencion.lluvia, true);
+    assert.equal(llamada.interes, "naturaleza");
+    assert.equal(llamada.compania, "familia");
+    assert.equal(llamada.presupuesto, "economico");
+    assert.equal(llamada.tiempo, "1-2 horas");
+
+    const respuestaBuenClima = api.resolver("Y si no llueve", { ahora: RELOJ });
+    assert.equal(respuestaBuenClima.intencion.lluvia, false);
+});
+
+test("Tuki hereda el tema activo cuando el turista solo actualiza una preferencia", () => {
+    const { api } = crearTuki();
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("Mejor con amigos", { ahora: RELOJ });
+
+    assert.equal(respuesta.intencion.interes, "naturaleza");
+    assert.equal(respuesta.intencion.compania, "amigos");
+});
+
+test("una preferencia nueva reemplaza a la anterior sin acumular compañías contradictorias", () => {
+    const { api } = crearTuki();
+    api.resolver("Quiero actividades en familia", { ahora: RELOJ });
+    const respuesta = api.resolver("Ahora voy con amigos, sin límite de presupuesto y para todo el día", { ahora: RELOJ });
+
+    assert.equal(respuesta.intencion.compania, "amigos");
+    assert.notEqual(respuesta.intencion.compania, "familia");
+    assert.equal(respuesta.intencion.presupuesto, "alto");
+    assert.equal(respuesta.intencion.tiempo, "todo el día");
+});
+
+test("un tema nuevo reemplaza la intención anterior y conserva las demás preferencias", () => {
+    const { api } = crearTuki();
+    api.resolver("Quiero naturaleza con mi familia, barato", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Dónde puedo comer?", { ahora: RELOJ });
+
+    assert.equal(respuesta.intencion.interes, "comida");
+    assert.equal(respuesta.intencion.compania, "familia");
+    assert.equal(respuesta.intencion.presupuesto, "economico");
+});
+
+test("Tuki pide aclaración ante una referencia ambigua en vez de adivinar", () => {
+    const { api } = crearTuki({ lugares: [
+        lugar({ id: "selva", nombre: "Centro de la Selva", categoria: "naturaleza" }),
+        lugar({ id: "museo", nombre: "Museo de la Selva", categoria: "naturaleza" })
+    ] });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Y esa?", { ahora: RELOJ });
+
+    assert.equal(respuesta.conversacional, true);
+    assert.equal(respuesta.lugares.length, 2);
+    assert.match(respuesta.texto, /No quiero adivinar/i);
+});
+
+test("una referencia singular a un único lugar anterior reutiliza catálogo y función de horarios", () => {
+    const cafe = lugar({ id: "anterior-1", nombre: "Café Anterior", abiertoEsperado: true });
+    const { api } = crearTuki({ lugares: [cafe] });
+    api.resolver("¿Qué lugares puedo visitar?", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Está abierto ese lugar?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares[0].id, "anterior-1");
+    assert.match(respuesta.texto, /Café Anterior/);
+    assert.match(respuesta.texto, /Abierto/i);
+    assert.equal(respuesta.intencion.ahora, true);
+});
+
+test("si una pregunta de horario apunta a varias recomendaciones, Tuki pregunta cuál", () => {
+    const lugares = [
+        lugar({ id: "anterior-1", nombre: "Café Anterior" }),
+        lugar({ id: "anterior-2", nombre: "Museo Anterior" })
+    ];
+    const { api } = crearTuki({ lugares });
+    api.resolver("¿Qué lugares puedo visitar?", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Está abierto ese lugar?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares.length, 2);
+    assert.match(respuesta.texto, /No quiero adivinar/);
+    assert.match(respuesta.texto, /Café Anterior.*Museo Anterior/);
+});
+
+test("¿Cuál de esos queda más cerca? identifica funcionalmente el más próximo de las tarjetas anteriores", () => {
+    const lugares = [
+        lugar({ id: "lejos", nombre: "Punto Lejano", categoria: "naturaleza", coordenadas: { lat: -25.62, lng: -54.57 } }),
+        lugar({ id: "cerca", nombre: "Punto Cercano", categoria: "naturaleza", coordenadas: { lat: -25.601, lng: -54.57 } }),
+        lugar({ id: "medio", nombre: "Punto Medio", categoria: "naturaleza", coordenadas: { lat: -25.61, lng: -54.57 } })
+    ];
+    const { api } = crearTuki({ lugares });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Cuál de esos queda más cerca?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares[0].id, "cerca");
+    assert.match(respuesta.texto, /Punto Cercano es la opción más cercana/);
+    assert.ok(respuesta.lugares[0].distanciaTuki < 1);
+});
+
+test("si faltan coordenadas para comparar cercanía, Tuki no adivina y pide precisión", () => {
+    const lugares = [
+        lugar({ id: "sin-coord-1", nombre: "Lugar Sin Coordenadas Uno", categoria: "naturaleza", coordenadas: null }),
+        lugar({ id: "sin-coord-2", nombre: "Lugar Sin Coordenadas Dos", categoria: "naturaleza", coordenadas: null })
+    ];
+    const { api } = crearTuki({ lugares });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Cuál de esos queda más cerca?", { ahora: RELOJ });
+
+    assert.equal(respuesta.exacta, false);
+    assert.match(respuesta.texto, /No quiero adivinar/);
+});
+
+test("¿Y el segundo es más barato? compara el segundo lugar con las otras opciones del catálogo", () => {
+    const lugares = [
+        lugar({ id: "opcion-1", nombre: "Opción Alta", categoria: "naturaleza", nivelGasto: "alto" }),
+        lugar({ id: "opcion-2", nombre: "Opción Económica", categoria: "naturaleza", nivelGasto: "economico" }),
+        lugar({ id: "opcion-3", nombre: "Opción Media", categoria: "naturaleza", nivelGasto: "medio" })
+    ];
+    const { api } = crearTuki({ lugares });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Y el segundo es más barato?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares[0].id, "opcion-2");
+    assert.match(respuesta.texto, /Según los niveles de gasto del catálogo/);
+    assert.match(respuesta.texto, /sí figura como la opción de menor gasto/);
+});
+
+test("¿Y mañana puedo ir? comprueba disponibilidad usando el contexto de mañana", () => {
+    const lugarManana = lugar({ id: "manana-1", nombre: "Paseo Mañana", categoria: "naturaleza" });
+    const { api, ventana } = crearTuki({ lugares: [lugarManana], disponible: (_lugar, contexto) => contexto.desplazamientoDia === 1 });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Y mañana puedo ir?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares[0].id, "manana-1");
+    assert.match(respuesta.texto, /para mañana, podés considerar Paseo Mañana/);
+    assert.equal(ventana.__llamadasDisponibilidad.at(-1).contexto.desplazamientoDia, 1);
+});
+
+test("¿Y mañana? comprueba las recomendaciones previas sin exigir que se repita el tema", () => {
+    const lugarManana = lugar({ id: "manana-2", nombre: "Sendero Mañana", categoria: "naturaleza" });
+    const { api, ventana } = crearTuki({ lugares: [lugarManana], disponible: (_lugar, contexto) => contexto.desplazamientoDia === 1 });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Y mañana?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares[0].id, "manana-2");
+    assert.match(respuesta.texto, /para mañana, podés considerar Sendero Mañana/);
+    assert.equal(ventana.__llamadasDisponibilidad.at(-1).contexto.desplazamientoDia, 1);
+});
+
+test("reiniciarSesion descarta las preferencias y el tema guardados en memoria", () => {
+    const { api } = crearTuki();
+    api.resolver("Quiero naturaleza con mi familia, barato", { ahora: RELOJ });
+    api.reiniciarSesion();
+    const respuesta = api.resolver("¿Y si llueve?", { ahora: RELOJ });
+
+    assert.equal(respuesta.intencion.interes, "actividades");
+    assert.equal(respuesta.intencion.compania, "solo");
+    assert.equal(respuesta.intencion.presupuesto, "medio");
+    assert.equal(respuesta.intencion.lluvia, true);
+});
+
+test("reiniciarSesion también elimina las referencias a lugares anteriores", () => {
+    const lugarAnterior = lugar({ id: "anterior-1", nombre: "Lugar Anterior" });
+    const { api } = crearTuki({ lugares: [lugarAnterior] });
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    api.reiniciarSesion();
+    const respuesta = api.resolver("¿Está abierto ese lugar?", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares.length, 0);
+    assert.match(respuesta.texto, /No tengo una recomendación anterior concreta/);
 });
 
 test("el planificador público puede construir varias paradas sin confundirse con el límite de Tuki", () => {
