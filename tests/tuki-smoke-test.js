@@ -1,17 +1,89 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
 const puppeteer = require("puppeteer");
 
-const BASE_URL = process.env.TUKI_TEST_URL || "http://127.0.0.1:4173/index.html";
+let effectiveBaseUrl = process.env.TUKI_TEST_URL || "";
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+async function resolveExecutablePath() {
+    if (process.env.CHROME_BIN) {
+        return process.env.CHROME_BIN;
+    }
+    if (typeof puppeteer.executablePath === "function") {
+        try {
+            const detected = await puppeteer.executablePath();
+            if (detected && fs.existsSync(detected)) {
+                return detected;
+            }
+        } catch {
+            // fallback
+        }
+    }
+    return undefined;
+}
+
+const MIME_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
+    ".mp3": "audio/mpeg"
+};
+
+function startStaticServer(projectRoot, port = 4173) {
+    const server = http.createServer((req, res) => {
+        try {
+            const urlPath = req.url.split("?")[0];
+            const safePath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, "");
+            let filePath = path.join(projectRoot, safePath === "/" ? "index.html" : safePath);
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+                filePath = path.join(filePath, "index.html");
+            }
+            if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+                res.writeHead(404, { "Content-Type": "text/plain" });
+                res.end("Not Found");
+                return;
+            }
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = MIME_TYPES[ext] || "application/octet-stream";
+            res.writeHead(200, { "Content-Type": contentType });
+            fs.createReadStream(filePath).pipe(res);
+        } catch (err) {
+            res.writeHead(500, { "Content-Type": "text/plain" });
+            res.end(err.message);
+        }
+    });
+
+    return new Promise((resolve, reject) => {
+        server.listen(port, "127.0.0.1", () => resolve(server));
+        server.on("error", reject);
+    });
+}
+
 async function main() {
+    let localServer = null;
+    const projectRoot = path.resolve(__dirname, "..");
+    if (process.env.TUKI_TEST_URL) {
+        effectiveBaseUrl = process.env.TUKI_TEST_URL;
+    } else {
+        localServer = await startStaticServer(projectRoot, 0);
+        effectiveBaseUrl = `http://127.0.0.1:${localServer.address().port}/index.html`;
+    }
+
     const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tuki-smoke-"));
+    const executablePath = await resolveExecutablePath();
     const browser = await puppeteer.launch({
         headless: true,
-        executablePath: process.env.CHROME_BIN || "/usr/bin/chromium",
+        executablePath,
         args: ["--no-sandbox", "--disable-features=ServiceWorker"],
         userDataDir
     });
@@ -41,7 +113,7 @@ async function main() {
     };
 
     try {
-        await page.goto(BASE_URL, { waitUntil: "networkidle0" });
+        await page.goto(effectiveBaseUrl, { waitUntil: "networkidle0" });
         await page.evaluate(async () => {
             const registrations = await navigator.serviceWorker.getRegistrations();
             await Promise.all(registrations.map(registration => registration.unregister()));
@@ -162,6 +234,9 @@ async function main() {
         await context.close();
         await browser.close();
         fs.rmSync(userDataDir, { recursive: true, force: true });
+        if (localServer) {
+            await new Promise(resolve => localServer.close(resolve));
+        }
     }
 }
 
@@ -171,7 +246,7 @@ async function verifyDesktopCardStyle(browser) {
     await page.setViewport({ width: 1280, height: 1100, deviceScaleFactor: 1 });
     await page.setCacheEnabled(false);
     try {
-        await page.goto(BASE_URL, { waitUntil: "networkidle0" });
+        await page.goto(effectiveBaseUrl, { waitUntil: "networkidle0" });
         await page.click("#tuki-fab");
         await sleep(150);
         await page.click('button[data-tuki-question="¿Dónde puedo comer?"]');
@@ -202,7 +277,7 @@ async function verifyTouchDrag(browser) {
     const page = await context.newPage();
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     try {
-        await page.goto(BASE_URL, { waitUntil: "networkidle0" });
+        await page.goto(effectiveBaseUrl, { waitUntil: "networkidle0" });
         const client = await page.createCDPSession();
         await client.send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
         const start = await page.$eval("#tuki-fab", fab => {
