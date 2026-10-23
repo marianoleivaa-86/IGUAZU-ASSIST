@@ -17,7 +17,7 @@ let tukiAgendaPromise = null;
 let tukiAgendaEventos = [];
 let tukiAgendaError = null;
 // Memoria temporal: vive únicamente en esta carga de la página y nunca se persiste.
-const TUKI_MEMORIA_SESION_INICIAL = () => ({ interes: null, compania: null, presupuesto: null, tiempo: null, lluvia: null, lugaresReferenciados: [] });
+const TUKI_MEMORIA_SESION_INICIAL = () => ({ interes: null, compania: null, presupuesto: null, tiempo: null, lluvia: null, lugaresReferenciados: [], historialRecomendaciones: [] });
 let tukiMemoriaSesion = TUKI_MEMORIA_SESION_INICIAL();
 
 function tukiText(key, fallback) {
@@ -122,7 +122,7 @@ function interpretarConsultaTuki(consulta) {
         intencion.interes = "naturaleza";
     } else if (consultaTukiIncluye(texto, ["pasear", "paseo", "caminar", "visitar"])) {
         intencion.interes = "paseos";
-    } else if (consultaTukiIncluye(texto, ["hacer", "actividad", "actividades", "recomenda", "plan"])) {
+    } else if (consultaTukiIncluye(texto, ["hacer", "actividad", "actividades", "plan"])) {
         intencion.interes = "actividades";
     }
 
@@ -259,9 +259,10 @@ function actualizarMemoriaYResolverSeguimientoTuki(intencion) {
     if (cambioTema) tukiMemoriaSesion.lluvia = intencion.lluvia ? true : null;
 
     const memoriaTieneTema = Boolean(tukiMemoriaSesion.interes);
-    const esReferenciaDeSeguimiento = esSeguimientoTuki(texto) || preferenciaExplicita || intencion.lluvia || intencion.cerca || intencion.consultaHorario;
+    const pideOtrosLugares = /\b(otr[oa]s?\s+(?:tres\s+)?lugares|otr[oa]s?\s+opciones|nuev[oa]s?\s+opciones|nuev[oa]s?\s+lugares|recomenda(?:me)?\s+otr[oa]s?)\b/.test(texto);
+    const esReferenciaDeSeguimiento = esSeguimientoTuki(texto) || preferenciaExplicita || intencion.lluvia || intencion.cerca || intencion.consultaHorario || pideOtrosLugares;
     const intencionFinal = { ...intencion };
-    if (!nuevoInteres && memoriaTieneTema && esReferenciaDeSeguimiento) {
+    if ((!nuevoInteres || pideOtrosLugares) && memoriaTieneTema && esReferenciaDeSeguimiento) {
         intencionFinal.interes = tukiMemoriaSesion.interes;
         intencionFinal.ambigua = false;
     }
@@ -300,6 +301,7 @@ function puntajeGastoReferenciaTuki(lugar) {
 
 function resolverReferenciaLugarTuki(intencion, contexto) {
     const lugares = tukiMemoriaSesion.lugaresReferenciados;
+    const historial = tukiMemoriaSesion.historialRecomendaciones || [];
     const texto = intencion.texto;
     const indice = indiceLugarReferenciadoTuki(texto);
     const referenciaDemostrativa = detectarReferenciaAmbiguaTuki(texto) || /\b(ese lugar|esa opcion|esos lugares|de esos)\b/.test(texto);
@@ -312,22 +314,55 @@ function resolverReferenciaLugarTuki(intencion, contexto) {
     );
 
     if (consultaMasCercano) {
-        const origen = AppState.userCoords || CONFIG_APP.coordenadasCentro;
-        if (lugares.length < 2 || !origen || !lugares.every(lugar => lugar.coordenadas && Number.isFinite(lugar.coordenadas.lat) && Number.isFinite(lugar.coordenadas.lng))) {
-            return aclararReferenciaLugarTuki(intencion, lugares);
+        const pideOriginal = /\b(original(?:es|mente)?|primer[ao]s?)\b/.test(texto);
+        let listaComparar = lugares;
+
+        if (pideOriginal && historial.length > 0) {
+            listaComparar = historial[0];
+        } else if (historial.length > 1 && /\b(esos lugares|de esos)\b/.test(texto) && !pideOriginal) {
+            return {
+                texto: "Tengo más de una lista de recomendaciones anteriores en esta conversación. ¿A cuál de ellas te referís para comparar la cercanía?",
+                lugares: [],
+                contexto,
+                intencion,
+                fuenteUbicacion: null,
+                exacta: false,
+                conversacional: true,
+                preservarReferenciasTuki: true
+            };
+        } else if (historial.length > 0) {
+            listaComparar = historial.at(-1);
         }
-        const ordenados = lugares.map(lugar => ({
+
+        const origen = AppState.userCoords || CONFIG_APP.coordenadasCentro;
+        if (listaComparar.length < 2 || !origen || !listaComparar.every(lugar => lugar.coordenadas && Number.isFinite(lugar.coordenadas.lat) && Number.isFinite(lugar.coordenadas.lng))) {
+            return {
+                ...aclararReferenciaLugarTuki(intencion, listaComparar),
+                preservarReferenciasTuki: true
+            };
+        }
+        const ordenados = listaComparar.map(lugar => ({
             lugar,
             distancia: calcularDistanciaKm(origen.lat, origen.lng, lugar.coordenadas.lat, lugar.coordenadas.lng)
         })).sort((a, b) => a.distancia - b.distancia);
         const masCercano = ordenados[0];
+        const referenciaUbicacion = AppState.gpsActive ? "tu ubicación" : "tu ubicación de referencia";
+        const fuenteUbicacion = AppState.gpsActive ? "tu ubicación GPS" : "la Plaza San Martín";
+        const nombreMasCercano = tukiPlaceText(masCercano.lugar, "nombre", masCercano.lugar.nombre);
+        const distTexto = formatearDistancia(masCercano.distancia);
+        const cantLugares = listaComparar.length === 3 ? "tres" : String(listaComparar.length);
+        const textoRespuesta = pideOriginal
+            ? `De los ${cantLugares} lugares originales, el más cercano es ${nombreMasCercano}, a unos ${distTexto} de ${referenciaUbicacion}. (${nombreMasCercano} es la opción más cercana entre las recomendaciones anteriores).`
+            : `${nombreMasCercano} es la opción más cercana entre las recomendaciones anteriores (${distTexto} desde ${referenciaUbicacion}).`;
+
         return {
-            texto: `${tukiPlaceText(masCercano.lugar, "nombre", masCercano.lugar.nombre)} es la opción más cercana entre las recomendaciones anteriores (${formatearDistancia(masCercano.distancia)} desde tu ubicación de referencia).`,
+            texto: textoRespuesta,
             lugares: [{ ...masCercano.lugar, distanciaTuki: masCercano.distancia }],
             contexto,
             intencion,
-            fuenteUbicacion: AppState.gpsActive ? "tu ubicación GPS" : "la Plaza San Martín",
-            exacta: true
+            fuenteUbicacion,
+            exacta: true,
+            preservarReferenciasTuki: true
         };
     }
 
@@ -794,6 +829,10 @@ function resolverConsultaTuki(consulta, opciones = {}) {
     const lugares = Array.isArray(respuesta?.lugares) ? respuesta.lugares : [];
     if (lugares.length > 1) {
         tukiMemoriaSesion.lugaresReferenciados = [...lugares];
+        if (!Array.isArray(tukiMemoriaSesion.historialRecomendaciones)) {
+            tukiMemoriaSesion.historialRecomendaciones = [];
+        }
+        tukiMemoriaSesion.historialRecomendaciones.push([...lugares]);
     } else if (lugares.length === 1) {
         const nombre = lugares[0].nombre;
         const yaReferenciado = tukiMemoriaSesion.lugaresReferenciados.some(lugar => lugar.id === lugares[0].id || lugar.nombre === nombre);

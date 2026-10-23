@@ -84,7 +84,7 @@ img {
 .hero-header {
     position: relative;
     overflow: hidden;
-    background: url('hero-bg.webp') 57% bottom / cover no-repeat;
+    background: url('hero-bg.webp') 57% 70% / cover no-repeat;
     padding: 16px 16px 20px;
     border-bottom: 1px solid var(--border-forest);
 }

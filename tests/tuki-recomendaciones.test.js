@@ -305,6 +305,74 @@ test("si faltan coordenadas para comparar cercanía, Tuki no adivina y pide prec
     assert.match(respuesta.texto, /No quiero adivinar/);
 });
 
+test("Tuki compara cercanía de las tres recomendaciones gastronómicas originales sin introducir opciones ajenas", () => {
+    const donaMaria = lugar({ id: "dona-maria", nombre: "Restaurante Doña María", categoria: "comida", coordenadas: { lat: -25.602, lng: -54.57 } });
+    const aqva = lugar({ id: "aqva", nombre: "Restaurante Aqva", categoria: "comida", coordenadas: { lat: -25.604, lng: -54.57 } });
+    const argentineExperience = lugar({ id: "argentine-exp", nombre: "The Argentine Experience Iguazú", categoria: "comida", coordenadas: { lat: -25.607, lng: -54.57 } });
+    const cassino = lugar({ id: "cassino", nombre: "Cassino Iguazú", categoria: "noche", coordenadas: { lat: -25.601, lng: -54.57 } });
+
+    const { api } = crearTuki({ lugares: [donaMaria, aqva, argentineExperience, cassino] });
+
+    // 1. Consulta inicial: Recomendame tres lugares para comer
+    const r1 = api.resolver("Recomendame tres lugares para comer", { ahora: RELOJ });
+    assert.equal(r1.lugares.length, 3);
+    assert.deepEqual(r1.lugares.map(l => l.id), ["dona-maria", "aqva", "argentine-exp"]);
+    assert.ok(!r1.lugares.some(l => l.id === "cassino"), "Cassino no debe estar en la recomendación de comida inicial");
+
+    // 2. Consulta comparativa: ¿Cuál queda más cerca?
+    const r2 = api.resolver("¿Cuál queda más cerca?", { ahora: RELOJ });
+    assert.equal(r2.lugares.length, 1);
+    assert.equal(r2.lugares[0].id, "dona-maria", "El lugar elegido debe ser Doña María (el de menor distancia entre los tres)");
+    assert.ok(!r2.lugares.some(l => l.id === "cassino"), "No debe introducir Cassino");
+    assert.match(r2.texto, /Doña María/i);
+
+    // 3. Consulta comparativa explícita: ¿Cuál de los tres lugares que me recomendaste originalmente queda más cerca?
+    const r3 = api.resolver("¿Cuál de los tres lugares que me recomendaste originalmente queda más cerca?", { ahora: RELOJ });
+    assert.equal(r3.lugares.length, 1);
+    assert.equal(r3.lugares[0].id, "dona-maria");
+    assert.ok(!r3.lugares.some(l => l.id === "cassino"), "No debe re-ejecutar búsqueda general ni introducir Cassino");
+    assert.match(r3.texto, /Doña María/i);
+    assert.match(r3.texto, /original/i);
+});
+
+test("consulta explícita de nuevas recomendaciones genera una lista nueva y actualiza el contexto", () => {
+    const lugaresComida = [
+        lugar({ id: "c1", nombre: "Comida Uno", categoria: "comida", coordenadas: { lat: -25.601, lng: -54.57 } }),
+        lugar({ id: "c2", nombre: "Comida Dos", categoria: "comida", coordenadas: { lat: -25.602, lng: -54.57 } }),
+        lugar({ id: "c3", nombre: "Comida Tres", categoria: "comida", coordenadas: { lat: -25.603, lng: -54.57 } }),
+        lugar({ id: "c4", nombre: "Comida Cuatro", categoria: "comida", coordenadas: { lat: -25.604, lng: -54.57 } })
+    ];
+    const { api } = crearTuki({ lugares: lugaresComida });
+    const r1 = api.resolver("Recomendame tres lugares para comer", { ahora: RELOJ });
+    assert.equal(r1.lugares.length, 3);
+
+    const r2 = api.resolver("Recomendame otros tres lugares", { ahora: RELOJ });
+    assert.equal(r2.lugares.length, 3);
+    assert.equal(r2.intencion.interes, "comida");
+});
+
+test("si existen varias listas anteriores y la referencia es ambigua, Tuki pide aclaración", () => {
+    const comida = [
+        lugar({ id: "com-1", nombre: "Resto Uno", categoria: "comida", coordenadas: { lat: -25.601, lng: -54.57 } }),
+        lugar({ id: "com-2", nombre: "Resto Dos", categoria: "comida", coordenadas: { lat: -25.602, lng: -54.57 } })
+    ];
+    const naturaleza = [
+        lugar({ id: "nat-1", nombre: "Parque Uno", categoria: "naturaleza", coordenadas: { lat: -25.61, lng: -54.57 } }),
+        lugar({ id: "nat-2", nombre: "Parque Dos", categoria: "naturaleza", coordenadas: { lat: -25.62, lng: -54.57 } })
+    ];
+    const { api } = crearTuki({ lugares: [...comida, ...naturaleza] });
+    api.resolver("Recomendame lugares para comer", { ahora: RELOJ });
+    api.resolver("Recomendame lugares de naturaleza", { ahora: RELOJ });
+
+    const respuesta = api.resolver("¿Cuál de esos lugares queda más cerca?", { ahora: RELOJ });
+    assert.equal(respuesta.exacta, false);
+    assert.match(respuesta.texto, /más de una lista|cuál de ellas/i);
+
+    const respOriginal = api.resolver("¿Cuál de los lugares que me recomendaste originalmente queda más cerca?", { ahora: RELOJ });
+    assert.equal(respOriginal.exacta, true);
+    assert.equal(respOriginal.lugares[0].id, "com-1");
+});
+
 test("¿Y el segundo es más barato? compara el segundo lugar con las otras opciones del catálogo", () => {
     const lugares = [
         lugar({ id: "opcion-1", nombre: "Opción Alta", categoria: "naturaleza", nivelGasto: "alto" }),
