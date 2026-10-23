@@ -155,7 +155,14 @@ async function main() {
                 width: window.innerWidth,
                 height: window.innerHeight,
                 panelCerrado: document.querySelector("#tuki-panel").getAttribute("aria-hidden") === "true",
-                guardada: localStorage.getItem("iguazu-tuki-fab-position-v1")
+                guardada: localStorage.getItem("iguazu-tuki-fab-position-v1"),
+                diagnostico: {
+                    rect: { left: rect.left, top: rect.top },
+                    inline: { left: fab.style.left, top: fab.style.top },
+                    transform: getComputedStyle(fab).transform,
+                    hover: fab.matches(":hover"),
+                    dragging: fab.classList.contains("is-dragging")
+                }
             };
         });
         check("c) arrastrar con mouse mueve el FAB sin abrir el chat", despuesDelArrastre.panelCerrado
@@ -166,13 +173,48 @@ async function main() {
             && despuesDelArrastre.right <= despuesDelArrastre.width
             && despuesDelArrastre.bottom <= despuesDelArrastre.height
             && Boolean(despuesDelArrastre.guardada));
-        await page.reload({ waitUntil: "networkidle0" });
-        const posicionRestaurada = await page.$eval("#tuki-fab", fab => {
+        const leerEstadoPosicionFab = () => page.$eval("#tuki-fab", fab => {
             const rect = fab.getBoundingClientRect();
-            return { left: rect.left, top: rect.top };
+            return {
+                rect: { left: rect.left, top: rect.top },
+                inline: { left: fab.style.left, top: fab.style.top },
+                stored: localStorage.getItem("iguazu-tuki-fab-position-v1"),
+                transform: getComputedStyle(fab).transform,
+                hover: fab.matches(":hover"),
+                dragging: fab.classList.contains("is-dragging")
+            };
         });
-        check("c) posición del FAB se restaura tras recargar", Math.abs(posicionRestaurada.left - despuesDelArrastre.left) <= 1
-            && Math.abs(posicionRestaurada.top - despuesDelArrastre.top) <= 1);
+        await page.reload({ waitUntil: "networkidle0" });
+        const estadoDespuesDeRecargar = await leerEstadoPosicionFab();
+        let coordenadasGuardadas = null;
+        if (despuesDelArrastre.guardada) {
+            try {
+                coordenadasGuardadas = JSON.parse(despuesDelArrastre.guardada);
+            } catch (_) {
+                // El valor almacenado debe ser JSON válido para considerarse restaurado.
+            }
+        }
+        const coordenadasGuardadasValidas = coordenadasGuardadas
+            && Number.isFinite(coordenadasGuardadas.x)
+            && Number.isFinite(coordenadasGuardadas.y);
+        const leftRestaurada = Number.parseFloat(estadoDespuesDeRecargar.inline.left);
+        const topRestaurada = Number.parseFloat(estadoDespuesDeRecargar.inline.top);
+        const restauracionCorrecta = Boolean(coordenadasGuardadasValidas)
+            && Number.isFinite(leftRestaurada)
+            && Number.isFinite(topRestaurada)
+            && Math.abs(leftRestaurada - coordenadasGuardadas.x) <= 1
+            && Math.abs(topRestaurada - coordenadasGuardadas.y) <= 1;
+        if (!restauracionCorrecta) {
+            console.error("DIAGNÓSTICO FAB antes/después de recargar:", JSON.stringify({
+                antes: {
+                    ...despuesDelArrastre.diagnostico,
+                    stored: despuesDelArrastre.guardada
+                },
+                despues: estadoDespuesDeRecargar,
+                despuesDelArrastre
+            }, null, 2));
+        }
+        check("c) posición del FAB se restaura tras recargar", restauracionCorrecta);
 
         await page.click("#tuki-fab");
         await sleep(150);

@@ -1,15 +1,15 @@
-const CACHE_NAME = "iguazu-assist-v47";
+const CACHE_NAME = "iguazu-assist-v48";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./place-translations.js",
-  "./style.css?v=34",
+  "./style.css?v=35",
   "./i18n.js",
   "./data.js",
   "./agenda-eventos.js",
   "./app.js",
   "./planificador-inteligente.js",
-  "./tuki-asistente.js?v=30",
+  "./tuki-asistente.js?v=31",
   "./manifest.json",
   "./icon.svg",
   "./icon-180.png",
