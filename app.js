@@ -1389,11 +1389,10 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     actions.className = "place-card-actions-col";
     const detailButton = document.createElement("button");
     detailButton.type = "button";
-    detailButton.className = "btn-action-detail";
+    detailButton.className = "place-card-open-detail";
     detailButton.dataset.action = "detail";
     detailButton.dataset.placeName = textoSeguro(lugar.nombre);
     detailButton.setAttribute("aria-label", `Ver detalle de ${textoSeguro(nombre)}`);
-    detailButton.innerHTML = '<span class="action-icon">☆</span><span>Ver detalle</span>';
 
     const favoriteButton = document.createElement("button");
     favoriteButton.type = "button";
@@ -1410,9 +1409,9 @@ function crearTarjetaLugar(lugar, { distancia = null, disponibilidad = null } = 
     directions.target = "_blank";
     directions.rel = "noopener noreferrer";
     directions.innerHTML = '<span class="action-icon">📍</span><span>Cómo llegar</span>';
-    actions.append(detailButton, favoriteButton, directions);
+    actions.append(favoriteButton, directions);
 
-    article.append(thumbWrap, main, actions);
+    article.append(detailButton, thumbWrap, main, actions);
     return article;
 }
 

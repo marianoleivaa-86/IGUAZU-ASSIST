@@ -755,11 +755,35 @@ img {
     gap: 12px;
     align-items: center;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    transition: transform 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    cursor: pointer;
 }
 .place-feed-card:hover {
     border-color: var(--border-lime);
     transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(126, 229, 41, 0.16);
+}
+.place-feed-card:active {
+    border-color: var(--border-lime);
+    transform: scale(0.99);
+}
+.place-feed-card:focus-within {
+    border-color: var(--border-lime);
+    outline: 2px solid var(--color-lime);
+    outline-offset: 2px;
+}
+.place-card-open-detail {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    cursor: pointer;
 }
 .nearby-load-more {
     width: 100%;
@@ -833,6 +857,10 @@ img {
     overflow: hidden;
 }
 
+@media (max-width: 380px) {
+    .place-card-description { -webkit-line-clamp: 1; }
+}
+
 .place-card-meta-line {
     display: flex;
     flex-wrap: wrap;
@@ -874,6 +902,14 @@ img {
     flex-direction: column;
     gap: 7px;
     min-width: 100px;
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.place-card-actions-col > button,
+.place-card-actions-col > a {
+    pointer-events: auto;
 }
 
 .btn-action-detail {
@@ -1227,6 +1263,38 @@ img {
     gap: 8px;
 }
 
+.plan-b-section {
+    padding: 14px;
+    border: 1px solid rgba(56, 189, 248, 0.32);
+    border-left: 3px solid #38bdf8;
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(8, 28, 14, 0.94), rgba(6, 26, 13, 0.82));
+}
+.plan-b-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+}
+.plan-b-header > span { font-size: 19px; }
+.plan-b-header h4 { margin: 0; color: var(--text-white); font-size: 15px; }
+.plan-b-description {
+    margin: 0 0 10px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+    line-height: 1.4;
+}
+.plan-b-options { display: flex; flex-direction: column; gap: 8px; }
+.plan-b-option-card {
+    grid-template-columns: 32px minmax(0, 1fr);
+    margin: 0;
+    cursor: pointer;
+}
+.plan-b-option-card:focus-visible {
+    outline: 2px solid var(--color-lime);
+    outline-offset: 3px;
+}
+
 /* Conector de Traslado entre Paradas */
 .itinerary-travel-connector {
     display: flex;
@@ -1335,6 +1403,10 @@ img {
     padding: 4px 8px;
     border-radius: 0 6px 6px 0;
     margin: 4px 0 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .plan-card-details {
     display: flex;
@@ -1352,6 +1424,13 @@ img {
     color: var(--text-muted);
     line-height: 1.35;
     margin-bottom: 8px;
+}
+.plan-card-description,
+.plan-b-option-description {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 .plan-card-actions {
     display: flex;

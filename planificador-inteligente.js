@@ -2013,7 +2013,9 @@ function renderizarItinerario(lugares, cantidadPrincipales, planificarParaManana
         const ubicacion = planPlaceText(lugar, "ubicacion", "Consultar ubicación");
         const precioCatalogo = planPlaceText(lugar, "precioTexto");
         const esComplemento = index >= cantidadPrincipales;
-        const tipoEtiqueta = esComplemento ? "➕ Parada recomendada" : "⭐ Parada principal";
+        const tipoEtiqueta = esComplemento
+            ? '<span class="plan-type-tag">➕ Parada recomendada</span>'
+            : "";
 const paradaCalculada = trazadoFinal[index]?.lugar?.id === lugar?.id
     ? trazadoFinal[index]
     : trazadoFinal.find(item => item?.lugar?.id === lugar?.id);
@@ -2061,7 +2063,7 @@ const paradaCalculada = trazadoFinal[index]?.lugar?.id === lugar?.id
                 <div class="plan-card-info">
                     <div class="plan-card-meta">
                             <span class="plan-time-tag">${horaInicioStr} a ${horaFinStr} (~${formatearDuracionHumana(Math.round(duracionLugar * 60))})</span>
-                        <span class="plan-type-tag">${tipoEtiqueta}</span>
+                        ${tipoEtiqueta}
                         <span class="tag-badge" style="font-size:10.5px;">${indoorBadge}</span>
                     </div>
                     <h4>${escapar(lugar.nombre)}</h4>
@@ -2071,7 +2073,7 @@ const paradaCalculada = trazadoFinal[index]?.lugar?.id === lugar?.id
                         <span>${escapar(distanciaTexto)}</span>
                         <span>📌 ${escapar(ubicacion || lugar.direccion || "Consultar ubicación")}</span>
                     </div>
-                    <p>${escapar(descripcion)}</p>
+                    <p class="plan-card-description">${escapar(descripcion)}</p>
                     
                     <div class="plan-card-actions">
                         <button class="btn-card-action primary" onclick="mostrarDetalle('${escaparAttr(lugar.nombre)}')">
@@ -2125,12 +2127,11 @@ const climaPlan = contextoPlan.clima || contextoPlan.contextoAhora?.clima || cli
 
         if (opcionesCubiertas.length > 0) {
             const itemsB = opcionesCubiertas.map(l => `
-                <article class="plan-card" style="margin-top: 10px; cursor: pointer;" onclick="mostrarDetalle('${escaparAttr(l.nombre)}')">
+                <article class="plan-card plan-b-option-card" role="button" tabindex="0" onclick="mostrarDetalle('${escaparAttr(l.nombre)}')" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();this.click();}">
                     <div class="plan-card-icon">${l.icono}</div>
                     <div class="plan-card-info">
-                        <span class="plan-time-tag" style="background:#e0f2fe; color:#0369a1;">🌧️ Alternativa bajo techo</span>
                         <h4>${escapar(l.nombre)}</h4>
-                        <p>${escapar(l.descripcion)}</p>
+                        <p class="plan-b-option-description">${escapar(l.descripcion)}</p>
                         <span class="tag-badge">📍 ${escapar(l.ubicacion)}</span>
                     </div>
                 </article>
@@ -2139,13 +2140,13 @@ const climaPlan = contextoPlan.clima || contextoPlan.contextoAhora?.clima || cli
             planBHtml = `
                 <div class="plan-b-section">
                     <div class="plan-b-header">
-                        <span>🌧️</span>
-                        <h4>Plan B para la lluvia</h4>
+                        <span aria-hidden="true">🌧️</span>
+                        <h4>Plan B · Bajo techo</h4>
                     </div>
-                    <p style="font-size:13.5px; color:var(--color-text-muted); margin-bottom:10px;">
-                        Por precipitaciones en Iguazú, también podés sumar estas opciones techadas:
+                    <p class="plan-b-description">
+                        Sugerencias; no están incluidas en el itinerario.
                     </p>
-                    ${itemsB}
+                    <div class="plan-b-options">${itemsB}</div>
                 </div>
             `;
         }
