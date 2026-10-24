@@ -332,11 +332,16 @@ function contextoDeAhora() {
     };
 }
 
-function obtenerFuenteUbicacionAhora(coords) {
+function obtenerFuenteUbicacionAhora(coords, coordenadasGuardadas = undefined) {
     if (!coordenadasValidasPlan(coords)) return "fallback";
-    if (typeof AppState !== "undefined" && AppState.gpsActive === true) return "gps";
+    const gpsActual = typeof AppState !== "undefined" && AppState.gpsActive === true
+        ? AppState.userCoords
+        : null;
+    if (coordenadasValidasPlan(gpsActual) && Number(gpsActual.lat) === Number(coords.lat) && Number(gpsActual.lng) === Number(coords.lng)) return "gps";
     try {
-        const guardadas = typeof leerCoordenadasGuardadas === "function" ? leerCoordenadasGuardadas() : null;
+        const guardadas = coordenadasGuardadas === undefined
+            ? (typeof leerCoordenadasGuardadas === "function" ? leerCoordenadasGuardadas() : null)
+            : coordenadasGuardadas;
         if (guardadas && Number(guardadas.lat) === Number(coords.lat) && Number(guardadas.lng) === Number(coords.lng)) return "guardada";
     } catch (error) {
         // El planificador mantiene el fallback si el almacenamiento no está disponible.
@@ -346,11 +351,24 @@ function obtenerFuenteUbicacionAhora(coords) {
 
 function construirContextoAhora(preferencias = {}) {
     const ahora = contextoDeAhora();
-    const coords = typeof AppState !== "undefined" && coordenadasValidasPlan(AppState.userCoords)
+    const gpsActual = typeof AppState !== "undefined" && AppState.gpsActive === true && coordenadasValidasPlan(AppState.userCoords)
         ? { lat: Number(AppState.userCoords.lat), lng: Number(AppState.userCoords.lng) }
-        : (typeof CONFIG_APP !== "undefined" && coordenadasValidasPlan(CONFIG_APP.coordenadasCentro)
-            ? { lat: Number(CONFIG_APP.coordenadasCentro.lat), lng: Number(CONFIG_APP.coordenadasCentro.lng) }
-            : null);
+        : null;
+    let coordenadasGuardadas = null;
+    if (!gpsActual) {
+        try {
+            coordenadasGuardadas = typeof leerCoordenadasGuardadas === "function" ? leerCoordenadasGuardadas() : null;
+        } catch (error) {
+            coordenadasGuardadas = null;
+        }
+    }
+    const centro = typeof CONFIG_APP !== "undefined" && coordenadasValidasPlan(CONFIG_APP.coordenadasCentro)
+        ? { lat: Number(CONFIG_APP.coordenadasCentro.lat), lng: Number(CONFIG_APP.coordenadasCentro.lng) }
+        : null;
+    const coords = gpsActual || (coordenadasValidasPlan(coordenadasGuardadas)
+        ? { lat: Number(coordenadasGuardadas.lat), lng: Number(coordenadasGuardadas.lng) }
+        : centro);
+    const fuenteUbicacion = obtenerFuenteUbicacionAhora(coords, coordenadasGuardadas);
     const climaConocido = climaActual?.estado === "listo" && Number.isFinite(Number(climaActual.temperatura));
     const intereses = normalizarInteresesPlan(preferencias.intereses || preferencias.interes || []);
     const tiempo = preferencias.tiempo || "medio día";
@@ -361,7 +379,7 @@ function construirContextoAhora(preferencias = {}) {
         ...ahora,
         horaReal: ahora.horaNumero,
         horaTextoReal: ahora.horaTexto,
-        ubicacion: { coords, fuente: obtenerFuenteUbicacionAhora(coords) },
+        ubicacion: { coords, fuente: fuenteUbicacion },
         clima: {
             ...climaActual,
             estado: climaActual?.estado || "desconocido",

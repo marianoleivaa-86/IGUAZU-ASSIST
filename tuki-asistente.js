@@ -161,7 +161,7 @@ function interpretarConsultaTuki(consulta) {
 }
 
 function construirContextoTuki(intencion) {
-    const contexto = window.contextoDeAhora();
+    const contexto = window.construirContextoAhora();
 
     if (intencion.manana) {
         return {
@@ -185,6 +185,13 @@ function construirContextoTuki(intencion) {
     }
 
     return { ...contexto, desplazamientoDia: 0 };
+}
+
+function textoFuenteUbicacionTuki(contexto) {
+    const fuente = contexto?.ubicacion?.fuente;
+    if (fuente === "gps") return "tu ubicación GPS actual";
+    if (fuente === "guardada") return "la última ubicación guardada (no GPS actual)";
+    return "Plaza San Martín (referencia aproximada)";
 }
 
 function respuestaConversacionalTuki(textoNormalizado) {
@@ -334,7 +341,7 @@ function resolverReferenciaLugarTuki(intencion, contexto) {
             listaComparar = historial.at(-1);
         }
 
-        const origen = AppState.userCoords || CONFIG_APP.coordenadasCentro;
+        const origen = contexto?.origenCoords || contexto?.ubicacion?.coords || CONFIG_APP.coordenadasCentro;
         if (listaComparar.length < 2 || !origen || !listaComparar.every(lugar => lugar.coordenadas && Number.isFinite(lugar.coordenadas.lat) && Number.isFinite(lugar.coordenadas.lng))) {
             return {
                 ...aclararReferenciaLugarTuki(intencion, listaComparar),
@@ -346,8 +353,8 @@ function resolverReferenciaLugarTuki(intencion, contexto) {
             distancia: calcularDistanciaKm(origen.lat, origen.lng, lugar.coordenadas.lat, lugar.coordenadas.lng)
         })).sort((a, b) => a.distancia - b.distancia);
         const masCercano = ordenados[0];
-        const referenciaUbicacion = AppState.gpsActive ? "tu ubicación" : "tu ubicación de referencia";
-        const fuenteUbicacion = AppState.gpsActive ? "tu ubicación GPS" : "la Plaza San Martín";
+        const referenciaUbicacion = textoFuenteUbicacionTuki(contexto);
+        const fuenteUbicacion = referenciaUbicacion;
         const nombreMasCercano = tukiPlaceText(masCercano.lugar, "nombre", masCercano.lugar.nombre);
         const distTexto = formatearDistancia(masCercano.distancia);
         const cantLugares = listaComparar.length === 3 ? "tres" : String(listaComparar.length);
@@ -455,13 +462,14 @@ function construirAvisoPrecioNoConfirmadoTuki(lugar) {
 }
 
 function obtenerOpcionesComidaTuki(intencion, contexto, soloEconomicas = false, filtrarDisponibilidad = true) {
+    const origen = contexto?.origenCoords || contexto?.ubicacion?.coords || CONFIG_APP.coordenadasCentro;
     return lugaresReales
         .filter(esActividadTuristicaTuki)
         .filter(lugar => lugar.categoria === "comida")
         .filter(lugar => !soloEconomicas || lugar.nivelGasto === "economico" || lugar.gratuito === true)
         .filter(lugar => !filtrarDisponibilidad || window.estaDisponibleDurantePlan(lugar, contexto))
         .filter(lugar => lugar.aptoPara && lugar.aptoPara.includes(intencion.compania))
-        .map(lugar => ({ lugar, distancia: calcularDistanciaKm((AppState.userCoords || CONFIG_APP.coordenadasCentro).lat, (AppState.userCoords || CONFIG_APP.coordenadasCentro).lng, lugar.coordenadas.lat, lugar.coordenadas.lng) }))
+        .map(lugar => ({ lugar, distancia: calcularDistanciaKm(origen.lat, origen.lng, lugar.coordenadas.lat, lugar.coordenadas.lng) }))
         .sort((a, b) => a.distancia - b.distancia)
         .slice(0, 3)
         .map(item => ({ ...item.lugar, distanciaTuki: item.distancia }));
@@ -504,7 +512,7 @@ function obtenerRecomendacionesAmpliasTuki(intencion, contexto) {
 }
 
 function obtenerRecomendacionesCercanasTuki(intencion, contexto) {
-    const origen = AppState.userCoords || CONFIG_APP.coordenadasCentro;
+    const origen = contexto?.origenCoords || contexto?.ubicacion?.coords || CONFIG_APP.coordenadasCentro;
 
     return lugaresReales
         .filter(esActividadTuristicaTuki)
@@ -695,15 +703,16 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
 
     if (intencion.interes === "comida") {
         const comida = obtenerOpcionesComidaTuki(intencion, contexto, intencion.presupuesto === "economico");
+        const referencia = textoFuenteUbicacionTuki(contexto);
         if (comida.length > 0) {
             return {
-                texto: intencion.presupuesto === "economico"
+                texto: `${intencion.presupuesto === "economico"
                     ? "Encontré estas opciones gastronómicas económicas o accesibles confirmadas en el catálogo:"
-                    : "Encontré estas opciones gastronómicas compatibles en el catálogo:",
+                    : "Encontré estas opciones gastronómicas compatibles en el catálogo:"} Las ordené por distancia desde ${referencia}.`,
                 lugares: comida,
                 contexto,
                 intencion,
-                fuenteUbicacion: null,
+                fuenteUbicacion: referencia,
                 exacta: true
             };
         }
@@ -713,11 +722,11 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
             ? "No encontré restaurantes con precio económico confirmado cerca. El catálogo solo tiene opciones gastronómicas de precio medio o superior; te las muestro como alternativa, no como opciones económicas."
             : "No encontré una opción gastronómica compatible y disponible en este momento.";
         return {
-            texto: aviso,
+            texto: alternativasComida.length ? `${aviso} Las ordené por distancia desde ${referencia}.` : aviso,
             lugares: alternativasComida,
             contexto,
             intencion,
-            fuenteUbicacion: null,
+            fuenteUbicacion: alternativasComida.length ? referencia : null,
             exacta: false
         };
     }
@@ -725,7 +734,7 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
     if (intencion.cerca) {
         const lugares = obtenerRecomendacionesCercanasTuki(intencion, contexto);
         if (lugares.length > 0) {
-            const referencia = AppState.gpsActive ? "tu ubicación GPS" : "la Plaza San Martín";
+            const referencia = textoFuenteUbicacionTuki(contexto);
             return {
                 texto: `Tomé ${referencia} como referencia. Estas son las mejores opciones cercanas y disponibles que tengo confirmadas:`,
                 lugares,
@@ -740,14 +749,16 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
     if (!intencion.interes && (intencion.ahora || intencion.consultaHorario)) {
         const lugares = obtenerRecomendacionesAmpliasTuki(intencion, contexto);
         if (lugares.length > 0) {
+            const referencia = textoFuenteUbicacionTuki(contexto);
+            const mensaje = intencion.lluvia
+                ? "Para este momento y con lluvia, prioricé lugares cubiertos que figuran disponibles en el catálogo."
+                : "Estas opciones figuran disponibles para este momento en mi catálogo:";
             return {
-                texto: intencion.lluvia
-                    ? "Para este momento y con lluvia, prioricé lugares cubiertos que figuran disponibles en el catálogo."
-                    : "Estas opciones figuran disponibles para este momento en mi catálogo:",
+                texto: `${mensaje} Consideré ${referencia} al ordenar por distancia.`,
                 lugares,
                 contexto,
                 intencion,
-                fuenteUbicacion: null,
+                fuenteUbicacion: referencia,
                 exacta: true
             };
         }
@@ -809,13 +820,15 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
     if (resultado.adaptacion.activa && resultado.adaptacion.mensaje) {
         textoRespuesta += ` ${resultado.adaptacion.mensaje}`;
     }
+    const referencia = textoFuenteUbicacionTuki(contexto);
+    textoRespuesta += ` Consideré ${referencia} al ordenar por distancia.`;
 
     return {
         texto: textoRespuesta,
         lugares: resultado.lugares.slice(0, 3),
         contexto: resultado.contextoPlan,
         intencion,
-        fuenteUbicacion: null,
+        fuenteUbicacion: referencia,
         exacta: !resultado.adaptacion.activa && !intencion.ambigua
     };
 }

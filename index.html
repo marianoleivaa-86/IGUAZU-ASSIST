@@ -75,6 +75,7 @@
                 <div class="main-menu-actions">
                     <button id="main-menu-install" class="main-menu-action" type="button">📲 Instalar app</button>
                     <button id="main-menu-preferences" class="main-menu-action" type="button">⚙️ Preferencias</button>
+                    <button id="bnav-favorites" class="main-menu-action" type="button" aria-label="Ver lugares favoritos" onclick="abrirFavoritosDesdeNavegacion(); document.querySelector('#main-menu-close')?.click()">⭐ Favoritos</button>
                 </div>
             </div>
         </div>
@@ -763,12 +764,6 @@
         <button class="bottom-nav-btn" id="bnav-plans" onclick="mostrarSeccion('planner'); renderizarPlanesGuardados(); setActiveNav('bnav-plans')" aria-label="Mis Planes y armar itinerario">
             <span class="bottom-nav-icon">📅</span>
             <span class="bottom-nav-label" data-i18n="plans">Mis Planes</span>
-        </button>
-
-        <!-- 6. Favoritos -->
-        <button class="bottom-nav-btn" id="bnav-favorites" onclick="abrirFavoritosDesdeNavegacion()" aria-label="Ver lugares favoritos">
-            <span class="bottom-nav-icon">⭐</span>
-            <span class="bottom-nav-label">Favoritos</span>
         </button>
     </div>
 </nav>

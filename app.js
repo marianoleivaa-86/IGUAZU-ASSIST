@@ -898,7 +898,11 @@ function leerCoordenadasGuardadas() {
         const raw = localStorage.getItem(APP_CONSTANTS.GPS_STORAGE_KEY);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (!esCoordenadaValida(parsed?.lat, parsed?.lng)) return null;
+        if (typeof parsed?.lat !== "number" || typeof parsed?.lng !== "number" || !esCoordenadaValida(parsed.lat, parsed.lng)) return null;
+        const savedAt = parsed?.savedAt;
+        const ahora = Date.now();
+        const antiguedad = ahora - savedAt;
+        if (typeof savedAt !== "number" || !Number.isFinite(savedAt) || !Number.isFinite(ahora) || antiguedad < 0 || antiguedad > 30 * 60 * 1000) return null;
         return { lat: Number(parsed.lat), lng: Number(parsed.lng) };
     } catch (error) {
         console.info("No se pudo leer la última ubicación guardada.", error);
@@ -955,14 +959,14 @@ function esPermisoGpsDenegado(error) {
 }
 
 function aplicarUbicacionTrasErrorGps(error) {
-    if (esPermisoGpsDenegado(error)) {
-        aplicarFallbackUbicacion();
-        mostrarToast(uiText("gpsFallback", "📍 Permiso GPS denegado · referencia Plaza San Martín (Centro)"));
+    if (restaurarUbicacionGuardada()) {
+        mostrarToast(uiText("noLocation", "📍 GPS no disponible · usando última ubicación conocida"));
         return;
     }
 
-    if (restaurarUbicacionGuardada()) {
-        mostrarToast(uiText("noLocation", "📍 GPS no disponible · usando última ubicación conocida"));
+    if (esPermisoGpsDenegado(error)) {
+        aplicarFallbackUbicacion();
+        mostrarToast(uiText("gpsFallback", "📍 Permiso GPS denegado · referencia Plaza San Martín (Centro)"));
         return;
     }
 
