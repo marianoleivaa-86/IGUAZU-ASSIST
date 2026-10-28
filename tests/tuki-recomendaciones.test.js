@@ -55,7 +55,16 @@ function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tor
         I18n: { t: (_key, fallback) => fallback, placeText: (item, campo) => item?.[campo] },
         addEventListener() {},
         setTimeout,
-        contextoDeAhora: () => ({ momento: "mañana", horaNumero: 10, horaTexto: "10:00", diaSemana: 5 }),
+        contextoDeAhora: () => ({
+            momento: "mañana",
+            horaNumero: 10,
+            horaTexto: "10:00",
+            diaSemana: 5,
+            ubicacion: {
+                fuente: "gps",
+                coords: { lat: -25.6, lng: -54.57 }
+            }
+        }),
         estaDisponibleDurantePlan: (item, contexto) => {
             llamadasDisponibilidad.push({ item, contexto });
             return disponible(item, contexto);
@@ -150,7 +159,7 @@ test("Tuki calcula cercanía desde coordenadas GPS conocidas y limita la rama br
     const respuesta = api.resolver("¿Qué hay cerca?", { ahora: RELOJ });
 
     assert.equal(contexto.AppState.gpsActive, true);
-    assert.equal(respuesta.fuenteUbicacion, "tu ubicación GPS");
+    assert.equal(respuesta.fuenteUbicacion, "tu ubicación GPS actual");
     assert.equal(respuesta.lugares.length, 3);
     assert.deepEqual(respuesta.lugares.map(item => item.id), ["cerca-1", "cerca-2", "cerca-3"]);
     assert.ok(respuesta.lugares.every(item => item.distanciaTuki <= 10));

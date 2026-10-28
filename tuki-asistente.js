@@ -161,7 +161,17 @@ function interpretarConsultaTuki(consulta) {
 }
 
 function construirContextoTuki(intencion) {
-    const contexto = window.construirContextoAhora();
+    const contexto = typeof window.construirContextoAhora === "function"
+        ? window.construirContextoAhora()
+        : typeof window.contextoDeAhora === "function"
+            ? window.contextoDeAhora()
+            : {
+                momento: "mediodía",
+                horaNumero: 12,
+                horaTexto: "12:00",
+                diaSemana: 0,
+                esNocturnoTardio: false
+            };
 
     if (intencion.manana) {
         return {
