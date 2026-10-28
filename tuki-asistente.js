@@ -869,7 +869,7 @@ function crearTarjetasTuki(lugares, contexto) {
 
     return `
         <div class="tuki-recommendations">
-            ${lugares.map(lugar => {
+            ${lugares.map((lugar, indice) => {
                 const nombre = tukiPlaceText(lugar, "nombre", "Lugar sin nombre");
                 const distancia = Number.isFinite(lugar.distanciaTuki)
                     ? `${formatearDistancia(lugar.distanciaTuki)} · `
@@ -878,11 +878,18 @@ function crearTarjetasTuki(lugares, contexto) {
                 const gasto = lugar.gratuito
                     ? "Gratuito"
                     : lugar.nivelGasto === "economico" ? "Económico" : lugar.nivelGasto === "alto" ? "Gasto alto" : "Gasto medio";
+                const etiqueta = lugares.length >= 2
+                    ? tukiText(
+                        indice === 0 ? "tukiPrimaryRecommendation" : "tukiAlternatives",
+                        indice === 0 ? "Mi recomendación" : "Alternativas"
+                    )
+                    : "";
 
                 return `
                     <button class="tuki-place-card" type="button" data-tuki-place="${escaparAttr(lugar.nombre)}">
                         <span class="tuki-place-icon" aria-hidden="true">${lugar.icono}</span>
                         <span class="tuki-place-info">
+                            ${etiqueta ? `<span class="tuki-place-label">${escapar(etiqueta)}</span>` : ""}
                             <strong>${escapar(nombre)}</strong>
                             <span>${escapar(`${distancia}${gasto} · ${horario}`)}</span>
                         </span>

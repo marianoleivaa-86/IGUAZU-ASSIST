@@ -3259,6 +3259,16 @@ body.tuki-open {
     min-width: 0;
 }
 
+.tuki-place-info .tuki-place-label {
+    margin-bottom: 2px;
+    color: var(--color-lime);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
 .tuki-place-header-row {
     display: flex;
     align-items: center;
