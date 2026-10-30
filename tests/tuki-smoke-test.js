@@ -71,48 +71,56 @@ function startStaticServer(projectRoot, port = 4173) {
 
 async function main() {
     let localServer = null;
+    let userDataDir = null;
+    let browser = null;
+    let context = null;
     const projectRoot = path.resolve(__dirname, "..");
-    if (process.env.TUKI_TEST_URL) {
-        effectiveBaseUrl = process.env.TUKI_TEST_URL;
-    } else {
-        localServer = await startStaticServer(projectRoot, 0);
-        effectiveBaseUrl = `http://127.0.0.1:${localServer.address().port}/index.html`;
-    }
-
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "tuki-smoke-"));
-    const executablePath = await resolveExecutablePath();
-    const browser = await puppeteer.launch({
-        headless: true,
-        executablePath,
-        args: ["--no-sandbox", "--disable-features=ServiceWorker"],
-        userDataDir
-    });
-    const context = await browser.createBrowserContext();
-    const page = await context.newPage();
-    await page.setViewport({ width: 768, height: 1024, deviceScaleFactor: 1 });
-    await page.setCacheEnabled(false);
-    const consoleErrors = [];
-    const pageErrors = [];
-
-    await page.evaluateOnNewDocument(() => {
-        window.__tukiSmokeErrors = [];
-        window.__tukiSmokeUnhandled = [];
-        window.addEventListener("error", event => window.__tukiSmokeErrors.push(event.message));
-        window.addEventListener("unhandledrejection", event => window.__tukiSmokeUnhandled.push(String(event.reason)));
-    });
-    page.on("console", message => {
-        if (message.type() === "error") consoleErrors.push(message.text());
-    });
-    page.on("pageerror", error => pageErrors.push(error.message));
-
-    const checks = [];
-    const check = (name, condition, details = "") => {
-        assert.ok(condition, `${name}${details ? ` — ${details}` : ""}`);
-        checks.push(name);
-        console.log(`PASS ${name}`);
-    };
 
     try {
+        if (process.env.TUKI_TEST_URL) {
+            effectiveBaseUrl = process.env.TUKI_TEST_URL;
+        } else {
+            localServer = await startStaticServer(projectRoot, 0);
+            effectiveBaseUrl = `http://127.0.0.1:${localServer.address().port}/index.html`;
+        }
+
+        const smokeRunsRoot = path.join(os.tmpdir(), "tuki-smoke-runs");
+        fs.mkdirSync(smokeRunsRoot, { recursive: true });
+        fs.accessSync(smokeRunsRoot, fs.constants.W_OK);
+        userDataDir = fs.mkdtempSync(path.join(smokeRunsRoot, "tuki-smoke-"));
+
+        const executablePath = await resolveExecutablePath();
+        browser = await puppeteer.launch({
+            headless: true,
+            executablePath,
+            args: ["--no-sandbox", "--disable-features=ServiceWorker"],
+            userDataDir
+        });
+        context = await browser.createBrowserContext();
+        const page = await context.newPage();
+        await page.setViewport({ width: 768, height: 1024, deviceScaleFactor: 1 });
+        await page.setCacheEnabled(false);
+        const consoleErrors = [];
+        const pageErrors = [];
+
+        await page.evaluateOnNewDocument(() => {
+            window.__tukiSmokeErrors = [];
+            window.__tukiSmokeUnhandled = [];
+            window.addEventListener("error", event => window.__tukiSmokeErrors.push(event.message));
+            window.addEventListener("unhandledrejection", event => window.__tukiSmokeUnhandled.push(String(event.reason)));
+        });
+        page.on("console", message => {
+            if (message.type() === "error") consoleErrors.push(message.text());
+        });
+        page.on("pageerror", error => pageErrors.push(error.message));
+
+        const checks = [];
+        const check = (name, condition, details = "") => {
+            assert.ok(condition, `${name}${details ? ` — ${details}` : ""}`);
+            checks.push(name);
+            console.log(`PASS ${name}`);
+        };
+
         await page.goto(effectiveBaseUrl, { waitUntil: "networkidle0" });
         await page.evaluate(async () => {
             const registrations = await navigator.serviceWorker.getRegistrations();
@@ -273,11 +281,35 @@ async function main() {
 
         console.log(`OK ${checks.length} checks passed`);
     } finally {
-        await context.close();
-        await browser.close();
-        fs.rmSync(userDataDir, { recursive: true, force: true });
+        const cleanup = async (label, action) => {
+            try {
+                await action();
+            } catch (cleanupError) {
+                console.error(`CLEANUP ${label} failed: ${cleanupError.message}`);
+            }
+        };
+
+        if (context) {
+            await cleanup("browser context", () => context.close());
+        }
+        if (browser) {
+            await cleanup("browser", () => browser.close());
+        }
+        if (userDataDir) {
+            await cleanup("temporary profile", () => {
+                fs.rmSync(userDataDir, { recursive: true, force: true });
+            });
+        }
         if (localServer) {
-            await new Promise(resolve => localServer.close(resolve));
+            await cleanup("HTTP server", () => new Promise((resolve, reject) => {
+                localServer.close(error => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    resolve();
+                });
+            }));
         }
     }
 }

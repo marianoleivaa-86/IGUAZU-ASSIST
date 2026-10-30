@@ -42,10 +42,19 @@ function distanciaKm(lat1, lng1, lat2, lng2) {
     return Math.sqrt(dLat ** 2 + dLng ** 2);
 }
 
-function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tormenta: false }, disponible = () => true } = {}) {
+function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tormenta: false }, disponible = () => true, contextoReal = false, planificador = null, planificadorDisponible = true } = {}) {
     let climaActual = { ...clima };
     const llamadasPlanificador = [];
     const llamadasDisponibilidad = [];
+    const llamadasContextoAhora = [];
+    const construirPlanConFallback = planificador || (opciones => {
+        llamadasPlanificador.push({ ...opciones, clima: { ...climaActual } });
+        return {
+            lugares: lugares.filter(item => !opciones.lluvia || item.alAireLibre !== true),
+            contextoPlan: opciones.ahora,
+            adaptacion: { activa: false, mensaje: "" }
+        };
+    });
     const agendaStub = {
         ...Agenda,
         cargarAgenda: async () => ({ ok: true, eventos: [] })
@@ -73,14 +82,7 @@ function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tor
             esLugarValidoParaItinerario: item => Boolean(item?.planificable),
             esCompatibleConPresupuesto: () => true,
             horasDisponibles: () => 5,
-            construirPlanConFallback: opciones => {
-                llamadasPlanificador.push({ ...opciones, clima: { ...climaActual } });
-                return {
-                    lugares: lugares.filter(item => !opciones.lluvia || item.alAireLibre !== true),
-                    contextoPlan: opciones.ahora,
-                    adaptacion: { activa: false, mensaje: "" }
-                };
-            },
+            ...(planificadorDisponible ? { construirPlanConFallback } : {}),
             get climaActual() { return climaActual; },
             set climaActual(value) { climaActual = value; }
         },
@@ -127,9 +129,288 @@ function crearTuki({ lugares = [], clima = { estado: "listo", lluvia: false, tor
         Promise,
         Math
     };
+    if (contextoReal) {
+        vm.runInNewContext(PLANNER_SOURCE, contexto);
+        const construirContextoAhoraReal = contexto.window.construirContextoAhora;
+        contexto.window.construirContextoAhora = preferencias => {
+            const resultado = construirContextoAhoraReal(preferencias);
+            llamadasContextoAhora.push({ preferencias: { ...preferencias }, contexto: resultado });
+            return resultado;
+        };
+        const planificadorReal = contexto.window.PlanificadorAPI;
+        contexto.window.PlanificadorAPI = {
+            ...planificadorReal,
+            construirPlanConFallback: opciones => ({
+                lugares: lugares.slice(0, 3),
+                contextoPlan: opciones.ahora,
+                adaptacion: { activa: false, mensaje: "" }
+            })
+        };
+    }
     vm.runInNewContext(TUKI_SOURCE, contexto);
-    return { api: contexto.window.TukiAsistente, ventana, contexto };
+    return { api: contexto.window.TukiAsistente, ventana, contexto, llamadasContextoAhora };
 }
+
+function ejecutarConsultaConContextoReal(consulta, lugares = [lugar()]) {
+    const prueba = crearTuki({ lugares, contextoReal: true });
+    const respuesta = prueba.ventana.__iguazuTesting.ejecutar({
+        fecha: RELOJ.toISOString(),
+        clima: {
+            estado: "listo",
+            temperatura: 28,
+            lluvia: false,
+            lluviaProxima: false,
+            tormenta: false
+        },
+        coords: { lat: -25.6, lng: -54.57 }
+    }, () => prueba.api.resolver(consulta, { ahora: RELOJ }));
+    return { ...prueba, respuesta };
+}
+
+function verificarContextoReal(prueba, preferenciasEsperadas, limiteHorasEsperado) {
+    assert.equal(prueba.llamadasContextoAhora.length, 1);
+    const llamada = prueba.llamadasContextoAhora[0];
+    assert.deepEqual(llamada.preferencias, preferenciasEsperadas);
+    assert.equal(llamada.contexto.preferencias.tiempo, preferenciasEsperadas.tiempo);
+    assert.equal(llamada.contexto.preferencias.compania, preferenciasEsperadas.compania);
+    assert.equal(llamada.contexto.preferencias.presupuesto, preferenciasEsperadas.presupuesto);
+    assert.equal(llamada.preferencias.interes, preferenciasEsperadas.interes);
+    assert.deepEqual(
+        Array.from(llamada.contexto.preferencias.intereses),
+        [preferenciasEsperadas.interes]
+    );
+    assert.equal(llamada.contexto.limiteHoras, limiteHorasEsperado);
+    assert.equal(llamada.contexto.ubicacion.coords.lat, -25.6);
+    assert.equal(llamada.contexto.ubicacion.coords.lng, -54.57);
+    assert.equal(llamada.contexto.ubicacion.fuente, "gps");
+    assert.equal(llamada.contexto.clima.estado, "listo");
+    assert.equal(llamada.contexto.clima.temperatura, 28);
+}
+
+test("Tuki transmite actividades para varias horas al contexto real", () => {
+    const prueba = ejecutarConsultaConContextoReal("Quiero actividades para unas horas");
+    verificarContextoReal(prueba, {
+        interes: "actividades",
+        tiempo: "unas horas",
+        compania: "solo",
+        presupuesto: "medio"
+    }, 3);
+    assert.equal(prueba.respuesta.contexto.limiteHoras, 3);
+});
+
+test("Tuki transmite comida y presupuesto económico al contexto real", () => {
+    const prueba = ejecutarConsultaConContextoReal("¿Dónde comer barato?");
+    verificarContextoReal(prueba, {
+        interes: "comida",
+        tiempo: "medio día",
+        compania: "solo",
+        presupuesto: "economico"
+    }, 5);
+});
+
+test("Tuki transmite compañía al contexto real", () => {
+    const prueba = ejecutarConsultaConContextoReal("Quiero naturaleza con mi familia");
+    verificarContextoReal(prueba, {
+        interes: "naturaleza",
+        tiempo: "medio día",
+        compania: "familia",
+        presupuesto: "medio"
+    }, 5);
+});
+
+test("Tuki transmite una consulta nocturna al contexto real", () => {
+    const prueba = ejecutarConsultaConContextoReal("Quiero salir de noche");
+    verificarContextoReal(prueba, {
+        interes: "noche",
+        tiempo: "medio día",
+        compania: "solo",
+        presupuesto: "medio"
+    }, 5);
+    assert.equal(prueba.respuesta.contexto.momento, "noche");
+    assert.equal(prueba.respuesta.contexto.horaNumero, 20);
+});
+
+test("Tuki muestra los lugares que devuelve el planificador", () => {
+    const recomendado = lugar({ id: "plan-resultado", nombre: "Lugar compatible", categoria: "naturaleza" });
+    const { api } = crearTuki({
+        lugares: [lugar({ id: "catalogo-respaldo", nombre: "No debería aparecer" })],
+        planificador: opciones => ({
+            lugares: [recomendado],
+            contextoPlan: opciones.ahora,
+            adaptacion: { activa: false, mensaje: "" }
+        })
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.deepEqual(respuesta.lugares.map(item => item.id), ["plan-resultado"]);
+    assert.equal(respuesta.exacta, true);
+});
+
+test("Tuki acepta lugares del planificador sin adaptación", () => {
+    const recomendado = lugar({ id: "sin-adaptacion", nombre: "Lugar sin adaptación", categoria: "naturaleza" });
+    const { api } = crearTuki({
+        planificador: opciones => ({ lugares: [recomendado], contextoPlan: opciones.ahora })
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.deepEqual(respuesta.lugares.map(item => item.id), ["sin-adaptacion"]);
+    assert.equal(respuesta.exacta, true);
+});
+
+test("Tuki acepta lugares del planificador con adaptación nula", () => {
+    const recomendado = lugar({ id: "adaptacion-nula", nombre: "Lugar con adaptación nula", categoria: "naturaleza" });
+    const { api } = crearTuki({
+        planificador: opciones => ({ lugares: [recomendado], contextoPlan: opciones.ahora, adaptacion: null })
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.deepEqual(respuesta.lugares.map(item => item.id), ["adaptacion-nula"]);
+    assert.equal(respuesta.exacta, true);
+});
+
+test("Tuki respeta una lista vacía válida y no activa el respaldo general del catálogo", () => {
+    const { api } = crearTuki({
+        lugares: [lugar({ id: "respaldo-no-permitido", nombre: "Respaldo no permitido" })],
+        planificador: opciones => ({
+            lugares: [],
+            contextoPlan: opciones.ahora,
+            adaptacion: { activa: true, nivel: "catalogo-no-disponible", mensaje: "No hay opciones compatibles." }
+        })
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares.length, 0);
+    assert.equal(respuesta.exacta, false);
+    assert.match(respuesta.texto, /No hay opciones compatibles/);
+});
+
+test("Tuki conserva el tratamiento de una lista vacía sin adaptación", () => {
+    const { api } = crearTuki({
+        planificador: opciones => ({ lugares: [], contextoPlan: opciones.ahora })
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares.length, 0);
+    assert.equal(respuesta.exacta, false);
+    assert.match(respuesta.texto, /No encontré opciones compatibles/);
+});
+
+test("Una consulta posterior con resultados no queda afectada por una consulta vacía anterior", () => {
+    const siguiente = lugar({ id: "resultado-posterior", nombre: "Resultado posterior", categoria: "noche" });
+    let llamadas = 0;
+    const { api } = crearTuki({
+        lugares: [lugar({ id: "respaldo-no-permitido", nombre: "Respaldo no permitido" })],
+        planificador: opciones => {
+            llamadas += 1;
+            return llamadas === 1
+                ? { lugares: [], contextoPlan: opciones.ahora, adaptacion: { activa: true, mensaje: "Sin coincidencias." } }
+                : { lugares: [siguiente], contextoPlan: opciones.ahora, adaptacion: { activa: false, mensaje: "" } };
+        }
+    });
+
+    const primera = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const segunda = api.resolver("Quiero salir de noche", { ahora: RELOJ });
+
+    assert.equal(primera.lugares.length, 0);
+    assert.deepEqual(segunda.lugares.map(item => item.id), ["resultado-posterior"]);
+    assert.equal(segunda.exacta, true);
+});
+
+test("Una consulta explícita vacía limpia referencias antes de un seguimiento ambiguo", () => {
+    const primero = lugar({ id: "primero", nombre: "Lugar de la primera consulta", categoria: "naturaleza" });
+    let llamadas = 0;
+    const { api } = crearTuki({
+        planificador: opciones => {
+            llamadas += 1;
+            return llamadas === 1
+                ? { lugares: [primero], contextoPlan: opciones.ahora, adaptacion: { activa: false, mensaje: "" } }
+                : { lugares: [], contextoPlan: opciones.ahora, adaptacion: { activa: true, mensaje: "Sin resultados para la nueva consulta." } };
+        }
+    });
+
+    const primera = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const segunda = api.resolver("Quiero salir de noche", { ahora: RELOJ });
+    const tercera = api.resolver("¿Y ese?", { ahora: RELOJ });
+
+    assert.deepEqual(primera.lugares.map(item => item.id), ["primero"]);
+    assert.equal(segunda.lugares.length, 0);
+    assert.equal(tercera.lugares.length, 0);
+    assert.match(tercera.texto, /No tengo una recomendación anterior concreta/);
+    assert.doesNotMatch(tercera.texto, /Lugar de la primera consulta/);
+});
+
+test("Un seguimiento válido conserva referencias si no hubo una nueva consulta vacía", () => {
+    const recomendado = lugar({ id: "seguimiento", nombre: "Lugar para seguimiento", categoria: "naturaleza" });
+    const { api } = crearTuki({
+        planificador: opciones => ({ lugares: [recomendado], contextoPlan: opciones.ahora, adaptacion: { activa: false, mensaje: "" } })
+    });
+
+    api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+    const respuesta = api.resolver("¿Y mañana?", { ahora: RELOJ });
+
+    assert.deepEqual(Array.from(respuesta.lugares, item => item.id), ["seguimiento"]);
+    assert.match(respuesta.texto, /para mañana|disponibles/i);
+});
+
+test("Tuki conserva y comunica una alternativa relacionada del planificador", () => {
+    const alternativa = lugar({ id: "alternativa-relacionada", nombre: "Paseo relacionado", categoria: "actividades" });
+    const { api } = crearTuki({
+        planificador: opciones => ({
+            lugares: [alternativa],
+            contextoPlan: opciones.ahora,
+            adaptacion: { activa: true, nivel: "interes-relacionado", mensaje: "Es una alternativa relacionada." }
+        })
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.deepEqual(respuesta.lugares.map(item => item.id), ["alternativa-relacionada"]);
+    assert.equal(respuesta.exacta, false);
+    assert.match(respuesta.texto, /alternativa relacionada/i);
+});
+
+test("Un error real del planificador no se convierte en una recomendación del catálogo", () => {
+    const { api } = crearTuki({
+        lugares: [lugar({ id: "respaldo-no-permitido", nombre: "Respaldo no permitido" })],
+        planificador: () => { throw new Error("error del planificador"); }
+    });
+
+    assert.throws(
+        () => api.resolver("Quiero visitar naturaleza", { ahora: RELOJ }),
+        /error del planificador/
+    );
+});
+
+test("Un planificador no disponible devuelve una respuesta explícita sin tarjetas", () => {
+    const { api } = crearTuki({
+        lugares: [lugar({ id: "respaldo-no-permitido", nombre: "Respaldo no permitido" })],
+        planificadorDisponible: false
+    });
+
+    const respuesta = api.resolver("Quiero visitar naturaleza", { ahora: RELOJ });
+
+    assert.equal(respuesta.lugares.length, 0);
+    assert.equal(respuesta.exacta, false);
+    assert.match(respuesta.texto, /no está disponible/i);
+});
+
+test("Las ramas gastronómica y cercana informan indisponibilidad sin PlanificadorAPI completo", () => {
+    const lugares = [lugar({ id: "sin-planificador", nombre: "Lugar sin planificador", categoria: "comida" })];
+    const { api } = crearTuki({ lugares, planificadorDisponible: false });
+
+    const comida = api.resolver("¿Dónde comer?", { ahora: RELOJ });
+    const cerca = api.resolver("¿Qué hay cerca?", { ahora: RELOJ });
+
+    assert.equal(comida.lugares.length, 0);
+    assert.equal(cerca.lugares.length, 0);
+    assert.match(comida.texto, /no está disponible/i);
+    assert.match(cerca.texto, /no está disponible/i);
+});
 
 test("Tuki recomienda hasta tres opciones gastronómicas y respeta la consulta cerca", () => {
     const lugares = [
@@ -518,3 +799,100 @@ function crearPlanificador({ lugares = [] } = {}) {
     vm.runInNewContext(PLANNER_SOURCE, contexto);
     return { api: contexto.window.PlanificadorAPI, contexto };
 }
+
+function construirPlanDePrueba(lugares, opciones = {}) {
+    const { api } = crearPlanificador({ lugares });
+    return api.construirPlanConFallback({
+        interes: "naturaleza",
+        tiempo: "medio día",
+        compania: "solo",
+        presupuesto: "medio",
+        limiteHoras: 5,
+        ahora: { momento: "mañana", horaNumero: 10, horaTexto: "10:00", diaSemana: 5 },
+        ...opciones
+    });
+}
+
+test("el fallback de naturaleza no devuelve una experiencia nocturna sin relación explícita", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({ id: "noche-ajena", categoria: "noche", intereses: ["noche"] })
+    ]);
+
+    assert.equal(Array.from(resultado.lugares).length, 0);
+    assert.equal(resultado.adaptacion.nivel, "catalogo-no-disponible");
+    assert.match(resultado.adaptacion.mensaje, /No encontré una experiencia compatible/i);
+});
+
+test("el fallback de naturaleza conserva una alternativa con interés relacionado explícito", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({
+            id: "paseo-relacionado",
+            categoria: "actividades",
+            intereses: ["actividades", "paseos"]
+        })
+    ]);
+
+    assert.deepEqual(Array.from(resultado.lugares, item => item.id), ["paseo-relacionado"]);
+    assert.equal(resultado.lugares[0].categoria, "actividades");
+    assert.equal(resultado.adaptacion.nivel, "interes-relacionado");
+});
+
+test("el fallback gastronómico relaja presupuesto pero conserva restaurantes", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({
+            id: "restaurante-caro",
+            categoria: "comida",
+            intereses: ["comida"],
+            nivelGasto: "alto",
+            precio: { tipo: "fijo", monto: 1000, estado: "confirmado" }
+        })
+    ], { interes: "comida", presupuesto: "economico" });
+
+    assert.deepEqual(Array.from(resultado.lugares, item => item.id), ["restaurante-caro"]);
+    assert.equal(resultado.lugares[0].categoria, "comida");
+    assert.equal(resultado.adaptacion.nivel, "presupuesto");
+});
+
+test("el fallback de actividades no devuelve categorías incompatibles", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({ id: "noche-ajena", categoria: "noche", intereses: ["noche"] })
+    ], { interes: "actividades" });
+
+    assert.equal(Array.from(resultado.lugares).length, 0);
+    assert.equal(resultado.adaptacion.nivel, "catalogo-no-disponible");
+});
+
+test("el fallback nocturno no devuelve una experiencia diurna sin relación explícita", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({
+            id: "paseo-diurno",
+            categoria: "naturaleza",
+            intereses: ["naturaleza", "paseos"],
+            momentos: ["mañana", "tarde"],
+            tipoHorario: "diurno"
+        })
+    ], { interes: "noche" });
+
+    assert.equal(Array.from(resultado.lugares).length, 0);
+    assert.equal(resultado.adaptacion.nivel, "catalogo-no-disponible");
+});
+
+test("un interés desconocido no activa categorías arbitrarias", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({ id: "actividad-generica", categoria: "actividades", intereses: ["actividades"] }),
+        lugar({ id: "naturaleza-generica", categoria: "naturaleza", intereses: ["naturaleza"] })
+    ], { interes: "astronomia" });
+
+    assert.equal(Array.from(resultado.lugares).length, 0);
+    assert.equal(resultado.adaptacion.nivel, "catalogo-no-disponible");
+});
+
+test("el fallback de compañía conserva el interés principal", () => {
+    const resultado = construirPlanDePrueba([
+        lugar({ id: "naturaleza-solo", categoria: "naturaleza", intereses: ["naturaleza"], aptoPara: ["solo"] })
+    ], { compania: "pareja" });
+
+    assert.deepEqual(Array.from(resultado.lugares, item => item.id), ["naturaleza-solo"]);
+    assert.equal(resultado.lugares[0].categoria, "naturaleza");
+    assert.equal(resultado.adaptacion.nivel, "compania");
+});

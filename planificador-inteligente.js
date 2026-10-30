@@ -342,7 +342,7 @@ function obtenerFuenteUbicacionAhora(coords, coordenadasGuardadas = undefined) {
         const guardadas = coordenadasGuardadas === undefined
             ? (typeof leerCoordenadasGuardadas === "function" ? leerCoordenadasGuardadas() : null)
             : coordenadasGuardadas;
-        if (guardadas && Number(guardadas.lat) === Number(coords.lat) && Number(guardadas.lng) === Number(coords.lng)) return "guardada";
+        if (coordenadasValidasPlan(guardadas) && Number(guardadas.lat) === Number(coords.lat) && Number(guardadas.lng) === Number(coords.lng)) return "guardada";
     } catch (error) {
         // El planificador mantiene el fallback si el almacenamiento no está disponible.
     }
@@ -370,7 +370,13 @@ function construirContextoAhora(preferencias = {}) {
         : centro);
     const fuenteUbicacion = obtenerFuenteUbicacionAhora(coords, coordenadasGuardadas);
     const climaConocido = climaActual?.estado === "listo" && Number.isFinite(Number(climaActual.temperatura));
-    const intereses = normalizarInteresesPlan(preferencias.intereses || preferencias.interes || []);
+    const intereses = normalizarInteresesPlan(
+        Array.isArray(preferencias.intereses)
+            ? preferencias.intereses
+            : typeof preferencias.interes === "string"
+                ? [preferencias.interes]
+                : []
+    );
     const tiempo = preferencias.tiempo || "medio día";
     return {
         fechaHora: contextoTemporalPrueba?.fecha
@@ -1326,7 +1332,7 @@ function obtenerCandidatosPlanLegacy(interes, presupuesto, compania, contexto, o
         excluirNombres = []
     } = opciones;
     const excluidos = new Set(excluirNombres);
-    const interesesRelacionados = RELACIONES_DE_INTERES[interes] || ["actividades", "comida"];
+    const interesesRelacionados = RELACIONES_DE_INTERES[interes] || [];
     const categoriasPrincipales = ["naturaleza", "comida", "actividades", "noche"];
 
     return lugaresReales
@@ -1340,9 +1346,11 @@ function obtenerCandidatosPlanLegacy(interes, presupuesto, compania, contexto, o
                     : coincideConInteres(lugar, interes);
             }
             if (modoInteres === "relacionado") {
-                return interesesRelacionados.some(relacionado => coincideConInteres(lugar, relacionado));
+                return interesesRelacionados.some(relacionado =>
+                    Array.isArray(lugar.intereses) && lugar.intereses.includes(relacionado)
+                );
             }
-            return !CATEGORIAS_NO_TURISTICAS_PARA_RESPALDO.includes(lugar.categoria);
+            return false;
         })
         .filter(lugar => esCompatibleConClima(lugar, contexto?.contextoAhora?.clima || contexto?.clima || climaActual))
         .filter(lugar => estaDisponibleDurantePlan(lugar, contexto))
@@ -1384,12 +1392,6 @@ function construirPlanConFallback({ interes, tiempo, compania, presupuesto, limi
             criteriosRelajados: puedeRelajarCompania ? ["compañía", "presupuesto", "preferencia secundaria"] : ["presupuesto", "preferencia secundaria"],
             mensaje: "Para esas condiciones no encontré una opción perfecta, pero Tuki te propone una alternativa turística cercana, segura y compatible con el horario."
         },
-        {
-            nivel: "respaldo-seguro",
-            opciones: { relajarCompania: puedeRelajarCompania, relajarPresupuesto: true, modoInteres: "cualquiera" },
-            criteriosRelajados: puedeRelajarCompania ? ["compañía", "presupuesto", "preferencia"] : ["presupuesto", "preferencia"],
-            mensaje: "Tuki activó la recomendación de respaldo: una experiencia turística válida, disponible y adecuada para no dejarte sin propuesta."
-        }
     ];
 
     for (const etapa of etapas) {
@@ -1474,7 +1476,7 @@ function construirPlanConFallback({ interes, tiempo, compania, presupuesto, limi
         adaptacion: {
             activa: true,
             nivel: "catalogo-no-disponible",
-            mensaje: "Tuki no pudo obtener una actividad válida del catálogo en este momento. Revisá la conexión y volvé a intentarlo.",
+            mensaje: "No encontré una experiencia compatible con tus intereses, horario y condiciones. Probá con otra categoría, duración o presupuesto.",
             criteriosRelajados: []
         }
     };

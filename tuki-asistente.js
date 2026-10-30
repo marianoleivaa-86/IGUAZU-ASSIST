@@ -162,7 +162,12 @@ function interpretarConsultaTuki(consulta) {
 
 function construirContextoTuki(intencion) {
     const contexto = typeof window.construirContextoAhora === "function"
-        ? window.construirContextoAhora()
+        ? window.construirContextoAhora({
+            interes: intencion.interes,
+            tiempo: intencion.tiempo,
+            compania: intencion.compania,
+            presupuesto: intencion.presupuesto
+        })
         : typeof window.contextoDeAhora === "function"
             ? window.contextoDeAhora()
             : {
@@ -309,6 +314,17 @@ function indiceLugarReferenciadoTuki(texto) {
     const ordinal = texto.match(/\b(primer(?:o|a)?|segund[oa]|tercer(?:o|a)?|cuart[oa]|ultim[oa])\b/);
     if (!ordinal) return null;
     return ({ primero: 0, primera: 0, primer: 0, segundo: 1, segunda: 1, tercero: 2, tercera: 2, tercer: 2, cuarto: 3, cuarta: 3, ultimo: -1, ultima: -1 })[ordinal[1]] ?? null;
+}
+
+function esNuevaConsultaExplicitaTuki(intencion) {
+    return Boolean(
+        intencion?.interes &&
+        !intencion.ambigua &&
+        !intencion.manana &&
+        !intencion.cerca &&
+        !intencion.consultaHorario &&
+        !esSeguimientoTuki(intencion.texto)
+    );
 }
 
 function puntajeGastoReferenciaTuki(lugar) {
@@ -458,6 +474,17 @@ function buscarLugarMencionadoTuki(textoNormalizado) {
 
 function esActividadTuristicaTuki(lugar) {
     return window.PlanificadorAPI.esLugarValidoParaItinerario(lugar) && TUKI_CATEGORIAS_TURISTICAS.includes(lugar.categoria);
+}
+
+function respuestaPlanificadorNoDisponibleTuki(intencion, contexto) {
+    return {
+        texto: "El planificador inteligente todavía no está disponible. Probá nuevamente en unos segundos.",
+        lugares: [],
+        contexto,
+        intencion,
+        fuenteUbicacion: null,
+        exacta: false
+    };
 }
 
 function precioTukiEstaConfirmado(lugar) {
@@ -711,6 +738,15 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
         };
     }
 
+    const planificador = window.PlanificadorAPI;
+    const planificadorDisponible = Boolean(
+        planificador &&
+        typeof planificador.esLugarValidoParaItinerario === "function" &&
+        typeof planificador.esCompatibleConPresupuesto === "function" &&
+        typeof planificador.construirPlanConFallback === "function"
+    );
+    if (!planificadorDisponible) return respuestaPlanificadorNoDisponibleTuki(intencion, contexto);
+
     if (intencion.interes === "comida") {
         const comida = obtenerOpcionesComidaTuki(intencion, contexto, intencion.presupuesto === "economico");
         const referencia = textoFuenteUbicacionTuki(contexto);
@@ -774,43 +810,39 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
         }
     }
 
-    const interes = intencion.interes || "actividades";
-    const resultado = ejecutarConClimaTuki(intencion.lluvia, () => window.PlanificadorAPI.construirPlanConFallback({
-        interes,
-        tiempo: intencion.tiempo,
-        compania: intencion.compania,
-        presupuesto: intencion.presupuesto,
-        limiteHoras: window.PlanificadorAPI.horasDisponibles(intencion.tiempo),
-        ahora: contexto
-    }));
+	    const interes = intencion.interes || "actividades";
 
-    if (!Array.isArray(resultado?.lugares) || resultado.lugares.length === 0) {
-        // Último respaldo: usar únicamente experiencias reales y planificables del
-        // catálogo, aunque no cumplan todos los filtros de horario/clima. Así Tuki
-        // siempre entrega una salida útil sin inventar recomendaciones.
-        const respaldoCatalogo = lugaresReales
-            .filter(esActividadTuristicaTuki)
-            .sort((a, b) => Number(b.prioridad || 0) - Number(a.prioridad || 0))
-            .slice(0, 1);
+	    const resultado = ejecutarConClimaTuki(intencion.lluvia, () => planificador.construirPlanConFallback({
+	        interes,
+	        tiempo: intencion.tiempo,
+	        compania: intencion.compania,
+	        presupuesto: intencion.presupuesto,
+	        limiteHoras: typeof planificador.horasDisponibles === "function"
+	            ? planificador.horasDisponibles(intencion.tiempo)
+	            : undefined,
+	        ahora: contexto
+	    }));
 
-        if (respaldoCatalogo.length > 0) {
-            return {
-                texto: "No encontré una coincidencia exacta para todos tus criterios. Te dejo una experiencia real del catálogo para que puedas revisar sus horarios y condiciones:",
-                lugares: respaldoCatalogo,
-                contexto: resultado?.contextoPlan || contexto,
-                intencion,
-                fuenteUbicacion: null,
-                exacta: false
-            };
-        }
+	    if (!resultado || !Array.isArray(resultado.lugares)) {
+	        throw new Error("El planificador devolvió un resultado inválido.");
+	    }
 
+	    const adaptacion = resultado.adaptacion ?? { activa: false, mensaje: "" };
+
+	    if (resultado.lugares.length === 0) {
+	        if (esNuevaConsultaExplicitaTuki(intencionInicial)) {
+	            tukiMemoriaSesion.lugaresReferenciados = [];
+	            tukiMemoriaSesion.historialRecomendaciones = [];
+	        }
+	        const mensaje = adaptacion.mensaje || "No encontré opciones compatibles con esos criterios.";
         return {
-            texto: "No encontré una actividad turística planificable y disponible para esas condiciones. Probá con otro horario o una duración diferente.",
+	            texto: mensaje,
             lugares: [],
-            contexto: resultado?.contextoPlan || contexto,
+	            contexto: resultado.contextoPlan || contexto,
             intencion,
             fuenteUbicacion: null,
-            exacta: false
+            exacta: false,
+	            adaptacion
         };
     }
 
@@ -827,8 +859,8 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
         textoRespuesta = "No pude identificar una condición exacta en tu pregunta. Igual, te propongo estas experiencias válidas para empezar:";
     }
 
-    if (resultado.adaptacion.activa && resultado.adaptacion.mensaje) {
-        textoRespuesta += ` ${resultado.adaptacion.mensaje}`;
+	    if (adaptacion.activa && adaptacion.mensaje) {
+	        textoRespuesta += ` ${adaptacion.mensaje}`;
     }
     const referencia = textoFuenteUbicacionTuki(contexto);
     textoRespuesta += ` Consideré ${referencia} al ordenar por distancia.`;
@@ -839,7 +871,7 @@ function resolverConsultaTukiInterna(consulta, opciones = {}) {
         contexto: resultado.contextoPlan,
         intencion,
         fuenteUbicacion: referencia,
-        exacta: !resultado.adaptacion.activa && !intencion.ambigua
+	        exacta: !adaptacion.activa && !intencion.ambigua
     };
 }
 
